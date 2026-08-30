@@ -1,0 +1,68 @@
+# A Dart VM Service session, one frame per line, in the order they cross the wire.
+#
+# Format (mirrors the line-per-frame convention of flutter-run-lifecycle.txt,
+# adapted because this protocol is bidirectional):
+#
+#   > {...}   a frame the client sends   (JSON-RPC request)
+#   < {...}   a frame the server sends   (JSON-RPC response, matched by id)
+#   ! {...}   a frame the server pushes  (streamNotify, unsolicited)
+#
+# `#` starts a comment line and blank lines are ignored. Ids are the ones the
+# client is expected to allocate, in order, starting at 1.
+#
+# Shapes are faithful to pkg/vm_service's dart_io_extensions.dart: startTime and
+# endTime are MICROSECONDS since the epoch, getHttpProfile answers with its own
+# server-side `timestamp` (also microseconds) to be echoed back as the next
+# `updatedSince`, and bodies come back as arrays of byte values.
+
+# --- attach ----------------------------------------------------------------
+> {"jsonrpc":"2.0","id":1,"method":"getVM","params":{}}
+< {"jsonrpc":"2.0","id":1,"result":{"type":"VM","name":"vm","isolates":[{"type":"@Isolate","id":"isolates/1963006521159535","name":"main","number":"1963006521159535"}]}}
+
+# dart:io's extension is registered lazily: the first enable can lose the race
+# and come back -32601. The client is expected to retry once.
+> {"jsonrpc":"2.0","id":2,"method":"ext.dart.io.httpEnableTimelineLogging","params":{"isolateId":"isolates/1963006521159535","enabled":true}}
+< {"jsonrpc":"2.0","id":2,"error":{"code":-32601,"message":"Method not found","data":{"details":"ext.dart.io.httpEnableTimelineLogging"}}}
+> {"jsonrpc":"2.0","id":3,"method":"ext.dart.io.httpEnableTimelineLogging","params":{"isolateId":"isolates/1963006521159535","enabled":true}}
+< {"jsonrpc":"2.0","id":3,"result":{"type":"HttpTimelineLoggingState","enabled":true}}
+
+> {"jsonrpc":"2.0","id":4,"method":"streamListen","params":{"streamId":"Isolate"}}
+< {"jsonrpc":"2.0","id":4,"result":{"type":"Success"}}
+
+# --- poll 1: two finished requests and one still in flight -------------------
+> {"jsonrpc":"2.0","id":5,"method":"ext.dart.io.getHttpProfile","params":{"isolateId":"isolates/1963006521159535"}}
+< {"jsonrpc":"2.0","id":5,"result":{"type":"HttpProfile","timestamp":1756540800500000,"requests":[{"id":"1","isolateId":"isolates/1963006521159535","method":"GET","uri":"https://api.mclane360.test/v2/orders?page=1","startTime":1756540800000000,"endTime":1756540800187000,"events":[{"event":"Request sent","timestamp":1756540800002000},{"event":"Response receive","timestamp":1756540800150000}],"request":{"headers":{"accept":["application/json"],"authorization":["Bearer redacted"]},"contentLength":-1,"cookies":[],"connectionInfo":{"localPort":51234,"remoteAddress":"93.184.216.34","remotePort":443},"persistentConnection":true,"followRedirects":true,"maxRedirects":5},"response":{"startTime":1756540800120000,"endTime":1756540800187000,"headers":{"content-type":["application/json; charset=utf-8"],"x-request-id":["abc-123"]},"statusCode":200,"reasonPhrase":"OK","contentLength":23,"compressionState":"HttpClientResponseCompressionState.decompressed","isRedirect":false,"persistentConnection":true,"redirects":[]}},{"id":"2","isolateId":"isolates/1963006521159535","method":"POST","uri":"https://api.mclane360.test/v2/login","startTime":1756540800200000,"endTime":1756540800644000,"events":[{"event":"Request sent","timestamp":1756540800201000}],"request":{"headers":{"content-type":["application/json"]},"contentLength":35,"cookies":[],"persistentConnection":true},"response":{"startTime":1756540800600000,"endTime":1756540800644000,"headers":{"content-type":["application/json"]},"statusCode":401,"reasonPhrase":"Unauthorized","contentLength":31,"redirects":[]}},{"id":"3","isolateId":"isolates/1963006521159535","method":"GET","uri":"https://cdn.mclane360.test/assets/logo.png","startTime":1756540800400000,"events":[{"event":"Request sent","timestamp":1756540800401000}],"request":{"headers":{"accept":["image/*"]},"contentLength":-1,"cookies":[]}}]}}
+
+# --- poll 2: updatedSince is the previous poll's own timestamp ---------------
+# The in-flight request comes back updated (now with an endTime), and a fourth
+# one failed at the transport level, so it has an error and no response.
+> {"jsonrpc":"2.0","id":6,"method":"ext.dart.io.getHttpProfile","params":{"isolateId":"isolates/1963006521159535","updatedSince":1756540800500000}}
+< {"jsonrpc":"2.0","id":6,"result":{"type":"HttpProfile","timestamp":1756540801900000,"requests":[{"id":"3","isolateId":"isolates/1963006521159535","method":"GET","uri":"https://cdn.mclane360.test/assets/logo.png","startTime":1756540800400000,"endTime":1756540801250000,"events":[{"event":"Request sent","timestamp":1756540800401000},{"event":"Response receive","timestamp":1756540801100000}],"request":{"headers":{"accept":["image/*"]},"contentLength":-1,"cookies":[]},"response":{"startTime":1756540801000000,"endTime":1756540801250000,"headers":{"content-type":["image/png"],"content-length":"9"},"statusCode":200,"reasonPhrase":"OK","contentLength":9,"redirects":[]}},{"id":"4","isolateId":"isolates/1963006521159535","method":"GET","uri":"http://127.0.0.1:9999/health","startTime":1756540801500000,"endTime":1756540801512000,"events":[],"request":{"headers":{},"contentLength":-1,"cookies":[],"error":"SocketException: Connection refused (OS Error: Connection refused, errno = 61), address = 127.0.0.1, port = 9999"}}]}}
+
+# --- details: a UTF-8 JSON body, and a binary one ---------------------------
+# id 1's response body is {"orders":[],"total":0} as UTF-8 bytes; its request
+# has no body at all (a GET), so requestBody is absent.
+> {"jsonrpc":"2.0","id":7,"method":"ext.dart.io.getHttpProfileRequest","params":{"isolateId":"isolates/1963006521159535","id":"1"}}
+< {"jsonrpc":"2.0","id":7,"result":{"type":"HttpProfileRequest","id":"1","isolateId":"isolates/1963006521159535","method":"GET","uri":"https://api.mclane360.test/v2/orders?page=1","startTime":1756540800000000,"endTime":1756540800187000,"events":[{"event":"Request sent","timestamp":1756540800002000},{"event":"Response receive","timestamp":1756540800150000}],"request":{"headers":{"accept":["application/json"],"authorization":["Bearer redacted"]},"contentLength":-1,"cookies":[],"connectionInfo":{"localPort":51234,"remoteAddress":"93.184.216.34","remotePort":443}},"response":{"startTime":1756540800120000,"endTime":1756540800187000,"headers":{"content-type":["application/json; charset=utf-8"],"x-request-id":["abc-123"]},"statusCode":200,"reasonPhrase":"OK","contentLength":23,"redirects":[]},"responseBody":[123,34,111,114,100,101,114,115,34,58,91,93,44,34,116,111,116,97,108,34,58,48,125]}}
+
+# id 2's request body is {"user":"ops","password":"hunter2"} and its response
+# body is {"error":"invalid credentials"} -- both valid UTF-8.
+> {"jsonrpc":"2.0","id":8,"method":"ext.dart.io.getHttpProfileRequest","params":{"isolateId":"isolates/1963006521159535","id":"2"}}
+< {"jsonrpc":"2.0","id":8,"result":{"type":"HttpProfileRequest","id":"2","isolateId":"isolates/1963006521159535","method":"POST","uri":"https://api.mclane360.test/v2/login","startTime":1756540800200000,"endTime":1756540800644000,"events":[{"event":"Request sent","timestamp":1756540800201000}],"request":{"headers":{"content-type":["application/json"]},"contentLength":35,"cookies":[]},"response":{"startTime":1756540800600000,"endTime":1756540800644000,"headers":{"content-type":["application/json"]},"statusCode":401,"reasonPhrase":"Unauthorized","contentLength":31,"redirects":[]},"requestBody":[123,34,117,115,101,114,34,58,34,111,112,115,34,44,34,112,97,115,115,119,111,114,100,34,58,34,104,117,110,116,101,114,50,34,125],"responseBody":[123,34,101,114,114,111,114,34,58,34,105,110,118,97,108,105,100,32,99,114,101,100,101,110,116,105,97,108,115,34,125]}}
+
+# id 3's response body is the first 9 bytes of a PNG -- 0x89 is not valid UTF-8,
+# so this one must come back as bytes with no text preview.
+> {"jsonrpc":"2.0","id":9,"method":"ext.dart.io.getHttpProfileRequest","params":{"isolateId":"isolates/1963006521159535","id":"3"}}
+< {"jsonrpc":"2.0","id":9,"result":{"type":"HttpProfileRequest","id":"3","isolateId":"isolates/1963006521159535","method":"GET","uri":"https://cdn.mclane360.test/assets/logo.png","startTime":1756540800400000,"endTime":1756540801250000,"events":[{"event":"Request sent","timestamp":1756540800401000}],"request":{"headers":{"accept":["image/*"]},"contentLength":-1,"cookies":[]},"response":{"startTime":1756540801000000,"endTime":1756540801250000,"headers":{"content-type":["image/png"]},"statusCode":200,"reasonPhrase":"OK","contentLength":9,"redirects":[]},"responseBody":[137,80,78,71,13,10,26,10,0]}}
+
+# --- hot restart: the old isolate goes, a fresh one becomes runnable ---------
+! {"jsonrpc":"2.0","method":"streamNotify","params":{"streamId":"Isolate","event":{"type":"Event","kind":"IsolateExit","isolate":{"type":"@Isolate","id":"isolates/1963006521159535","name":"main"}}}}
+! {"jsonrpc":"2.0","method":"streamNotify","params":{"streamId":"Isolate","event":{"type":"Event","kind":"IsolateStart","isolate":{"type":"@Isolate","id":"isolates/7215544120983311","name":"main"}}}}
+! {"jsonrpc":"2.0","method":"streamNotify","params":{"streamId":"Isolate","event":{"type":"Event","kind":"IsolateRunnable","isolate":{"type":"@Isolate","id":"isolates/7215544120983311","name":"main"}}}}
+
+# The client enables logging on the new isolate, and polls it from scratch --
+# it has its own profile buffer, so no updatedSince carries over.
+> {"jsonrpc":"2.0","id":10,"method":"ext.dart.io.httpEnableTimelineLogging","params":{"isolateId":"isolates/7215544120983311","enabled":true}}
+< {"jsonrpc":"2.0","id":10,"result":{"type":"HttpTimelineLoggingState","enabled":true}}
+> {"jsonrpc":"2.0","id":11,"method":"ext.dart.io.getHttpProfile","params":{"isolateId":"isolates/7215544120983311"}}
+< {"jsonrpc":"2.0","id":11,"result":{"type":"HttpProfile","timestamp":1756540810000000,"requests":[{"id":"1","isolateId":"isolates/7215544120983311","method":"GET","uri":"https://api.mclane360.test/v2/config","startTime":1756540809000000,"endTime":1756540809310000,"events":[],"request":{"headers":{},"contentLength":-1,"cookies":[]},"response":{"headers":{"content-type":["application/json"]},"statusCode":204,"reasonPhrase":"No Content","contentLength":0,"redirects":[]}}]}}

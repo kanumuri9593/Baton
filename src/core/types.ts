@@ -36,8 +36,60 @@ export type SessionSnapshot = {
   progress?: string;
   url?: string;
   devToolsUri?: string;
+  /** Dart VM service WebSocket, once a debug session has published one. */
+  vmServiceUri?: string;
   exitCode?: number;
   startedAt: number;
+};
+
+/**
+ * One captured HTTP request, as every surface (HUD, CLI, MCP) sees it.
+ *
+ * Times are milliseconds since the epoch -- the VM service reports microseconds,
+ * which is converted once, at the edge, in `vm/network-monitor.ts`. `id` is
+ * stable across polls (`<isolateId>#<requestId>`), so an in-flight request and
+ * the finished one that replaces it are the same row, updated.
+ */
+export type NetworkRequestSnapshot = {
+  id: string;
+  sessionId: string;
+  method: string;
+  uri: string;
+  startTime: number;
+  endTime?: number;
+  durationMs?: number;
+  statusCode?: number;
+  reasonPhrase?: string;
+  requestContentLength?: number;
+  responseContentLength?: number;
+  /** Response `content-type`, first value, verbatim (`application/json; charset=utf-8`). */
+  contentType?: string;
+  /** A transport-level failure -- a refused connection, a TLS error, a timeout. */
+  error?: string;
+  inProgress: boolean;
+};
+
+/**
+ * A request or response body.
+ *
+ * `base64` is always present so a binary body is still retrievable; `text` is
+ * set only when the bytes decode as strict UTF-8, which is what tells the
+ * surfaces whether they can show it. `size` is the body's real size even when
+ * `truncated` says the bytes were capped.
+ */
+export type NetworkBody = { base64: string; text?: string; size: number; truncated: boolean };
+
+/** Everything about one request, fetched on demand -- headers, timeline, bodies. */
+export type NetworkRequestDetail = NetworkRequestSnapshot & {
+  requestHeaders: Record<string, string[]>;
+  responseHeaders?: Record<string, string[]>;
+  cookies: string[];
+  redirects: unknown[];
+  connectionInfo?: Record<string, unknown>;
+  proxy?: unknown;
+  events: { event: string; timestamp: number; arguments?: unknown }[];
+  requestBody?: NetworkBody;
+  responseBody?: NetworkBody;
 };
 
 export interface Session {
