@@ -130,3 +130,32 @@ test('matchTarget prefers an exact name over a substring', () => {
   assert.equal(matchTarget(targets, 'web')!.name, 'dev:web');
   assert.equal(matchTarget(targets, ''), undefined);
 });
+
+test('a context-free client gets the most recently used project, not the daemon cwd', async () => {
+  // Simulates the HUD: a browser has no working directory of its own.
+  const bare: any = await daemon.handle({ method: 'targets', params: { cwd: null } });
+  assert.ok(bare.root, 'must always resolve to some project');
+
+  // A terminal runs from a real project...
+  await daemon.handle({ method: 'useProject', params: { root: '/Users/yxkanum/Documents/McLane360' } });
+
+  // ...and the context-free client now sees that project's targets.
+  const after: any = await daemon.handle({ method: 'targets', params: { cwd: null } });
+  assert.equal(after.root, '/Users/yxkanum/Documents/McLane360');
+  assert.ok(after.targets.length >= 16, 'the real launch configs must be reachable from the HUD');
+  assert.ok(after.projects.includes('/Users/yxkanum/Documents/McLane360'));
+});
+
+test('an explicit cwd still overrides the remembered project', async () => {
+  await daemon.handle({ method: 'useProject', params: { root: '/Users/yxkanum/Documents/McLane360' } });
+  const result: any = await daemon.handle({ method: 'targets', params: { cwd: process.cwd() } });
+  assert.equal(result.root, process.cwd());
+});
+
+test('targets reports blocking issues so the HUD can flag them', async () => {
+  const result: any = await daemon.handle({
+    method: 'targets', params: { cwd: '/Users/yxkanum/Documents/McLane360' },
+  });
+  // every flutter target carries an issues array, empty when runnable
+  for (const target of result.targets) assert.ok(Array.isArray(target.issues));
+});

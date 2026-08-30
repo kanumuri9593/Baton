@@ -5,6 +5,7 @@ import { writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { SessionRegistry } from '../core/registry.ts';
 import { detectTargets, findProjectRoot } from '../config/detect.ts';
 import { validate } from '../config/validate.ts';
+import { ProjectRegistry } from '../core/projects.ts';
 import { handshakePath } from '../core/paths.ts';
 import { renderHud } from '../hud/render.ts';
 import type { Capability } from '../core/types.ts';
@@ -22,6 +23,7 @@ export type RpcRequest = { id?: number; method: string; params?: Record<string, 
  */
 export class LaunchDaemon {
   readonly registry = new SessionRegistry();
+  readonly projects = new ProjectRegistry();
   #wss?: WebSocketServer;
   #http = createServer((req, res) => this.#handleHttp(req, res));
   #clients = new Set<WebSocket>();
@@ -137,26 +139,35 @@ export class LaunchDaemon {
 
     switch (request.method) {
       case 'targets': {
-        const root = findProjectRoot(p.cwd ?? process.cwd());
+        const root = this.#resolveRoot(p.cwd);
+        if (p.cwd) this.projects.remember(root);
         const targets = detectTargets(root).map((target) => ({
           ...target,
           issues: target.config ? validate(target.config) : [],
         }));
-        return { root, targets };
+        // `projects` lets a client with no cwd of its own offer a switcher.
+        return { root, targets, projects: this.projects.list() };
+      }
+
+      case 'useProject': {
+        const root = findProjectRoot(p.root);
+        this.projects.remember(root);
+        return { root };
       }
 
       case 'sessions':
         return this.registry.snapshots();
 
       case 'devices': {
-        const root = findProjectRoot(p.cwd ?? process.cwd());
+        const root = this.#resolveRoot(p.cwd);
         const devices = this.registry.devices(root);
         await devices.ready();
         return devices.list();
       }
 
       case 'run': {
-        const root = findProjectRoot(p.cwd ?? process.cwd());
+        const root = this.#resolveRoot(p.cwd);
+        this.projects.remember(root);
         const targets = detectTargets(root);
         const target = matchTarget(targets, p.target);
         if (!target) {
@@ -237,6 +248,17 @@ export class LaunchDaemon {
       default:
         throw new Error(`unknown method: ${request.method}`);
     }
+  }
+
+  /**
+   * Which project a call refers to.
+   *
+   * An explicit cwd always wins. Otherwise fall back to the most recently used
+   * project rather than the daemon's own directory, which is meaningless.
+   */
+  #resolveRoot(cwd?: string | null): string {
+    if (cwd) return findProjectRoot(cwd);
+    return this.projects.active() ?? findProjectRoot(process.cwd());
   }
 
   #require(id: string) {

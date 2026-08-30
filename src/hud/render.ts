@@ -92,6 +92,7 @@ export function renderHud(token: string): string {
 <body>
 <header>
   <div class="brand">CLI-Launch <small id="status">connecting…</small></div>
+  <select id="project" title="Project" hidden></select>
   <select id="picker"><option value="">Loading targets…</option></select>
   <button id="run">Run</button>
   <button class="icon" id="reloadAll" title="Hot reload every running session">⟳</button>
@@ -105,10 +106,11 @@ export function renderHud(token: string): string {
 const TOKEN = ${JSON.stringify(token)};
 const list = document.getElementById('list');
 const picker = document.getElementById('picker');
+const projectSel = document.getElementById('project');
 const statusEl = document.getElementById('status');
 const toastEl = document.getElementById('toast');
 
-let socket, nextId = 1, sessions = new Map(), openLogs = new Set();
+let socket, nextId = 1, sessions = new Map(), openLogs = new Set(), activeRoot = null;
 const pending = new Map();
 const logBuffers = new Map();
 
@@ -164,28 +166,54 @@ function appendLog({ sessionId, text, error }) {
   if (atBottom) pane.scrollTop = pane.scrollHeight;
 }
 
-async function loadTargets() {
+const basename = (path) => path.split(/[\\\\/]/).filter(Boolean).pop() || path;
+
+async function loadTargets(cwd = null) {
   try {
-    const { targets, root } = await call('targets', { cwd: null });
+    const { targets, root, projects } = await call('targets', { cwd });
+    activeRoot = root;
+
+    // Offer a switcher once the daemon knows about more than one project.
+    if (projects && projects.length > 1) {
+      projectSel.hidden = false;
+      projectSel.innerHTML = '';
+      for (const p of projects) {
+        const option = document.createElement('option');
+        option.value = p;
+        option.textContent = basename(p);
+        option.title = p;
+        option.selected = p === root;
+        projectSel.appendChild(option);
+      }
+    } else {
+      projectSel.hidden = true;
+    }
+
     picker.innerHTML = '';
     if (!targets.length) {
-      picker.innerHTML = '<option value="">No targets found</option>';
+      picker.innerHTML = '<option value="">No targets in ' + basename(root) + '</option>';
+      statusEl.textContent = basename(root);
       return;
     }
     for (const t of targets) {
       const option = document.createElement('option');
       option.value = t.name;
-      option.textContent = t.name + '  ·  ' + t.kind;
+      const blocked = t.issues && t.issues.length;
+      option.textContent = (blocked ? '⚠ ' : '') + t.name + '  ·  ' + t.kind;
+      option.title = blocked ? t.issues.map(i => 'missing ' + i.path).join('\\n') : t.name;
       picker.appendChild(option);
     }
-    statusEl.textContent = root.split(/[\\\\/]/).pop();
+    statusEl.textContent = basename(root);
   } catch (err) { toast(err.message, true); }
 }
+
+projectSel.onchange = () => loadTargets(projectSel.value);
 
 function render() {
   const all = [...sessions.values()].sort((a, b) => a.startedAt - b.startedAt);
   if (!all.length) {
-    list.innerHTML = '<div class="empty"><h2>Nothing running</h2>' +
+    const where = activeRoot ? ' in ' + basename(activeRoot) : '';
+    list.innerHTML = '<div class="empty"><h2>Nothing running' + where + '</h2>' +
       'Pick a target above and press Run — or start one from a terminal with ' +
       '<code>clilaunch run &lt;name&gt;</code>.</div>';
     return;
@@ -287,7 +315,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, c =>
 
 document.getElementById('run').onclick = async () => {
   if (!picker.value) return;
-  try { await call('run', { target: picker.value, cwd: null }); }
+  try { await call('run', { target: picker.value, cwd: activeRoot }); }
   catch (err) { toast(err.message, true); }
 };
 document.getElementById('reloadAll').onclick = () => act('reload', { all: true });

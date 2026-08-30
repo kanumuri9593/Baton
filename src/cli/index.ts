@@ -189,6 +189,9 @@ async function main() {
       }
 
       case 'hud': {
+        // Register the terminal's project first, so a browser with no cwd of
+        // its own still opens on the project you are standing in.
+        await client.call('useProject', { root: cwd }).catch(() => {});
         const handshake = readHandshake()!;
         const url = `http://127.0.0.1:${handshake.port}/`;
         console.log(`HUD → ${url}`);
