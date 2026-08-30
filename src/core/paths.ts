@@ -23,3 +23,10 @@ export function logDir(): string {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+/** Where persisted per-run session logs live, one JSONL file per run. */
+export function sessionLogDir(): string {
+  const dir = join(logDir(), 'sessions');
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
