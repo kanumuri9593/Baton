@@ -11,6 +11,7 @@ import { ProjectRegistry } from '../core/projects.ts';
 import { handshakePath } from '../core/paths.ts';
 import { renderHud } from '../hud/render.ts';
 import type { Capability } from '../core/types.ts';
+import type { ProjectInfo, PushEvent, RpcMethods, TargetInfo } from '../core/api.ts';
 
 export type Handshake = { port: number; token: string; pid: number; version: string };
 
@@ -34,9 +35,9 @@ export class LaunchDaemon {
 
   constructor(version = '0.1.0') {
     this.#version = version;
-    this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot }));
+    this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
     this.registry.on('log', (sessionId, text, error) =>
-      this.#broadcast({ event: 'log', sessionId, text, error }),
+      this.#broadcast({ event: 'log', sessionId, text, error } satisfies PushEvent),
     );
   }
 
@@ -147,10 +148,10 @@ export class LaunchDaemon {
       }
     });
 
-    socket.send(JSON.stringify({ event: 'hello', sessions: this.registry.snapshots() }));
+    socket.send(JSON.stringify({ event: 'hello', sessions: this.registry.snapshots() } satisfies PushEvent));
   }
 
-  #broadcast(message: unknown): void {
+  #broadcast(message: PushEvent): void {
     const payload = JSON.stringify(message);
     for (const client of this.#clients) {
       if (client.readyState === 1) client.send(payload);
@@ -165,14 +166,15 @@ export class LaunchDaemon {
 
     switch (request.method) {
       case 'targets': {
-        const root = this.#resolveRoot(p.cwd);
-        if (p.cwd) this.projects.remember(root);
-        const targets = detectTargets(root).map((target) => ({
+        const params = p as RpcMethods['targets']['params'];
+        const root = this.#resolveRoot(params.cwd);
+        if (params.cwd) this.projects.remember(root);
+        const targets: TargetInfo[] = detectTargets(root).map((target) => ({
           ...target,
           issues: target.config ? validate(target.config) : [],
         }));
         // `projects` lets a client with no cwd of its own offer a switcher.
-        return { root, targets, projects: this.projects.list() };
+        return { root, targets, projects: this.projects.list() } satisfies RpcMethods['targets']['result'];
       }
 
       case 'projects': {
@@ -180,16 +182,18 @@ export class LaunchDaemon {
         // three projects at once instead of making you switch between them.
         // With nothing remembered yet, offer the best guess rather than an empty
         // list: a HUD that shows no projects at all looks broken.
+        const params = p as RpcMethods['projects']['params'];
         const roots = this.projects.list();
-        if (roots.length === 0) roots.push(this.#resolveRoot(p.cwd));
+        if (roots.length === 0) roots.push(this.#resolveRoot(params.cwd));
         return {
           active: this.projects.active() ?? roots[0],
           projects: roots.map((root) => this.#describeProject(root)),
-        };
+        } satisfies RpcMethods['projects']['result'];
       }
 
       case 'addProject': {
-        const raw = String(p.path ?? '').trim();
+        const params = p as RpcMethods['addProject']['params'];
+        const raw = String(params.path ?? '').trim();
         if (!raw) throw new Error('which directory?');
         const expanded = raw.startsWith('~') ? join(homedir(), raw.slice(1)) : raw;
         const path = resolve(expanded);
@@ -207,73 +211,81 @@ export class LaunchDaemon {
         }
         const described = this.#describeProject(root);
         this.projects.remember(root);
-        return described;
+        return described satisfies RpcMethods['addProject']['result'];
       }
 
-      case 'removeProject':
-        return { removed: this.projects.forget(String(p.root ?? '')) };
+      case 'removeProject': {
+        const params = p as RpcMethods['removeProject']['params'];
+        return { removed: this.projects.forget(String(params.root ?? '')) } satisfies RpcMethods['removeProject']['result'];
+      }
 
       case 'bootables': {
-        const devices = this.registry.devices(this.#deviceRoot(p.cwd));
+        const params = p as RpcMethods['bootables']['params'];
+        const devices = this.registry.devices(this.#deviceRoot(params.cwd));
         await devices.ready(500);
-        return devices.bootables();
+        return devices.bootables() satisfies Promise<RpcMethods['bootables']['result']>;
       }
 
       case 'boot': {
-        const device = await this.registry.devices(this.#deviceRoot(p.cwd)).boot(String(p.id));
-        this.#broadcast({ event: 'devices' });
-        return device;
+        const params = p as RpcMethods['boot']['params'];
+        const device = await this.registry.devices(this.#deviceRoot(params.cwd)).boot(String(params.id));
+        this.#broadcast({ event: 'devices' } satisfies PushEvent);
+        return device satisfies RpcMethods['boot']['result'];
       }
 
       case 'useProject': {
-        const root = findProjectRoot(p.root);
+        const params = p as RpcMethods['useProject']['params'];
+        const root = findProjectRoot(params.root);
         this.projects.remember(root);
-        return { root };
+        return { root } satisfies RpcMethods['useProject']['result'];
       }
 
       case 'sessions':
-        return this.registry.snapshots();
+        return this.registry.snapshots() satisfies RpcMethods['sessions']['result'];
 
       case 'devices': {
-        const devices = this.registry.devices(this.#deviceRoot(p.cwd));
+        const params = p as RpcMethods['devices']['params'];
+        const devices = this.registry.devices(this.#deviceRoot(params.cwd));
         await devices.ready();
-        return devices.list();
+        return devices.list() satisfies RpcMethods['devices']['result'];
       }
 
       case 'run': {
-        const root = this.#resolveRoot(p.cwd);
+        const params = p as RpcMethods['run']['params'];
+        const root = this.#resolveRoot(params.cwd);
         this.projects.remember(root);
         const targets = detectTargets(root);
-        const target = matchTarget(targets, p.target);
+        const target = matchTarget(targets, params.target);
         if (!target) {
           throw new Error(
-            `no target matching "${p.target}" in ${root}. Run \`baton list\` to see what is available.`,
+            `no target matching "${params.target}" in ${root}. Run \`baton list\` to see what is available.`,
           );
         }
         // Fail before spawning: a missing dart-define file surfaces deep inside
         // the build otherwise, long after the useful context is gone.
         const issues = target.config ? validate(target.config) : [];
-        if (issues.length > 0 && !p.force) {
+        if (issues.length > 0 && !params.force) {
           throw new Error(
             `"${target.name}" cannot run yet:\n` +
               issues.map((i) => `  missing ${i.path} — ${i.hint}`).join('\n'),
           );
         }
 
-        const session = await this.registry.run(target, { deviceId: p.deviceId });
-        return session.snapshot();
+        const session = await this.registry.run(target, { deviceId: params.deviceId });
+        return session.snapshot() satisfies RpcMethods['run']['result'];
       }
 
       case 'reload':
       case 'restart': {
+        const params = p as RpcMethods['reload']['params'];
         const full = request.method === 'restart';
         const sessions = this.#select(p);
         const results = await Promise.all(
           sessions.map(async (s) => {
             try {
               const result = full
-                ? await s.hotRestart(p.reason)
-                : await s.hotReload(p.reason);
+                ? await s.hotRestart(params.reason)
+                : await s.hotReload(params.reason);
               // A failed reload reports only a summary ("DevFS synchronization
               // failed"). The actionable part -- file, line, message -- is in the
               // log stream, so attach it: an agent that broke the build needs the
@@ -287,38 +299,42 @@ export class LaunchDaemon {
             }
           }),
         );
-        return results;
+        return results satisfies RpcMethods['reload']['result'];
       }
 
       case 'stop': {
         const sessions = this.#select(p);
         await Promise.allSettled(sessions.map((s) => s.stop()));
-        return sessions.map((s) => s.snapshot());
+        return sessions.map((s) => s.snapshot()) satisfies RpcMethods['stop']['result'];
       }
 
       case 'logs': {
-        const session = this.#require(p.session);
-        const lines = session.recentLogs(p.tail ?? 200);
-        const filtered = p.filter
-          ? lines.filter((l) => new RegExp(p.filter, 'i').test(l.text))
+        const params = p as RpcMethods['logs']['params'];
+        const session = this.#require(params.session);
+        const lines = session.recentLogs(params.tail ?? 200);
+        const filtered = params.filter
+          ? lines.filter((l) => new RegExp(params.filter!, 'i').test(l.text))
           : lines;
-        return filtered;
+        return filtered satisfies RpcMethods['logs']['result'];
       }
 
       case 'serviceExtension': {
-        const session = this.#require(p.session);
+        const params = p as RpcMethods['serviceExtension']['params'];
+        const session = this.#require(params.session);
         if (!session.capabilities.has('serviceExtension' as Capability)) {
           throw new Error(`${session.kind} sessions have no service extensions`);
         }
-        return (session as any).callServiceExtension(p.method, p.params ?? {});
+        return (session as any).callServiceExtension(params.method, params.params ?? {}) satisfies Promise<RpcMethods['serviceExtension']['result']>;
       }
 
-      case 'forget':
-        return { forgotten: this.registry.forget(p.session) };
+      case 'forget': {
+        const params = p as RpcMethods['forget']['params'];
+        return { forgotten: this.registry.forget(params.session) } satisfies RpcMethods['forget']['result'];
+      }
 
       case 'shutdown':
         setTimeout(() => this.close().then(() => process.exit(0)), 50);
-        return { stopping: true };
+        return { stopping: true } satisfies RpcMethods['shutdown']['result'];
 
       default:
         throw new Error(`unknown method: ${request.method}`);
@@ -337,7 +353,7 @@ export class LaunchDaemon {
   }
 
   /** A project plus what it can run, tolerant of one that has gone missing. */
-  #describeProject(root: string): { root: string; name: string; targets: any[]; error?: string } {
+  #describeProject(root: string): ProjectInfo {
     const name = root.split(/[\\/]/).filter(Boolean).pop() ?? root;
     if (!existsSync(root)) {
       return { root, name, targets: [], error: 'directory no longer exists' };

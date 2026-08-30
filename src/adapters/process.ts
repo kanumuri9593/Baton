@@ -12,6 +12,8 @@ export type ProcessSessionOptions = {
   spawnFn?: typeof spawn;
 };
 
+const DEFAULT_CAPABILITIES: readonly Capability[] = ['restartProcess', 'stop'];
+
 /**
  * A supervised child process with no framework-specific control channel.
  *
@@ -21,16 +23,18 @@ export type ProcessSessionOptions = {
  */
 export class ProcessSession extends BaseSession {
   readonly kind: string = 'process';
-  readonly capabilities: ReadonlySet<Capability> = new Set<Capability>([
-    'restartProcess', 'stop',
-  ]);
 
   protected options: ProcessSessionOptions;
   protected child?: ChildProcess;
   #stopping = false;
 
-  constructor(id: string, name: string, options: ProcessSessionOptions) {
-    super(id, name);
+  constructor(
+    id: string,
+    name: string,
+    options: ProcessSessionOptions,
+    capabilities: Iterable<Capability> = DEFAULT_CAPABILITIES,
+  ) {
+    super(id, name, capabilities);
     this.options = options;
   }
 

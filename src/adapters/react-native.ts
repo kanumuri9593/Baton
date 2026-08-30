@@ -3,9 +3,7 @@ import { ProcessSession, type ProcessSessionOptions } from './process.ts';
 import { sessionId } from '../core/session-base.ts';
 import type { Capability, OperationResult, SessionSnapshot } from '../core/types.ts';
 
-const CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([
-  'hotRestart', 'restartProcess', 'stop', 'url',
-]);
+const CAPABILITIES: readonly Capability[] = ['hotRestart', 'restartProcess', 'stop', 'url'];
 
 const DEFAULT_METRO_PORT = 8081;
 
@@ -24,13 +22,12 @@ export type ReactNativeOptions = ProcessSessionOptions & { metroPort?: number };
  */
 export class ReactNativeSession extends ProcessSession {
   readonly kind = 'react-native';
-  readonly capabilities = CAPABILITIES;
 
   readonly metroPort: number;
   #ready = false;
 
   constructor(id: string, name: string, options: ReactNativeOptions) {
-    super(id, name, options);
+    super(id, name, options, CAPABILITIES);
     this.metroPort = options.metroPort ?? DEFAULT_METRO_PORT;
   }
 

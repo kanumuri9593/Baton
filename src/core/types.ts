@@ -13,7 +13,8 @@ export type Capability =
   | 'screenshot'
   | 'devtools'
   | 'serviceExtension' // framework-specific toggles (debug paint, perf overlay...)
-  | 'url';             // exposes a browsable URL
+  | 'url'              // exposes a browsable URL
+  | 'network';         // live HTTP request capture (VM service / CDP)
 
 export type SessionStatus = 'starting' | 'running' | 'stopped' | 'failed';
 

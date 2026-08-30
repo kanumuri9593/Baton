@@ -26,9 +26,7 @@ const READY_PATTERNS: RegExp[] = [
   /Local:\s+https?:\/\//i, /watching for file changes/i, /server running/i,
 ];
 
-const CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([
-  'restartProcess', 'stop', 'url',
-]);
+const CAPABILITIES: readonly Capability[] = ['restartProcess', 'stop', 'url'];
 
 /**
  * A web dev server (Next.js, Vite, Nuxt, Angular, CRA, Remix, Astro...).
@@ -40,10 +38,13 @@ const CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([
  */
 export class WebDevSession extends ProcessSession {
   readonly kind = 'web-dev';
-  readonly capabilities = CAPABILITIES;
 
   url?: string;
   #ready = false;
+
+  constructor(id: string, name: string, options: ProcessSessionOptions) {
+    super(id, name, options, CAPABILITIES);
+  }
 
   static create(name: string, options: ProcessSessionOptions): WebDevSession {
     return new WebDevSession(sessionId(options.cwd, name), name, options);

@@ -113,7 +113,7 @@ server.tool(
   },
   async ({ session, tail, filter }) =>
     guarded(async () => {
-      const lines: any[] = await (await daemon()).call('logs', { session, tail, filter });
+      const lines = await (await daemon()).call('logs', { session, tail, filter });
       return lines.map((l) => (l.error ? `[err] ${l.text}` : l.text)).join('\n') || '(no matching output)';
     }),
 );
@@ -143,7 +143,7 @@ server.tool(
   { session: z.string() },
   async ({ session }) => {
     try {
-      const sessions: any[] = await (await daemon()).call('sessions');
+      const sessions = await (await daemon()).call('sessions');
       const found = sessions.find((s) => s.id === session || s.id.startsWith(session));
       if (!found) return fail(`no session matching "${session}"`);
       if (!found.target) return fail(`session ${found.id} has no capturable device`);

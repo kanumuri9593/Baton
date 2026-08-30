@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { readHandshake, type Handshake } from '../daemon/server.ts';
 import { logDir } from './paths.ts';
 import { openSync } from 'node:fs';
+import type { RpcMethods } from './api.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DAEMON_ENTRY = join(HERE, '..', 'daemon', 'main.ts');
@@ -62,11 +63,18 @@ export class DaemonClient {
     return () => this.#listeners.delete(listener);
   }
 
-  call<T = any>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+  /** Typed against the daemon's RPC contract for every known method. */
+  call<K extends keyof RpcMethods>(
+    method: K,
+    params?: RpcMethods[K]['params'],
+  ): Promise<RpcMethods[K]['result']>;
+  /** Untyped fallback, for a method not yet in `RpcMethods` (forward-compat). */
+  call<T = any>(method: string, params?: Record<string, unknown>): Promise<T>;
+  call(method: string, params: Record<string, unknown> = {}): Promise<any> {
     const socket = this.#socket;
     if (!socket) return Promise.reject(new Error('not connected'));
     const id = this.#nextId++;
-    return new Promise<T>((resolve, reject) => {
+    return new Promise<any>((resolve, reject) => {
       this.#pending.set(id, { resolve, reject });
       socket.send(JSON.stringify({ id, method, params }));
     });

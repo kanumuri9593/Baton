@@ -14,9 +14,9 @@ export type FlutterSessionOptions = {
   spawn?: (command: string, args: string[], cwd: string) => ChildHandle;
 };
 
-const CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([
+const CAPABILITIES: readonly Capability[] = [
   'hotReload', 'hotRestart', 'restartProcess', 'stop', 'screenshot', 'devtools', 'serviceExtension',
-]);
+];
 
 /**
  * A `flutter run --machine` child, driven over the Flutter daemon protocol.
@@ -27,7 +27,6 @@ const CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([
  */
 export class FlutterSession extends BaseSession {
   readonly kind = 'flutter';
-  readonly capabilities = CAPABILITIES;
 
   readonly config: LaunchConfig;
   readonly deviceId: string;
@@ -44,7 +43,7 @@ export class FlutterSession extends BaseSession {
   #pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
 
   constructor(config: LaunchConfig, options: FlutterSessionOptions) {
-    super(sessionId(config.cwd, config.name, options.deviceId.slice(0, 8)), config.name);
+    super(sessionId(config.cwd, config.name, options.deviceId.slice(0, 8)), config.name, CAPABILITIES);
     this.config = config;
     this.deviceId = options.deviceId;
     this.#options = options;

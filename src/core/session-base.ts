@@ -10,11 +10,13 @@ const LOG_RING_SIZE = 2000;
  * Shared machinery for every adapter: status, a bounded log ring, change events.
  *
  * Subclasses implement only what their framework can genuinely do and declare it
- * through `capabilities`.
+ * by passing their initial capabilities to the constructor. Each instance owns
+ * its own mutable set -- granting a capability on one session (e.g. once a debug
+ * connection is established) must never leak to another session of the same
+ * adapter class.
  */
 export abstract class BaseSession extends EventEmitter implements Session {
   abstract readonly kind: string;
-  abstract readonly capabilities: ReadonlySet<Capability>;
 
   readonly id: string;
   readonly name: string;
@@ -27,11 +29,21 @@ export abstract class BaseSession extends EventEmitter implements Session {
   root?: string;
 
   #logs: LogLine[] = [];
+  #capabilities: Set<Capability>;
+  readonly capabilities: ReadonlySet<Capability>;
 
-  constructor(id: string, name: string) {
+  constructor(id: string, name: string, capabilities: Iterable<Capability> = []) {
     super();
     this.id = id;
     this.name = name;
+    this.#capabilities = new Set(capabilities);
+    this.capabilities = this.#capabilities;
+  }
+
+  /** Add a capability at runtime and notify listeners so snapshots rebroadcast. */
+  grantCapability(capability: Capability): void {
+    this.#capabilities.add(capability);
+    this.emit('change');
   }
 
   abstract start(): void;
