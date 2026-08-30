@@ -1,0 +1,20 @@
+{
+  // line comment VS Code allows
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Sim DEV",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      /* block comment */
+      "toolArgs": ["--flavor", "dev"], // trailing comma next
+    },
+    {
+      "name": "docs server",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "docs", "-l", "7654"],
+      "port": 7654
+    },
+  ],
+}

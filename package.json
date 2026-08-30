@@ -1,0 +1,59 @@
+{
+  "name": "clilaunch",
+  "version": "0.1.0",
+  "description": "Run and hot-reload your dev sessions from any terminal - Flutter, Next.js, Vite, React Native - with a floating control HUD and MCP access for coding agents.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "clilaunch": "./src/cli/index.ts",
+    "clilaunch-daemon": "./src/daemon/main.ts",
+    "clilaunch-mcp": "./src/mcp/index.ts"
+  },
+  "scripts": {
+    "test": "node --test --test-timeout=20000 \"test/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "daemon": "node src/daemon/main.ts",
+    "hud": "node src/cli/index.ts hud"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "jsonc-parser": "^3.3.1",
+    "ws": "^8.21.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "flutter",
+    "hot-reload",
+    "launch.json",
+    "mcp",
+    "dev-server",
+    "react-native",
+    "nextjs",
+    "vite",
+    "cli",
+    "agents",
+    "claude-code",
+    "simulator"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR_GITHUB_USERNAME/cli-launch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/cli-launch/issues"
+  },
+  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/cli-launch#readme",
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

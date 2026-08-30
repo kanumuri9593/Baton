@@ -1,0 +1,94 @@
+[{"event":"daemon.connected","params":{"version":"0.6.1","pid":37348}}]
+[{"event":"app.start","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","deviceId":"48F0A0D1-0CEC-4781-B73B-BE0F494DD23D","directory":"/Users/yxkanum/Documents/McLane360","supportsRestart":true,"launchMode":"run","mode":"debug"}}]
+Launching lib/main.dart on iPhone 17 Pro in debug mode...
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"0","progressId":null,"message":"Running Xcode build...","finished":false}}]
+[{"event":"app.progress","params":{"appId":"4659e1a3-e92b-42eb-97ea-a2fdbe43ddf7","id":"0","progressId":null,"finished":true}}]
+Xcode build This FlutterEngine was already invoked.
+flutter: Firebase initialization skipped or failed: [core/duplicate-app] A Firebase App named "[DEFAULT]" already exists
+flutter: #0      MethodChannelFirebase.initializeApp (package:firebase_core_platform_interface/src/method_channel/method_channel_firebase.dart:131:11)
+flutter: <asynchronous suspension>
+flutter: #1      Firebase.initializeApp (package:firebase_core/src/firebase.dart:79:31)
+flutter: <asynchronous suspension>
+flutter: #2      main (package:mclane360_flutter_app/main.dart:62:5)
+flutter: <asynchronous suspension>
+flutter: [2026-08-30 07:19:43][DYNATRACE][ERROR][Agent]: Flutter Plugin failed to initialize.
+Error:     
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        🚨🚨🚨 AUTOMATIC DYNATRACE FLUTTER PLUGIN STARTUP FAILED 🚨🚨🚨          
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❗ It looks like the Dynatrace Flutter Plugin has NOT been set up correctly.
+
+🔧 Required setup steps:
+1️⃣ Download the 'dynatrace.config.yaml' file from your Dynatrace environment.
+2️⃣ Place it in the root of your Flutter project.
+3️⃣ Run the following command to complete setup:
+   > dart run dynatrace_flutter<…>
+flutter: [2026-08-30 07:19:44][DYNATRACE][WARNING][DTEventsV2Feature]: sendBizEvent(screen_view, {screen: Login}): Dynatrace().start() method was not called!
+flutter: [2026-08-30 07:19:44][DYNATRACE][WARNING][DTActionFeature]: enterAction(GET /health): Dynatrace().start() method was not called! Action will have no effect.
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"0","progressId":null,"finished":true}}]
+Xcode build done.                                           46.8s
+This FlutterEngine was already invoked.
+[{"event":"app.debugPort","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","port":59175,"wsUri":"ws://127.0.0.1:59175/gAUXvd9h6vs=/ws","baseUri":"file:///Users/yxkanum/Library/Developer/CoreSimulator/Devices/48F0A0D1-0CEC-4781-B73B-BE0F494DD23D/data/Containers/Data/Application/CD8A56C7-ED87-41DF-BAA5-47CD61C9D60E/tmp/McLane360LYJ6BN/McLane360/"}}]
+[{"event":"app.devTools","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","uri":"http://127.0.0.1:59175/gAUXvd9h6vs=/devtools/?uri=ws://127.0.0.1:59175/gAUXvd9h6vs=/ws"}}]
+[{"event":"app.dtd","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","uri":"ws://127.0.0.1:59174/bUuDSm4Wdlo="}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"1","progressId":"devFS.update","message":"Syncing files to device iPhone 17 Pro...","finished":false}}]
+flutter: Firebase initialization skipped or failed: [core/duplicate-app] A Firebase App named "[DEFAULT]" already exists
+flutter: #0      MethodChannelFirebase.initializeApp (package:firebase_core_platform_interface/src/method_channel/method_channel_firebase.dart:131:11)
+flutter: <asynchronous suspension>
+flutter: #1      Firebase.initializeApp (package:firebase_core/src/firebase.dart:79:31)
+flutter: <asynchronous suspension>
+flutter: #2      main (package:mclane360_flutter_app/main.dart:62:5)
+flutter: <asynchronous suspension>
+flutter: [2026-08-30 07:19:53][DYNATRACE][ERROR][Agent]: Flutter Plugin failed to initialize.
+Error:     
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        🚨🚨🚨 AUTOMATIC DYNATRACE FLUTTER PLUGIN STARTUP FAILED 🚨🚨🚨          
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❗ It looks like the Dynatrace Flutter Plugin has NOT been set up correctly.
+
+🔧 Required setup steps:
+1️⃣ Download the 'dynatrace.config.yaml' file from your Dynatrace environment.
+2️⃣ Place it in the root of your Flutter project.
+3️⃣ Run the following command to complete setup:
+   > dart run dynatrace_flutter<…>
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"1","progressId":"devFS.update","finished":true}}]
+[{"event":"app.started","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d"}}]
+flutter: [2026-08-30 07:19:54][DYNATRACE][WARNING][DTEventsV2Feature]: sendBizEvent(screen_view, {screen: Login}): Dynatrace().start() method was not called!
+flutter: [2026-08-30 07:19:54][DYNATRACE][WARNING][DTActionFeature]: enterAction(GET /health): Dynatrace().start() method was not called! Action will have no effect.
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"2","progressId":"hot.reload","message":"Performing hot reload...","finished":false}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"3","progressId":"devFS.update","message":"Syncing files to device iPhone 17 Pro...","finished":false}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"3","progressId":"devFS.update","finished":true}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"2","progressId":"hot.reload","finished":true}}]
+Reloaded 3 of 3692 libraries in 380ms (compile: 64 ms, reload: 95 ms, reassemble: 49 ms).
+[{"id":1,"result":{"code":0,"message":"Reloaded 3 of 3692 libraries"}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"4","progressId":"hot.restart","message":"Performing hot restart...","finished":false}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"5","progressId":"devFS.update","message":"Syncing files to device iPhone 17 Pro...","finished":false}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"5","progressId":"devFS.update","finished":true}}]
+[{"event":"app.progress","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d","id":"4","progressId":"hot.restart","finished":true}}]
+Restarted application in 482ms.
+[{"id":2,"result":{"code":0,"message":""}}]
+flutter: Firebase initialization skipped or failed: [core/duplicate-app] A Firebase App named "[DEFAULT]" already exists
+flutter: #0      MethodChannelFirebase.initializeApp (package:firebase_core_platform_interface/src/method_channel/method_channel_firebase.dart:131:11)
+flutter: <asynchronous suspension>
+flutter: #1      Firebase.initializeApp (package:firebase_core/src/firebase.dart:79:31)
+flutter: <asynchronous suspension>
+flutter: #2      main (package:mclane360_flutter_app/main.dart:62:5)
+flutter: <asynchronous suspension>
+flutter: [2026-08-30 07:20:06][DYNATRACE][ERROR][Agent]: Flutter Plugin failed to initialize.
+Error:     
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        🚨🚨🚨 AUTOMATIC DYNATRACE FLUTTER PLUGIN STARTUP FAILED 🚨🚨🚨          
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❗ It looks like the Dynatrace Flutter Plugin has NOT been set up correctly.
+
+🔧 Required setup steps:
+1️⃣ Download the 'dynatrace.config.yaml' file from your Dynatrace environment.
+2️⃣ Place it in the root of your Flutter project.
+3️⃣ Run the following command to complete setup:
+   > dart run dynatrace_flutter<…>
+flutter: [2026-08-30 07:20:07][DYNATRACE][WARNING][DTEventsV2Feature]: sendBizEvent(screen_view, {screen: Login}): Dynatrace().start() method was not called!
+flutter: [2026-08-30 07:20:07][DYNATRACE][WARNING][DTActionFeature]: enterAction(GET /health): Dynatrace().start() method was not called! Action will have no effect.
+Application finished.
+[{"id":3,"result":true}]
+[{"event":"app.stop","params":{"appId":"7b213396-cc7c-4cce-91bc-e14326ea173d"}}]
+

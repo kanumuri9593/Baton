@@ -1,0 +1,269 @@
+{
+  "version": "0.2.0",
+  "//": "Mirrors Makefile run targets. DEV/TST: config/secrets.local.json (gitignored) overrides empty secrets.dev.json — create it from config/secrets.local.template.json. PRD: config/secrets.prod.json (gitignored) supplies the prod GCP key. PRD ordering locally: use a *ordering on* config below, or cp config/prod.local.template.json → config/prod.local.json for make run-prd. See docs/setup/DEVELOPER_SETUP.md section 2.",
+  "configurations": [
+    {
+      "name": "iOS Simulator (TST / qa flavor)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "qa",
+        "--dart-define-from-file=config/test.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json",
+        "--dart-define=VERBOSE_LOGS=true"
+      ]
+    },
+    {
+      "name": "iOS Simulator (DEV / dev flavor)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file=config/dev.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json"
+      ]
+    },
+    {
+      "name": "iOS Simulator (PRD / prod flavor)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json"
+      ]
+    },
+    {
+      "name": "iOS Simulator (PRD / prod — ordering on)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json",
+        "--dart-define=ENABLE_ORDERING=true",
+        "--dart-define=ENABLE_BULK_RECOMMENDATIONS=true"
+      ]
+    },
+    {
+      "name": "iOS Physical Device (TST / qa — QR testing)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "qa",
+        "--dart-define-from-file=config/test.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json",
+        "--dart-define=VERBOSE_LOGS=true"
+      ]
+    },
+    {
+      "name": "iOS Physical Device (DEV / dev flavor)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file=config/dev.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json"
+      ]
+    },
+    {
+      "name": "iOS Physical Device (PRD / prod — QR PRD fixtures)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json"
+      ]
+    },
+    {
+      "name": "iOS Physical Device (PRD — ordering on)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json",
+        "--dart-define=ENABLE_ORDERING=true",
+        "--dart-define=ENABLE_BULK_RECOMMENDATIONS=true"
+      ]
+    },
+    {
+      "name": "Android (TST / qa flavor)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "qa",
+        "--dart-define-from-file=config/test.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json",
+        "--dart-define=VERBOSE_LOGS=true"
+      ]
+    },
+    {
+      "name": "Android (DEV / dev flavor)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file=config/dev.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json"
+      ]
+    },
+    {
+      "name": "Android (PRD / prod flavor)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json"
+      ]
+    },
+    {
+      "name": "Android (PRD / prod — ordering on)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json",
+        "--dart-define=ENABLE_ORDERING=true",
+        "--dart-define=ENABLE_BULK_RECOMMENDATIONS=true"
+      ]
+    },
+    {
+      "name": "Flutter Web (localhost:8888, TST)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--flavor",
+        "qa",
+        "--dart-define-from-file=config/web.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json",
+        "--dart-define=LOCAL_WEB_DEV=true",
+        "--dart-define=OKTA_WEB_REDIRECT_URI=http://localhost:8888/callback",
+        "--dart-define=OKTA_WEB_LOGOUT_REDIRECT_URI=http://localhost:8888/logout",
+        "--web-port=8888",
+        "--web-hostname=localhost",
+        "--web-browser-flag=--disable-web-security",
+        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--disable-site-isolation-trials"
+      ]
+    },
+    {
+      "name": "Flutter Web (localhost:8888, DEV)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file=config/dev.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.local.json",
+        "--dart-define=LOCAL_WEB_DEV=true",
+        "--dart-define=OKTA_WEB_REDIRECT_URI=http://localhost:8888/callback",
+        "--dart-define=OKTA_WEB_LOGOUT_REDIRECT_URI=http://localhost:8888/logout",
+        "--web-port=8888",
+        "--web-hostname=localhost",
+        "--web-browser-flag=--disable-web-security",
+        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--disable-site-isolation-trials"
+      ]
+    },
+    {
+      "name": "Flutter Web (localhost:8888, PRD)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json",
+        "--dart-define=LOCAL_WEB_DEV=true",
+        "--dart-define=OKTA_WEB_REDIRECT_URI=http://localhost:8888/callback",
+        "--dart-define=OKTA_WEB_LOGOUT_REDIRECT_URI=http://localhost:8888/logout",
+        "--web-port=8888",
+        "--web-hostname=localhost",
+        "--web-browser-flag=--disable-web-security",
+        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--disable-site-isolation-trials"
+      ]
+    },
+    {
+      "name": "Flutter Web (localhost:8888, PRD — ordering on)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--flavor",
+        "prod",
+        "--dart-define-from-file=config/prod.json",
+        "--dart-define-from-file=config/prod.local.json",
+        "--dart-define-from-file=config/secrets.dev.json",
+        "--dart-define-from-file=config/secrets.prod.json",
+        "--dart-define=ENABLE_ORDERING=true",
+        "--dart-define=ENABLE_BULK_RECOMMENDATIONS=true",
+        "--dart-define=LOCAL_WEB_DEV=true",
+        "--dart-define=OKTA_WEB_REDIRECT_URI=http://localhost:8888/callback",
+        "--dart-define=OKTA_WEB_LOGOUT_REDIRECT_URI=http://localhost:8888/logout",
+        "--web-port=8888",
+        "--web-hostname=localhost",
+        "--web-browser-flag=--disable-web-security",
+        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--disable-site-isolation-trials"
+      ]
+    }
+  ]
+}
