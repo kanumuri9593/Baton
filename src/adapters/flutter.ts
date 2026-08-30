@@ -11,7 +11,7 @@ export type FlutterSessionOptions = {
   deviceId: string;
   flutter: FlutterBinary;
   /** Injected in tests so a session can be driven without a simulator. */
-  spawn?: (command: string, args: string[], cwd: string) => ChildHandle;
+  spawn?: (command: string, args: string[], cwd: string, env?: Record<string, string>) => ChildHandle;
 };
 
 const CAPABILITIES: readonly Capability[] = [
@@ -59,11 +59,16 @@ export class FlutterSession extends BaseSession {
     const args = [...prefixArgs, ...argv];
 
     if (this.#options.spawn) {
-      this.#child = this.#options.spawn(command, args, this.config.cwd);
+      this.#child = this.#options.spawn(command, args, this.config.cwd, this.config.env);
       return;
     }
 
-    const proc = nodeSpawn(command, args, { cwd: this.config.cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+    const hasEnv = this.config.env && Object.keys(this.config.env).length > 0;
+    const proc = nodeSpawn(command, args, {
+      cwd: this.config.cwd,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      ...(hasEnv ? { env: { ...process.env, ...this.config.env } } : {}),
+    });
     proc.stdout.on('data', (c) => this.ingest(c));
     proc.stderr.on('data', (c) => this.appendLog(c.toString(), true));
     proc.on('exit', (code) => this.handleExit(code ?? 0));

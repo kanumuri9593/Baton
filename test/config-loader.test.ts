@@ -21,6 +21,12 @@ test('classifies dart configs as flutter and runtimeExecutable configs as proces
   assert.deepEqual(configs[1].runtimeArgs, ['serve', 'docs', '-l', '7654']);
 });
 
+test('coerces env from launch.json: numbers become strings, null keys are dropped', () => {
+  const configs = loadConfigs(JSONC, '/proj');
+  assert.deepEqual(configs[0].env, { FOO: 'bar', PORT: '8080' });
+  assert.ok(!('NOPE' in (configs[0].env ?? {})), 'a null value must not survive coercion');
+});
+
 test('parses JSONC: line comments, block comments, trailing commas', () => {
   // JSON.parse must genuinely fail on this input, or the test proves nothing
   const raw = readFileSync(JSONC, 'utf8');

@@ -114,17 +114,17 @@ export class SessionRegistry extends EventEmitter {
 
       case 'web-dev':
         return WebDevSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
         });
 
       case 'react-native':
         return ReactNativeSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
         });
 
       default:
         return ProcessSession.forCommand(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
         });
     }
   }

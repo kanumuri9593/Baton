@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -129,6 +129,32 @@ test('matchTarget prefers an exact name over a substring', () => {
   assert.equal(matchTarget(targets, 'dev')!.name, 'dev');
   assert.equal(matchTarget(targets, 'web')!.name, 'dev:web');
   assert.equal(matchTarget(targets, ''), undefined);
+});
+
+test('matchTarget returns undefined, not a guess, when a substring matches several targets', () => {
+  const targets = [{ name: 'Dev API' }, { name: 'Staging API' }];
+  assert.equal(matchTarget(targets, 'api'), undefined);
+  assert.equal(matchTarget(targets, 'API'), undefined, 'case-insensitive matching stays ambiguous too');
+});
+
+test('an ambiguous run target lists the candidates instead of picking one', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'baton-ambiguous-'));
+  mkdirSync(join(root, '.vscode'), { recursive: true });
+  writeFileSync(
+    join(root, '.vscode', 'launch.json'),
+    JSON.stringify({
+      version: '0.2.0',
+      configurations: [
+        { name: 'Dev API', runtimeExecutable: 'true', runtimeArgs: [] },
+        { name: 'Staging API', runtimeExecutable: 'true', runtimeArgs: [] },
+      ],
+    }),
+  );
+
+  await assert.rejects(
+    daemon.handle({ method: 'run', params: { target: 'api', cwd: root } }),
+    /"api" matches several targets: Dev API, Staging API\. Use the full name\./,
+  );
 });
 
 test('a context-free client gets the most recently used project, not the daemon cwd', async () => {

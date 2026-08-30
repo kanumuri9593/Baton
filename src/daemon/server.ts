@@ -272,6 +272,12 @@ export class LaunchDaemon {
         const targets = detectTargets(root);
         const target = matchTarget(targets, params.target);
         if (!target) {
+          const candidates = matchCandidates(targets, params.target);
+          if (candidates.length > 1) {
+            throw new Error(
+              `"${params.target}" matches several targets: ${candidates.map((c) => c.name).join(', ')}. Use the full name.`,
+            );
+          }
           throw new Error(
             `no target matching "${params.target}" in ${root}. Run \`baton list\` to see what is available.`,
           );
@@ -451,14 +457,25 @@ function recentErrors(session: { recentLogs: (n?: number) => { text: string; err
     .slice(-25);
 }
 
-/** Match a target by exact name, then case-insensitive substring. */
+/**
+ * Match a target by exact name, then case-insensitive substring.
+ *
+ * Mirrors `SessionRegistry.get()`: an unambiguous partial name is a convenience,
+ * but a substring that fits several targets must not silently pick one -- that
+ * would run the wrong thing. Use `matchCandidates` to list them instead.
+ */
 export function matchTarget<T extends { name: string }>(targets: T[], query: string): T | undefined {
   if (!query) return undefined;
   const exact = targets.find((t) => t.name === query);
   if (exact) return exact;
+  const matches = matchCandidates(targets, query);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+/** Every target whose name contains `query`, case-insensitively -- what `matchTarget` considered. */
+export function matchCandidates<T extends { name: string }>(targets: T[], query: string): T[] {
   const lower = query.toLowerCase();
-  const matches = targets.filter((t) => t.name.toLowerCase().includes(lower));
-  return matches.length === 1 ? matches[0] : matches[0];
+  return targets.filter((t) => t.name.toLowerCase().includes(lower));
 }
 
 /** Read the handshake left by a running daemon, if there is one. */

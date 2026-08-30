@@ -9,6 +9,7 @@
       "program": "lib/main.dart",
       /* block comment */
       "toolArgs": ["--flavor", "dev"], // trailing comma next
+      "env": { "FOO": "bar", "PORT": 8080, "NOPE": null },
     },
     {
       "name": "docs server",

@@ -165,6 +165,35 @@ test('service extensions drive the toolbar overflow options', () => {
   assert.deepEqual(sent.params.params, { enabled: true });
 });
 
+test('config.env is forwarded to the injected spawn seam', () => {
+  const withEnv: LaunchConfig = { ...CONFIG, env: { FOO: 'bar' } };
+  let capturedEnv: Record<string, string> | undefined;
+  const s = new FlutterSession(withEnv, {
+    deviceId: 'IPHONE-17-PRO',
+    flutter: { command: '/fake/flutter', prefixArgs: [], source: 'fvm-sdk' },
+    spawn: (_command, _args, _cwd, env) => {
+      capturedEnv = env;
+      return { write: () => {}, kill: () => {} };
+    },
+  });
+  s.start();
+  assert.deepEqual(capturedEnv, { FOO: 'bar' });
+});
+
+test('a config with no env entries leaves the spawn seam env argument undefined', () => {
+  let capturedEnv: Record<string, string> | undefined = { should: 'be overwritten' };
+  const s = new FlutterSession(CONFIG, {
+    deviceId: 'IPHONE-17-PRO',
+    flutter: { command: '/fake/flutter', prefixArgs: [], source: 'fvm-sdk' },
+    spawn: (_command, _args, _cwd, env) => {
+      capturedEnv = env;
+      return { write: () => {}, kill: () => {} };
+    },
+  });
+  s.start();
+  assert.equal(capturedEnv, undefined);
+});
+
 test('request ids are unique per session', () => {
   const { s, written } = session();
   started(s);

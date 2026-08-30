@@ -22,12 +22,30 @@ export type LaunchConfig = {
   runtimeExecutable?: string;
   runtimeArgs?: string[];
   port?: number;
+  /** Extra environment variables for the spawned child, merged over `process.env`. */
+  env?: Record<string, string>;
 };
 
 type RawConfig = Record<string, unknown>;
 
 const asStringArray = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+
+/**
+ * VS Code launch configs write `env` as a flat object, but nothing stops a
+ * hand-edited one from carrying a number, boolean or null. Coerce the scalars
+ * a child process env can actually hold; drop anything else silently rather
+ * than fail the whole config over one bad entry.
+ */
+const asEnv = (v: unknown): Record<string, string> | undefined => {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(v as Record<string, unknown>)) {
+    if (value === null || value === undefined || typeof value === 'object') continue;
+    out[key] = String(value);
+  }
+  return out;
+};
 
 /**
  * Read a launch.json (VS Code's JSONC dialect: comments and trailing commas allowed)
@@ -72,6 +90,7 @@ function normalise(raw: RawConfig, cwd: string): LaunchConfig {
       typeof raw.runtimeExecutable === 'string' ? raw.runtimeExecutable : undefined,
     runtimeArgs: asStringArray(raw.runtimeArgs),
     port: typeof raw.port === 'number' ? raw.port : undefined,
+    env: asEnv(raw.env),
   };
 }
 
