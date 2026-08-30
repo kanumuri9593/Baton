@@ -28,6 +28,8 @@ export type SessionSnapshot = {
   name: string;
   kind: string;
   status: SessionStatus;
+  /** Project root this session was started from, so many projects can share a HUD. */
+  root?: string;
   target?: string;
   capabilities: Capability[];
   progress?: string;

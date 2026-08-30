@@ -1,5 +1,5 @@
 import { ProcessSession, type ProcessSessionOptions } from './process.ts';
-import { slug } from '../core/session-base.ts';
+import { sessionId } from '../core/session-base.ts';
 import type { Capability, OperationResult, SessionSnapshot } from '../core/types.ts';
 import { UnsupportedCapability } from '../core/types.ts';
 
@@ -46,7 +46,7 @@ export class WebDevSession extends ProcessSession {
   #ready = false;
 
   static create(name: string, options: ProcessSessionOptions): WebDevSession {
-    return new WebDevSession(slug(name), name, options);
+    return new WebDevSession(sessionId(options.cwd, name), name, options);
   }
 
   protected markRunningWhenReady(): void {

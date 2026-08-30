@@ -159,3 +159,79 @@ test('targets reports blocking issues so the HUD can flag them', async () => {
   // every flutter target carries an issues array, empty when runnable
   for (const target of result.targets) assert.ok(Array.isArray(target.issues));
 });
+
+// --- several projects at once ---------------------------------------------
+
+test('projects lists every remembered project with what it can run', async () => {
+  await daemon.handle({ method: 'useProject', params: { root: '/Users/yxkanum/Documents/McLane360' } });
+  const result: any = await daemon.handle({ method: 'projects', params: {} });
+
+  const mclane = result.projects.find((p: any) => p.root === '/Users/yxkanum/Documents/McLane360');
+  assert.ok(mclane, 'a remembered project must appear in the list');
+  assert.equal(mclane.name, 'McLane360', 'the HUD labels tabs with this');
+  assert.ok(mclane.targets.length >= 16);
+  // Targets carry their pre-flight state, so the picker can flag blocked ones
+  // without a second round trip per project.
+  assert.ok(mclane.targets.every((t: any) => Array.isArray(t.issues)));
+});
+
+test('adding a directory that is not a project is refused, with the path', async () => {
+  await assert.rejects(
+    () => daemon.handle({ method: 'addProject', params: { path: '/usr/share/dict' } }),
+    /does not look like a project/,
+  );
+  await assert.rejects(
+    () => daemon.handle({ method: 'addProject', params: { path: '/no/such/place' } }),
+    /not a directory/,
+  );
+});
+
+test('a project with no runnable targets yet is still worth tracking', async () => {
+  // CLI-Launch itself: a real project, but no dev script to run.
+  const added: any = await daemon.handle({
+    method: 'addProject', params: { path: process.cwd() },
+  });
+  assert.equal(added.root, process.cwd());
+  const listed: any = await daemon.handle({ method: 'projects', params: {} });
+  assert.ok(listed.projects.some((p: any) => p.root === process.cwd()));
+});
+
+test('removing a project takes it out of the list without touching the disk', async () => {
+  await daemon.handle({ method: 'addProject', params: { path: process.cwd() } });
+  const result: any = await daemon.handle({ method: 'removeProject', params: { root: process.cwd() } });
+  assert.equal(result.removed, true);
+  const listed: any = await daemon.handle({ method: 'projects', params: {} });
+  assert.ok(!listed.projects.some((p: any) => p.root === process.cwd()));
+  assert.equal(
+    (await daemon.handle({ method: 'removeProject', params: { root: process.cwd() } }) as any).removed,
+    false,
+    'removing twice is not an error, just a no-op',
+  );
+});
+
+test('a bulk operation can be scoped to named sessions', async () => {
+  // Nothing is running, so an empty id list must be an empty result -- not the
+  // "all sessions" fallback, which would reload other projects by accident.
+  const result: any = await daemon.handle({ method: 'reload', params: { ids: [] } });
+  assert.deepEqual(result, []);
+});
+
+test('POST /rpc answers the same methods as the socket', async () => {
+  const response = await fetch(`http://127.0.0.1:${port}/rpc`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ method: 'sessions' }),
+  });
+  assert.equal(response.status, 200);
+  const body: any = await response.json();
+  assert.ok(Array.isArray(body.result));
+});
+
+test('POST /rpc without the token is refused', async () => {
+  const response = await fetch(`http://127.0.0.1:${port}/rpc`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer wrong', 'content-type': 'application/json' },
+    body: JSON.stringify({ method: 'sessions' }),
+  });
+  assert.equal(response.status, 401);
+});

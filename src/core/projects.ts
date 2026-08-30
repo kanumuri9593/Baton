@@ -39,6 +39,19 @@ export class ProjectRegistry {
     }
   }
 
+  /** Drop a project from the list; it can always be re-added by running in it. */
+  forget(root: string): boolean {
+    const before = this.#roots.length;
+    this.#roots = this.#roots.filter((r) => r !== root);
+    if (this.#roots.length === before) return false;
+    try {
+      writeFileSync(storePath(), JSON.stringify(this.#roots, null, 2));
+    } catch {
+      // in-memory removal is still correct for this daemon's lifetime
+    }
+    return true;
+  }
+
   list(): string[] {
     return [...this.#roots];
   }

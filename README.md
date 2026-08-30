@@ -8,7 +8,9 @@ If the only reason you keep an IDE open is its Run & Debug toolbar — the confi
 clilaunch list                                  # what can I run here?
 clilaunch run "iOS Simulator (DEV / dev flavor)"
 clilaunch reload --all                          # hot reload every session
-clilaunch hud                                   # floating control panel
+clilaunch boot "iPhone 17 Pro Max"              # start a simulator that isn't running
+clilaunch add ~/code/storefront                 # watch another project too
+clilaunch hud                                   # floating panel + menu-bar item
 ```
 
 ---
@@ -62,8 +64,37 @@ clilaunch ps          # what's running
 clilaunch logs dev -f # follow output
 clilaunch reload --all
 clilaunch stop --all
-clilaunch devices     # simulators, emulators, physical devices
+clilaunch devices --all   # connected devices, plus every one you could boot
 ```
+
+### Devices you haven't started yet
+
+`clilaunch devices --all` lists what is connected *and* what could be:
+
+```
+connected
+  ● iPhone 17 Pro                48F0A0D1-…  ios (emulator)
+  ● sdk gphone16k arm64          emulator-5556  android (emulator)
+
+bootable
+  ○ iPhone 17 Pro Max            3237F94B-…  ios  iOS 26.5
+  ○ iPad mini (A17 Pro)          51470177-…  ios  iOS 26.5
+  ○ Pixel 10 Pro                 Pixel_10_Pro  android
+```
+
+Individual iOS models, not a generic "start a simulator" — Flutter's own emulator list collapses every iPhone and iPad into one entry, so `simctl` is asked directly. `clilaunch boot "iPad mini"` starts one and waits until Flutter can actually see it, then tells you the device id to run on. In the HUD, picking a device under **Start new** boots it and launches on exactly that device in one press.
+
+### Several projects at once
+
+The daemon is not tied to one directory. Track as many projects as you work in:
+
+```bash
+clilaunch add ~/code/storefront
+clilaunch add ~/code/api
+clilaunch projects
+```
+
+The HUD then shows a tab per project with a live count, plus **All** — every session from every project in one list, grouped and labelled. Reload-all while looking at one project reloads only that project. Session ids are project-scoped (`storefront/npm-dev`, `api/npm-dev`), so two projects can both have an `npm dev` without colliding.
 
 Sessions live in a background daemon, so **closing the terminal doesn't kill your app**. Open a new terminal and `clilaunch ps` still shows everything.
 
@@ -84,9 +115,18 @@ Configs often reference gitignored files — per-developer secrets, local overri
 clilaunch hud
 ```
 
-Opens a compact panel: one row per session with status, ⟳ ⟲ ■, logs, and links to the app URL and DevTools. Keep it in a small always-on-top window beside your terminals. `r` hot-reloads everything, `R` hot-restarts.
+One compact row per session: status, ⟳ ⟲ ■, logs, and links to the app URL and DevTools. Above it, a tab per project and a picker for target and device. `r` hot-reloads everything in view, `R` hot-restarts.
 
-It's a single self-contained page with no external requests, served on loopback by the daemon — so it looks and behaves the same on every OS.
+On **macOS** this opens a native floating panel and a menu-bar item:
+
+- stays above a full-screen terminal, and follows you between desktops
+- never steals focus — clicking Run leaves your cursor where it was
+- drag it anywhere by its title strip; it remembers where you put it
+- the menu-bar item shows how many sessions are live (`●3`, orange while starting, red on failure); click it to show or hide the panel, right-click for reload/restart/stop all
+
+The panel is ~250 lines of AppKit hosting the same page, compiled from source on first use — no signed binary to trust, and it rebuilds only when that source changes. It needs Xcode or the Command Line Tools; without them you get the browser HUD instead.
+
+On **Linux and Windows** (or with `clilaunch hud --browser`) the same page opens as a small chromeless window. It is a single self-contained file with no external requests, served on loopback by the daemon, so it looks and behaves the same everywhere.
 
 ## Give it to your agent
 
@@ -127,8 +167,8 @@ That's the difference between an agent that can fix its own mistake and one that
 package.json  ───────┼─► detect ─► daemon ─► one session per target
 pubspec.yaml  ───────┘                │       (flutter | web-dev | react-native | process)
                                       │
-                          WebSocket on 127.0.0.1
-                          ├── HUD            (any browser, any OS)
+                     WebSocket + POST /rpc on 127.0.0.1
+                          ├── HUD            (native panel on macOS, browser elsewhere)
                           ├── clilaunch      (any terminal)
                           └── clilaunch-mcp  (any agent)
 ```
@@ -148,7 +188,7 @@ FVM is respected: a project pinning a Flutter version through `.fvm/flutter_sdk`
 
 ## Status
 
-Working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once.
+Working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one HUD, one of them launched onto a simulator booted from the HUD itself.
 
 The Flutter adapter is the most complete. Web and React Native adapters cover run/restart/logs/URL detection; contributions extending them are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -156,7 +196,7 @@ The Flutter adapter is the most complete. Web and React Native adapters cover ru
 
 ```bash
 npm install
-npm test          # 63 tests, no simulator required
+npm test          # 92 tests, no simulator required
 npm run typecheck
 ```
 

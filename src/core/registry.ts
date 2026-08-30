@@ -32,10 +32,25 @@ export class SessionRegistry extends EventEmitter {
     // Accept an unambiguous prefix, so nobody has to type a full session id.
     const exact = this.#sessions.get(id);
     if (exact) return exact;
-    const matches = this.list().filter(
-      (s) => s.id.startsWith(id) || s.name.toLowerCase().includes(id.toLowerCase()),
-    );
+    const matches = this.candidates(id);
     return matches.length === 1 ? matches[0] : undefined;
+  }
+
+  /**
+   * Everything a partial name could mean.
+   *
+   * Ids are project-scoped (`demo-web/npm-dev`), so a bare `npm-dev` typed in a
+   * terminal has to match the part after the slash too -- and when two projects
+   * both have one, the caller needs the list to disambiguate with.
+   */
+  candidates(query: string): Session[] {
+    const lower = query.toLowerCase();
+    return this.list().filter(
+      (s) =>
+        s.id.startsWith(query) ||
+        (s.id.split('/').pop() ?? '').startsWith(query) ||
+        s.name.toLowerCase().includes(lower),
+    );
   }
 
   devices(projectRoot: string): DeviceRegistry {
@@ -49,6 +64,9 @@ export class SessionRegistry extends EventEmitter {
 
   async run(target: Target, options: RunOptions = {}): Promise<Session> {
     const session = await this.#create(target, options);
+    // Which project this came from -- the HUD groups by it, so three projects
+    // can be watched side by side without their sessions blurring together.
+    (session as { root?: string }).root = target.cwd;
 
     if (this.#sessions.has(session.id)) {
       throw new Error(

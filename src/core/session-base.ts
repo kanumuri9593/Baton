@@ -23,6 +23,8 @@ export abstract class BaseSession extends EventEmitter implements Session {
   status: SessionStatus = 'starting';
   progress?: string;
   exitCode?: number;
+  /** Set by the registry when the session is created; see SessionSnapshot.root. */
+  root?: string;
 
   #logs: LogLine[] = [];
 
@@ -76,6 +78,7 @@ export abstract class BaseSession extends EventEmitter implements Session {
       name: this.name,
       kind: this.kind,
       status: this.status,
+      root: this.root,
       capabilities: [...this.capabilities],
       progress: this.progress,
       exitCode: this.exitCode,
@@ -88,4 +91,16 @@ export abstract class BaseSession extends EventEmitter implements Session {
 /** Stable, filesystem- and URL-safe id fragment. */
 export function slug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+}
+
+/**
+ * Build a session id that is unique across projects.
+ *
+ * Three projects open at once will happily all have an `npm dev`, and two of
+ * them may target the same simulator. Without the project prefix the second one
+ * to start is rejected as a duplicate of the first.
+ */
+export function sessionId(cwd: string, name: string, suffix?: string): string {
+  const project = slug(cwd.split(/[\\/]/).filter(Boolean).pop() ?? 'project');
+  return `${project}/${slug(name)}${suffix ? '@' + suffix : ''}`;
 }

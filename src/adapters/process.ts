@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { BaseSession, slug } from '../core/session-base.ts';
+import { BaseSession, sessionId } from '../core/session-base.ts';
 import type { Capability, OperationResult, SessionSnapshot } from '../core/types.ts';
 import { UnsupportedCapability } from '../core/types.ts';
 
@@ -35,7 +35,7 @@ export class ProcessSession extends BaseSession {
   }
 
   static forCommand(name: string, options: ProcessSessionOptions): ProcessSession {
-    return new ProcessSession(slug(name), name, options);
+    return new ProcessSession(sessionId(options.cwd, name), name, options);
   }
 
   start(): void {

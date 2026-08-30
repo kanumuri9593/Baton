@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws';
 import { ProcessSession, type ProcessSessionOptions } from './process.ts';
-import { slug } from '../core/session-base.ts';
+import { sessionId } from '../core/session-base.ts';
 import type { Capability, OperationResult, SessionSnapshot } from '../core/types.ts';
 
 const CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([
@@ -35,7 +35,7 @@ export class ReactNativeSession extends ProcessSession {
   }
 
   static create(name: string, options: ReactNativeOptions): ReactNativeSession {
-    return new ReactNativeSession(slug(name), name, options);
+    return new ReactNativeSession(sessionId(options.cwd, name), name, options);
   }
 
   get url(): string {

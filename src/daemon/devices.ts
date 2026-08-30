@@ -1,6 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { MachineCodec, encodeRequest, type DaemonEvent } from './protocol.ts';
+import { MachineCodec, encodeRequest, type DaemonEvent, type DaemonResponse } from './protocol.ts';
 import { resolveFlutter } from '../config/flutter.ts';
+import {
+  listSimulators, bootSimulator, mergeBootables,
+  type Bootable, type FlutterEmulator,
+} from './simulators.ts';
 
 /** A platform constraint derived from a config name. */
 export type DevicePreference = {
@@ -18,6 +22,8 @@ export type Device = {
   platformType: string;
   emulator: boolean;
   category?: string;
+  /** Which AVD/simulator definition this running device came from, when known. */
+  emulatorId?: string;
   capabilities?: Record<string, boolean>;
 };
 
@@ -35,10 +41,13 @@ export class DeviceRegistry {
   #codec = new MachineCodec();
   #ready?: Promise<void>;
   #projectRoot: string;
+  #nextId = 100;
+  #pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
 
   constructor(projectRoot: string) {
     this.#projectRoot = projectRoot;
     this.#codec.on('event', (e: DaemonEvent) => this.#handleEvent(e));
+    this.#codec.on('response', (r: DaemonResponse) => this.#handleResponse(r));
   }
 
   /** Start the daemon and wait briefly for the first wave of devices. */
@@ -54,7 +63,17 @@ export class DeviceRegistry {
       });
       this.#child = child;
       child.stdout?.on('data', (c: Buffer) => this.#codec.push(c));
-      child.on('error', () => resolve());
+      // Once the child is gone, every request must fail immediately rather than
+      // sit on a timeout: a missing Flutter SDK is a permanent condition, and
+      // waiting 15s to discover that makes the device picker feel broken.
+      const dead = (reason: string) => {
+        if (this.#child === child) this.#child = undefined;
+        for (const pending of this.#pending.values()) pending.reject(new Error(reason));
+        this.#pending.clear();
+        resolve();
+      };
+      child.on('error', (err) => dead(`flutter daemon could not start: ${err.message}`));
+      child.on('exit', () => dead('flutter daemon exited'));
 
       // Ask discovery to run with an explicit bound, so it cannot hang.
       child.stdin?.write(encodeRequest(1, 'device.enable', {}) + '\n');
@@ -73,6 +92,56 @@ export class DeviceRegistry {
 
   list(): Device[] {
     return [...this.#devices.values()];
+  }
+
+  /**
+   * Everything that could be started but is not running.
+   *
+   * Merges two sources deliberately: simctl knows every individual iOS model,
+   * while the Flutter daemon knows the Android AVDs and works on every platform.
+   */
+  async bootables(): Promise<Bootable[]> {
+    let emulators: FlutterEmulator[] = [];
+    try {
+      emulators = (await this.#request<FlutterEmulator[]>('emulator.getEmulators', {}, 15000)) ?? [];
+    } catch {
+      // No Flutter SDK reachable, or no Android tooling: simulators still list.
+    }
+
+    return mergeBootables(listSimulators(), emulators, {
+      deviceIds: new Set(this.list().map((d) => d.id)),
+      emulatorIds: new Set(this.list().map((d) => d.emulatorId).filter(Boolean) as string[]),
+    });
+  }
+
+  /**
+   * Start a device and wait until Flutter can actually see it.
+   *
+   * Returning as soon as the boot command exits would be a lie: the device is
+   * not runnable until discovery reports it, which is seconds later.
+   */
+  async boot(id: string, timeoutMs = 180000): Promise<Device> {
+    await this.ready(500);
+    const target = (await this.bootables()).find((b) => b.id === id);
+    if (!target) throw new Error(`no bootable device with id "${id}"`);
+
+    if (target.via === 'simctl') {
+      bootSimulator(target.id);
+      const device = await this.#waitFor((d) => d.id === target.id, timeoutMs);
+      if (device) return device;
+    } else {
+      await this.#request('emulator.launch', { emulatorId: target.id, coldBoot: false }, timeoutMs);
+      const device = await this.#waitFor(
+        (d) => d.emulatorId === target.id || (d.platformType === target.platformType && d.emulator),
+        timeoutMs,
+      );
+      if (device) return device;
+    }
+
+    throw new Error(
+      `"${target.name}" was asked to boot but never appeared as a Flutter device. ` +
+        `It may still be starting -- check again in a moment.`,
+    );
   }
 
   /**
@@ -154,6 +223,45 @@ export class DeviceRegistry {
     this.#ready = undefined;
   }
 
+  async #waitFor(predicate: (d: Device) => boolean, timeoutMs: number): Promise<Device | undefined> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const found = this.list().find(predicate);
+      if (found) return found;
+      if (Date.now() >= deadline) return undefined;
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+
+  #request<T>(method: string, params: Record<string, unknown>, timeoutMs = 30000): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (!this.#child?.stdin) {
+        reject(new Error('device daemon is not running'));
+        return;
+      }
+      const id = this.#nextId++;
+      const timer = setTimeout(() => {
+        this.#pending.delete(id);
+        reject(new Error(`${method} timed out after ${Math.round(timeoutMs / 1000)}s`));
+      }, timeoutMs);
+      timer.unref?.();
+
+      this.#pending.set(id, {
+        resolve: (v) => { clearTimeout(timer); resolve(v); },
+        reject: (e) => { clearTimeout(timer); reject(e); },
+      });
+      this.#child.stdin.write(encodeRequest(id, method, params) + '\n');
+    });
+  }
+
+  #handleResponse(response: DaemonResponse): void {
+    const pending = this.#pending.get(response.id);
+    if (!pending) return;
+    this.#pending.delete(response.id);
+    if (response.error) pending.reject(new Error(String(response.error)));
+    else pending.resolve(response.result);
+  }
+
   #handleEvent(e: DaemonEvent): void {
     if (e.event === 'device.added') {
       const p = e.params;
@@ -164,6 +272,7 @@ export class DeviceRegistry {
         platformType: p.platformType,
         emulator: Boolean(p.emulator),
         category: p.category,
+        emulatorId: p.emulatorId,
         capabilities: p.capabilities,
       });
     } else if (e.event === 'device.removed') {

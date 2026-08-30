@@ -135,9 +135,16 @@ export function detectTargets(root: string): Target[] {
   return targets;
 }
 
+const PROJECT_MARKERS = ['pubspec.yaml', 'package.json', '.vscode', '.claude', '.git'];
+
+/** Whether a directory is a project at all, regardless of what it can run. */
+export function isProjectRoot(dir: string): boolean {
+  return PROJECT_MARKERS.some((m) => existsSync(join(dir, m)));
+}
+
 /** Find the nearest ancestor that looks like a project root. */
 export function findProjectRoot(start: string): string {
-  const markers = ['pubspec.yaml', 'package.json', '.vscode', '.git'];
+  const markers = PROJECT_MARKERS;
   let dir = start;
   for (;;) {
     if (markers.some((m) => existsSync(join(dir, m)))) return dir;

@@ -3,6 +3,7 @@ import { DaemonClient, startDaemon } from '../core/client.ts';
 import { readHandshake } from '../daemon/server.ts';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 
 const HELP = `clilaunch — run and control dev sessions from any terminal
 
@@ -14,14 +15,19 @@ Usage
   clilaunch restart [target|--all]   hot restart
   clilaunch stop [target|--all]      stop
   clilaunch logs <target> [-n 200] [-f]
-  clilaunch devices                  connected devices and simulators
-  clilaunch hud [--tab]              open the floating control panel
+  clilaunch devices [--all]          connected devices; --all adds bootable ones
+  clilaunch boot <device>            start a simulator or emulator
+  clilaunch projects                 projects the HUD knows about
+  clilaunch add <path>               track another project
+  clilaunch hud [--browser|--tab]    open the floating control panel
   clilaunch daemon start|stop|status
 
 Examples
   clilaunch run "iOS Simulator (DEV / dev flavor)"
   clilaunch run dev                  # matches "npm run dev"
   clilaunch reload --all
+  clilaunch boot "iPhone 17 Pro Max" # boot it, then run on it
+  clilaunch add ~/code/storefront    # watch three projects in one HUD
 `;
 
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -181,19 +187,91 @@ async function main() {
 
       case 'devices': {
         const devices = await client.call('devices', { cwd });
-        if (!devices.length) { console.log('no devices found'); break; }
-        for (const d of devices) {
-          console.log(`  ${bold(d.name.padEnd(28))} ${dim(d.id)}  ${d.platformType}${d.emulator ? dim(' (emulator)') : ''}`);
+        if (devices.length) {
+          console.log(bold('connected'));
+          for (const d of devices) {
+            console.log(`  ${green('●')} ${d.name.padEnd(28)} ${dim(d.id)}  ${d.platformType}${d.emulator ? dim(' (emulator)') : ''}`);
+          }
+        } else {
+          console.log('no devices connected');
         }
+        if (!flags.all) {
+          console.log(dim('\n  --all also lists simulators and emulators you can boot'));
+          break;
+        }
+        const bootables = await client.call('bootables', { cwd });
+        const startable = bootables.filter((b: any) => !b.running);
+        if (!startable.length) break;
+        console.log(bold('\nbootable'));
+        for (const b of startable) {
+          const where = b.runtime ? dim('  ' + b.runtime) : '';
+          console.log(`  ${dim('○')} ${b.name.padEnd(28)} ${dim(b.id)}  ${b.platformType}${where}`);
+        }
+        console.log(dim('\n  clilaunch boot "<name>"'));
+        break;
+      }
+
+      case 'boot': {
+        const query = positional.join(' ');
+        if (!query) throw new Error('which device? try `clilaunch devices --all`');
+        const bootables = await client.call('bootables', { cwd });
+        const match = pickDevice(bootables, query);
+        if (!match) {
+          throw new Error(
+            `no bootable device matching "${query}".\n` +
+              bootables.map((b: any) => '  ' + b.name).join('\n'),
+          );
+        }
+        if (match.running) { console.log(`${green('●')} ${match.name} is already running`); break; }
+        console.log(dim(`booting ${match.name}…`));
+        const device = await client.call('boot', { id: match.id, cwd });
+        console.log(`${green('●')} ${bold(device.name)} ${dim(device.id)}`);
+        console.log(dim(`  run on it with: clilaunch run <target> -d ${device.id}`));
+        break;
+      }
+
+      case 'projects': {
+        const { projects, active } = await client.call('projects', { cwd });
+        for (const project of projects) {
+          const mark = project.root === active ? green('●') : dim('○');
+          const detail = project.error
+            ? red(project.error)
+            : dim(project.targets.length + ' targets');
+          console.log(`  ${mark} ${bold(project.name.padEnd(22))} ${detail}  ${dim(project.root)}`);
+        }
+        console.log(dim('\n  clilaunch add <path> to track another'));
+        break;
+      }
+
+      case 'add': {
+        const path = positional.join(' ') || cwd;
+        const project = await client.call('addProject', { path });
+        console.log(`${green('+')} ${bold(project.name)} ${dim(project.root)}`);
+        for (const t of project.targets) console.log(`    ${t.name}  ${dim(t.kind)}`);
         break;
       }
 
       case 'hud': {
-        // Register the terminal's project first, so a browser with no cwd of
-        // its own still opens on the project you are standing in.
+        // Register the terminal's project first, so a window with no cwd of its
+        // own still opens on the project you are standing in.
         await client.call('useProject', { root: cwd }).catch(() => {});
         const handshake = readHandshake()!;
         const url = `http://127.0.0.1:${handshake.port}/`;
+
+        // On macOS the native panel is the real thing: menu-bar item, always on
+        // top, draggable, and it never steals focus. Only fall back to a browser
+        // window when that is impossible or explicitly asked for.
+        const wantsBrowser = flags.browser === true || flags.tab === true;
+        if (!wantsBrowser && panelSupported() && hasSwift()) {
+          try {
+            openPanel(() => console.log(dim('  compiling the panel (first run only)…')));
+            console.log(`${green('●')} HUD in the menu bar  ${dim(url)}`);
+            console.log(dim('  click the ● to show or hide it; right-click for reload/restart/stop'));
+            break;
+          } catch (err) {
+            console.log(yellow('  ' + (err as Error).message));
+          }
+        }
         console.log(`HUD → ${url}`);
         openHud(url, flags.tab === true);
         break;
@@ -205,6 +283,14 @@ async function main() {
   } finally {
     if (!flags.follow) client.close();
   }
+}
+
+/** Exact name, then case-insensitive substring -- the same rule as targets. */
+function pickDevice(devices: any[], query: string): any {
+  const exact = devices.find((d) => d.name === query || d.id === query);
+  if (exact) return exact;
+  const lower = query.toLowerCase();
+  return devices.find((d) => d.name.toLowerCase().includes(lower));
 }
 
 function required(message: string): never {

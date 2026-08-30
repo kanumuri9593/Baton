@@ -1,9 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { randomBytes } from 'node:crypto';
-import { writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, rmSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { SessionRegistry } from '../core/registry.ts';
-import { detectTargets, findProjectRoot } from '../config/detect.ts';
+import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.ts';
 import { validate } from '../config/validate.ts';
 import { ProjectRegistry } from '../core/projects.ts';
 import { handshakePath } from '../core/paths.ts';
@@ -93,6 +95,30 @@ export class LaunchDaemon {
       res.end(renderHud(this.#token));
       return;
     }
+    // A plain request/response door into the same methods. The macOS menu-bar
+    // app, a shell script and `curl` all speak HTTP without a WebSocket client;
+    // requiring one would make the daemon harder to build on top of.
+    if (url.pathname === '/rpc' && req.method === 'POST') {
+      if (!this.#authorised(req.url, req.headers)) {
+        res.writeHead(401, { 'content-type': 'application/json' }).end('{"error":"unauthorised"}');
+        return;
+      }
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+        if (body.length > 1_000_000) req.destroy();
+      });
+      req.on('end', async () => {
+        res.setHeader('content-type', 'application/json');
+        try {
+          const result = await this.handle(JSON.parse(body || '{}'));
+          res.writeHead(200).end(JSON.stringify({ result }));
+        } catch (err) {
+          res.writeHead(400).end(JSON.stringify({ error: (err as Error).message }));
+        }
+      });
+      return;
+    }
     if (url.pathname === '/health') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ ok: true, version: this.#version, pid: process.pid }));
@@ -149,6 +175,56 @@ export class LaunchDaemon {
         return { root, targets, projects: this.projects.list() };
       }
 
+      case 'projects': {
+        // Every remembered project with what it can run, so the HUD can show
+        // three projects at once instead of making you switch between them.
+        // With nothing remembered yet, offer the best guess rather than an empty
+        // list: a HUD that shows no projects at all looks broken.
+        const roots = this.projects.list();
+        if (roots.length === 0) roots.push(this.#resolveRoot(p.cwd));
+        return {
+          active: this.projects.active() ?? roots[0],
+          projects: roots.map((root) => this.#describeProject(root)),
+        };
+      }
+
+      case 'addProject': {
+        const raw = String(p.path ?? '').trim();
+        if (!raw) throw new Error('which directory?');
+        const expanded = raw.startsWith('~') ? join(homedir(), raw.slice(1)) : raw;
+        const path = resolve(expanded);
+        if (!existsSync(path) || !statSync(path).isDirectory()) {
+          throw new Error(`not a directory: ${path}`);
+        }
+        const root = findProjectRoot(path);
+        // A project with nothing runnable yet is still worth tracking -- a dev
+        // script may appear tomorrow. A directory that is not a project at all
+        // is almost always a typo, so that is what gets rejected.
+        if (!isProjectRoot(root)) {
+          throw new Error(
+            `${root} does not look like a project — no package.json, pubspec.yaml, .vscode or .git`,
+          );
+        }
+        const described = this.#describeProject(root);
+        this.projects.remember(root);
+        return described;
+      }
+
+      case 'removeProject':
+        return { removed: this.projects.forget(String(p.root ?? '')) };
+
+      case 'bootables': {
+        const devices = this.registry.devices(this.#deviceRoot(p.cwd));
+        await devices.ready(500);
+        return devices.bootables();
+      }
+
+      case 'boot': {
+        const device = await this.registry.devices(this.#deviceRoot(p.cwd)).boot(String(p.id));
+        this.#broadcast({ event: 'devices' });
+        return device;
+      }
+
       case 'useProject': {
         const root = findProjectRoot(p.root);
         this.projects.remember(root);
@@ -159,8 +235,7 @@ export class LaunchDaemon {
         return this.registry.snapshots();
 
       case 'devices': {
-        const root = this.#resolveRoot(p.cwd);
-        const devices = this.registry.devices(root);
+        const devices = this.registry.devices(this.#deviceRoot(p.cwd));
         await devices.ready();
         return devices.list();
       }
@@ -261,14 +336,68 @@ export class LaunchDaemon {
     return this.projects.active() ?? findProjectRoot(process.cwd());
   }
 
-  #require(id: string) {
-    const session = this.registry.get(id);
-    if (!session) throw new Error(`no session matching "${id}"`);
-    return session;
+  /** A project plus what it can run, tolerant of one that has gone missing. */
+  #describeProject(root: string): { root: string; name: string; targets: any[]; error?: string } {
+    const name = root.split(/[\\/]/).filter(Boolean).pop() ?? root;
+    if (!existsSync(root)) {
+      return { root, name, targets: [], error: 'directory no longer exists' };
+    }
+    try {
+      const targets = detectTargets(root).map((target) => ({
+        name: target.name,
+        kind: target.kind,
+        source: target.source,
+        issues: target.config ? validate(target.config) : [],
+      }));
+      return { root, name, targets };
+    } catch (err) {
+      return { root, name, targets: [], error: (err as Error).message };
+    }
   }
 
-  /** `{all: true}` targets every live session; otherwise one named session. */
+  /**
+   * Which project's Flutter SDK to run device discovery under.
+   *
+   * Devices are a property of the machine, not of a project -- but discovering
+   * them needs a Flutter SDK, and a Node-only project has none. On a machine
+   * where Flutter is pinned per project with FVM and absent from PATH, asking
+   * from the wrong directory finds nothing at all. So prefer any known Flutter
+   * project over the one that happened to ask.
+   */
+  #deviceRoot(cwd?: string | null): string {
+    const asked = this.#resolveRoot(cwd);
+    if (existsSync(join(asked, 'pubspec.yaml'))) return asked;
+    const flutterProject = this.projects
+      .list()
+      .find((root) => existsSync(join(root, 'pubspec.yaml')));
+    return flutterProject ?? asked;
+  }
+
+  #require(id: string) {
+    const session = this.registry.get(id);
+    if (session) return session;
+    const ambiguous = this.registry.candidates(id);
+    if (ambiguous.length > 1) {
+      throw new Error(
+        `"${id}" matches ${ambiguous.length} sessions — say which:\n` +
+          ambiguous.map((s) => `  ${s.id}`).join('\n'),
+      );
+    }
+    throw new Error(`no session matching "${id}"`);
+  }
+
+  /**
+   * Which sessions a bulk operation applies to.
+   *
+   * `{ids: [...]}` exists for the multi-project HUD: "reload all" while looking
+   * at one project must not touch the other projects' sessions.
+   */
   #select(p: Record<string, any>) {
+    if (Array.isArray(p.ids)) {
+      return p.ids
+        .map((id: string) => this.registry.get(id))
+        .filter((s): s is NonNullable<typeof s> => Boolean(s));
+    }
     if (p.all) {
       return this.registry.list().filter((s) => s.status === 'running');
     }

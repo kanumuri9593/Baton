@@ -1,5 +1,5 @@
 import { spawn as nodeSpawn } from 'node:child_process';
-import { BaseSession, slug } from '../core/session-base.ts';
+import { BaseSession, sessionId } from '../core/session-base.ts';
 import type { Capability, OperationResult, SessionSnapshot } from '../core/types.ts';
 import { MachineCodec, encodeRequest, type DaemonEvent, type DaemonResponse } from '../daemon/protocol.ts';
 import { buildFlutterArgv, type LaunchConfig } from '../config/loader.ts';
@@ -44,7 +44,7 @@ export class FlutterSession extends BaseSession {
   #pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
 
   constructor(config: LaunchConfig, options: FlutterSessionOptions) {
-    super(`${slug(config.name)}@${options.deviceId.slice(0, 8)}`, config.name);
+    super(sessionId(config.cwd, config.name, options.deviceId.slice(0, 8)), config.name);
     this.config = config;
     this.deviceId = options.deviceId;
     this.#options = options;
