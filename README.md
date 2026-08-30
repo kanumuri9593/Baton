@@ -67,6 +67,17 @@ clilaunch devices     # simulators, emulators, physical devices
 
 Sessions live in a background daemon, so **closing the terminal doesn't kill your app**. Open a new terminal and `clilaunch ps` still shows everything.
 
+### Pre-flight checks
+
+Configs often reference gitignored files — per-developer secrets, local overrides. Flutter fails deep inside the build when one is missing, far from the cause. CLI-Launch checks first and refuses to spawn:
+
+```
+✗ "iOS Simulator (DEV / dev flavor)" cannot run yet:
+  missing config/secrets.local.json — copy config/secrets.local.template.json to config/secrets.local.json
+```
+
+`clilaunch list` flags blocked targets the same way. Use `--force` to run anyway.
+
 ### The floating HUD
 
 ```bash

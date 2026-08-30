@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { SessionRegistry } from '../core/registry.ts';
 import { detectTargets, findProjectRoot } from '../config/detect.ts';
+import { validate } from '../config/validate.ts';
 import { handshakePath } from '../core/paths.ts';
 import { renderHud } from '../hud/render.ts';
 import type { Capability } from '../core/types.ts';
@@ -137,7 +138,11 @@ export class LaunchDaemon {
     switch (request.method) {
       case 'targets': {
         const root = findProjectRoot(p.cwd ?? process.cwd());
-        return { root, targets: detectTargets(root) };
+        const targets = detectTargets(root).map((target) => ({
+          ...target,
+          issues: target.config ? validate(target.config) : [],
+        }));
+        return { root, targets };
       }
 
       case 'sessions':
@@ -159,6 +164,16 @@ export class LaunchDaemon {
             `no target matching "${p.target}" in ${root}. Run \`clilaunch list\` to see what is available.`,
           );
         }
+        // Fail before spawning: a missing dart-define file surfaces deep inside
+        // the build otherwise, long after the useful context is gone.
+        const issues = target.config ? validate(target.config) : [];
+        if (issues.length > 0 && !p.force) {
+          throw new Error(
+            `"${target.name}" cannot run yet:\n` +
+              issues.map((i) => `  missing ${i.path} — ${i.hint}`).join('\n'),
+          );
+        }
+
         const session = await this.registry.run(target, { deviceId: p.deviceId });
         return session.snapshot();
       }

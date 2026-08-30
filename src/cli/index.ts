@@ -8,7 +8,7 @@ const HELP = `clilaunch — run and control dev sessions from any terminal
 
 Usage
   clilaunch list                     what can be run here
-  clilaunch run <target> [-d <dev>]  start a target
+  clilaunch run <target> [-d <dev>]  start a target (--force to skip pre-flight)
   clilaunch ps                       what is running
   clilaunch reload [target|--all]    hot reload (keeps state)
   clilaunch restart [target|--all]   hot restart
@@ -100,7 +100,12 @@ async function main() {
         }
         const width = Math.max(...targets.map((t: any) => t.name.length));
         for (const t of targets) {
-          console.log(`  ${bold(t.name.padEnd(width))}  ${t.kind.padEnd(13)} ${dim(t.source)}`);
+          const blocked = t.issues?.length > 0;
+          const label = blocked ? yellow(t.name.padEnd(width)) : bold(t.name.padEnd(width));
+          console.log(`  ${label}  ${t.kind.padEnd(13)} ${dim(t.source)}`);
+          for (const issue of t.issues ?? []) {
+            console.log(`      ${yellow('!')} missing ${issue.path} ${dim('— ' + issue.hint)}`);
+          }
         }
         break;
       }
@@ -120,7 +125,9 @@ async function main() {
       case 'run': {
         const target = positional.join(' ');
         if (!target) throw new Error('which target? try `clilaunch list`');
-        const snapshot = await client.call('run', { target, cwd, deviceId: flags.device });
+        const snapshot = await client.call('run', {
+          target, cwd, deviceId: flags.device, force: flags.force === true,
+        });
         console.log(`${green('▸')} ${bold(snapshot.name)} ${dim('→ ' + snapshot.id)}`);
         console.log(dim('  follow with: clilaunch logs ' + snapshot.id + ' -f'));
         break;
