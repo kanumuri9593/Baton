@@ -11,12 +11,18 @@
 <header>
   <div class="brand">%%MARK%%<div>Baton<small id="status">connecting…</small></div></div>
   <span class="spacer"></span>
+  <button id="historyBtn" title="Past runs, persisted on disk -- survives a daemon restart">History</button>
   <button class="icon" id="reloadAll" title="Hot reload every running session (r)">⟳</button>
   <button class="icon" id="restartAll" title="Hot restart every running session (R)">⟲</button>
   <button class="icon danger" id="stopAll" title="Stop every running session">■</button>
 </header>
 
 <nav id="tabs"></nav>
+
+<div class="history" id="historyPanel" hidden>
+  <div class="history-list" id="historyList"></div>
+  <div class="logs" id="historyLogs"></div>
+</div>
 
 <div class="launcher" id="addRow" hidden>
   <input type="text" id="addPath" placeholder="~/code/my-app — path to another project" spellcheck="false">

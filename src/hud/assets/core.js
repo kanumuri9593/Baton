@@ -2,6 +2,8 @@ const TOKEN = window.BATON_TOKEN;
 const $ = (id) => document.getElementById(id);
 const list = $('list'), picker = $('picker'), deviceSel = $('device');
 const tabs = $('tabs'), statusEl = $('status'), toastEl = $('toast');
+const historyBtn = $('historyBtn'), historyPanel = $('historyPanel');
+const historyList = $('historyList'), historyLogs = $('historyLogs');
 
 let socket, nextId = 1;
 let sessions = new Map();
@@ -137,6 +139,94 @@ function select(root) {
   renderTabs();
   renderPicker();
   render();
+  if (!historyPanel.hidden) loadHistory();
+}
+
+// --- history: past runs, persisted on disk ---------------------------------
+
+historyBtn.onclick = () => {
+  const opening = historyPanel.hidden;
+  historyPanel.hidden = !opening;
+  if (opening) loadHistory();
+};
+
+async function loadHistory() {
+  historyList.innerHTML = '<div class="empty">Loading…</div>';
+  historyLogs.innerHTML = '';
+  historyLogs.classList.remove('open');
+  try {
+    const runs = await call('logHistory', { root: selectedRoot ?? undefined });
+    renderHistoryList(runs);
+  } catch (err) {
+    historyList.innerHTML = '';
+    toast(err.message, true);
+  }
+}
+
+function renderHistoryList(runs) {
+  historyList.innerHTML = '';
+  if (!runs.length) {
+    historyList.innerHTML = '<div class="empty">No runs recorded yet.</div>';
+    return;
+  }
+  for (const run of runs) {
+    const row = document.createElement('div');
+    row.className = 'history-row';
+    const status = run.live ? 'live' : run.exitCode == null ? '?' : 'exit ' + run.exitCode;
+    const dotClass = run.live ? 'running' : run.exitCode ? 'failed' : 'stopped';
+    row.innerHTML =
+      '<span class="dot ' + dotClass + '"></span>' +
+      '<span class="name" title="' + esc(run.name) + '">' + esc(run.name) + '</span>' +
+      '<span class="tag">' + esc(status) + '</span>' +
+      '<span class="meta">' + relativeTime(run.startedAt) + '  ·  ' + humanSize(run.sizeBytes) + '</span>';
+    row.onclick = () => openHistoryRun(run);
+    historyList.appendChild(row);
+  }
+}
+
+async function openHistoryRun(run) {
+  historyLogs.classList.add('open');
+  historyLogs.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const lines = await call('logRead', { run: run.runId, tail: 300 });
+    historyLogs.innerHTML = '';
+    for (const line of lines) {
+      const el = document.createElement('div');
+      if (line.error) el.className = 'err';
+      el.textContent = line.text;
+      historyLogs.appendChild(el);
+    }
+    historyLogs.scrollTop = historyLogs.scrollHeight;
+  } catch (err) {
+    historyLogs.innerHTML = '';
+    toast(err.message, true);
+  }
+}
+
+/** "2h ago" -- coarse on purpose, exact timestamps aren't the point of a run list. */
+function relativeTime(ms) {
+  const diff = Math.max(0, Date.now() - ms);
+  const s = Math.round(diff / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return s + 's ago';
+  const m = Math.round(s / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.round(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+}
+
+/** "1.2 MB" -- binary units, matching the CLI's `baton history`. */
+function humanSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024, unit = units[0];
+  for (const u of units) {
+    unit = u;
+    if (value < 1024) break;
+    value /= 1024;
+  }
+  return value.toFixed(1) + ' ' + unit;
 }
 
 $('addGo').onclick = async () => {

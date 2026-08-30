@@ -105,9 +105,11 @@ server.tool(
 
 server.tool(
   'read_logs',
-  'Read recent output from a session, newest last. Use filter to grep for an error.',
+  'Read recent output from a session, newest last. Use filter to grep for an error. ' +
+    'Works for a currently running session id, and for a past run (its own session id, or the ' +
+    'runId from list_run_history) even after it has stopped or the daemon has restarted.',
   {
-    session: z.string(),
+    session: z.string().describe('A live session id, or a past run\'s session id / runId.'),
     tail: z.number().optional().describe('How many lines (default 200).'),
     filter: z.string().optional().describe('Case-insensitive regular expression.'),
   },
@@ -115,6 +117,29 @@ server.tool(
     guarded(async () => {
       const lines = await (await daemon()).call('logs', { session, tail, filter });
       return lines.map((l) => (l.error ? `[err] ${l.text}` : l.text)).join('\n') || '(no matching output)';
+    }),
+);
+
+server.tool(
+  'list_run_history',
+  'List past and current runs persisted on disk -- survives daemon restarts. Each line is ' +
+    'runId, name, status (live / exit N / ?), how long ago it started, and its log size. ' +
+    'Pass a runId to read_logs to see its output.',
+  {
+    cwd: z.string().optional().describe('Project directory; limits the list to that project.'),
+    limit: z.number().optional().describe('Maximum runs to return (default 50).'),
+  },
+  async ({ cwd, limit }) =>
+    guarded(async () => {
+      const runs = await (await daemon()).call('logHistory', { root: cwd, limit });
+      if (!runs.length) return '(no runs recorded yet)';
+      return runs
+        .map((r) => {
+          const status = r.live ? 'live' : r.exitCode === undefined || r.exitCode === null ? '?' : `exit ${r.exitCode}`;
+          const ago = Math.round((Date.now() - r.startedAt) / 1000);
+          return `${r.runId}  ${r.name}  ${status}  ${ago}s ago  ${r.sizeBytes}B`;
+        })
+        .join('\n');
     }),
 );
 

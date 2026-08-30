@@ -103,6 +103,19 @@
   }
   .logs.open { display: block; }
   .logs .err { color: var(--err); }
+  /* history: past runs, persisted on disk */
+  .history { padding: 7px 9px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .history-list { display: grid; gap: 3px; max-height: 160px; overflow: auto; }
+  .history-row {
+    display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px;
+    cursor: pointer; font-size: 12px; color: var(--text);
+  }
+  .history-row:hover { background: var(--panel-2); }
+  .history-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-row .meta { color: var(--muted); font-size: 11px; margin-left: auto; white-space: nowrap; }
+  .history .logs { margin-top: 6px; }
+  .history .empty { padding: 8px 4px; text-align: left; }
+
   .toast {
     position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px;
     background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;

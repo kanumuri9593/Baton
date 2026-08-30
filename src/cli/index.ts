@@ -14,7 +14,8 @@ Usage
   baton reload [target|--all]    hot reload (keeps state)
   baton restart [target|--all]   hot restart
   baton stop [target|--all]      stop
-  baton logs <target> [-n 200] [-f]
+  baton logs <target> [-n 200] [-f]   -- also works after the run has ended
+  baton history [-n 20]          past runs, on disk, across daemon restarts
   baton devices [--all]          connected devices; --all adds bootable ones
   baton boot <device>            start a simulator or emulator
   baton projects                 projects the HUD knows about
@@ -41,6 +42,41 @@ const yellow = (t: string) => c('33', t);
 const STATUS_COLOR: Record<string, (t: string) => string> = {
   running: green, starting: yellow, failed: red, stopped: dim,
 };
+
+/** "2h ago", "just now" -- coarse enough for a run list, exact timestamps are one click away. */
+function relativeTime(ms: number): string {
+  const diff = Math.max(0, Date.now() - ms);
+  const s = Math.round(diff / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return `${s}s ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  return `${d}d ago`;
+}
+
+/** "1.2 MB" -- binary units, one decimal past kilobytes. */
+function humanSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = units[0];
+  for (const u of units) {
+    unit = u;
+    if (value < 1024) break;
+    value /= 1024;
+  }
+  return `${value.toFixed(1)} ${unit}`;
+}
+
+/** live / exit 0 / exit 1 / ? -- matches how `ps` shows status, at a glance. */
+function runStatus(run: { live: boolean; exitCode?: number | null }): string {
+  if (run.live) return 'live';
+  if (run.exitCode === undefined || run.exitCode === null) return '?';
+  return `exit ${run.exitCode}`;
+}
 
 function parseArgs(argv: string[]) {
   const flags: Record<string, string | boolean> = {};
@@ -182,6 +218,26 @@ async function main() {
             });
           });
         }
+        break;
+      }
+
+      case 'history': {
+        const limit = Number(flags.tail ?? 20);
+        const runs = await client.call('logHistory', { limit });
+        if (!runs.length) { console.log('no runs recorded yet'); break; }
+        const width = Math.max(...runs.map((r: any) => r.name.length));
+        for (const r of runs) {
+          const paint = r.live ? green : r.exitCode ? red : dim;
+          const status = runStatus(r);
+          console.log(
+            `  ${dim(relativeTime(r.startedAt).padEnd(9))} ` +
+              `${bold(r.name.padEnd(width))}  ` +
+              `${paint(status.padEnd(8))} ` +
+              `${dim(humanSize(r.sizeBytes).padStart(8))}  ` +
+              dim(r.runId),
+          );
+        }
+        console.log(dim('\n  baton logs <run> to read one; works after the run has ended too'));
         break;
       }
 
