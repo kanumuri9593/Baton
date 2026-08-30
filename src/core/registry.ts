@@ -76,8 +76,8 @@ export class SessionRegistry extends EventEmitter {
 
     this.#sessions.set(session.id, session);
     session.on('change', () => this.emit('change', session.snapshot()));
-    session.on('log', (text: string, error: boolean) =>
-      this.emit('log', session.id, text, error),
+    session.on('log', (text: string, error: boolean, at?: number) =>
+      this.emit('log', session.id, text, error, at),
     );
     session.on('exit', () => this.emit('change', session.snapshot()));
 

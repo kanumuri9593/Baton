@@ -66,8 +66,14 @@ export abstract class BaseSession extends EventEmitter implements Session {
     for (const line of String(text).split('\n')) {
       const trimmed = line.trimEnd();
       if (trimmed === '') continue;
-      this.#logs.push({ at: Date.now(), text: trimmed, error });
-      this.emit('log', trimmed, error);
+      const at = Date.now();
+      this.#logs.push({ at, text: trimmed, error });
+      // The timestamp is passed as a 4th argument (rather than the whole
+      // LogLine) so every existing listener -- which only destructures
+      // (text, error) -- keeps working unchanged; see SessionRegistry and
+      // LaunchDaemon's re-emits, and LogSink, which is the one listener that
+      // actually wants it.
+      this.emit('log', trimmed, error, at);
     }
     if (this.#logs.length > LOG_RING_SIZE) {
       this.#logs.splice(0, this.#logs.length - LOG_RING_SIZE);
