@@ -33,7 +33,7 @@ const asStringArray = (v: unknown): string[] =>
  * Read a launch.json (VS Code's JSONC dialect: comments and trailing commas allowed)
  * and normalise its configurations.
  *
- * The file is treated as read-only input. CLI-Launch never writes it back, so the
+ * The file is treated as read-only input. Baton never writes it back, so the
  * same file keeps working in VS Code / Cursor.
  */
 export function loadConfigs(path: string, cwd: string): LaunchConfig[] {

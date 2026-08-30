@@ -1,6 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { stateDir } from '../core/paths.ts';
 
@@ -23,22 +23,23 @@ function sourcePath(): string {
 }
 
 function appPath(): string {
-  return join(stateDir(), 'CLILaunchHUD.app');
+  return join(stateDir(), 'BatonHUD.app');
 }
 
 const INFO_PLIST = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>CLI-Launch HUD</string>
-  <key>CFBundleDisplayName</key><string>CLI-Launch HUD</string>
-  <key>CFBundleIdentifier</key><string>dev.clilaunch.hud</string>
-  <key>CFBundleExecutable</key><string>CLILaunchHUD</string>
+  <key>CFBundleName</key><string>Baton HUD</string>
+  <key>CFBundleDisplayName</key><string>Baton HUD</string>
+  <key>CFBundleIdentifier</key><string>dev.baton.hud</string>
+  <key>CFBundleExecutable</key><string>BatonHUD</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <!-- Menu-bar only: no Dock icon, and it never activates over your terminal. -->
   <key>LSUIElement</key><true/>
+  <key>CFBundleIconFile</key><string>baton</string>
   <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
   <key>NSAppTransportSecurity</key>
   <dict><key>NSAllowsLocalNetworking</key><true/></dict>
@@ -61,7 +62,7 @@ export function hasSwift(): boolean {
  *
  * Keyed on a hash of the Swift source, so editing the source rebuilds and
  * nothing else does -- compiling takes a few seconds and should not happen on
- * every `clilaunch hud`.
+ * every `baton hud`.
  */
 export function buildPanelApp(onBuild?: () => void): string {
   const source = sourcePath();
@@ -69,12 +70,12 @@ export function buildPanelApp(onBuild?: () => void): string {
   if (!hasSwift()) {
     throw new Error(
       'the floating panel needs a Swift toolchain (Xcode or the Command Line Tools).\n' +
-        'Install it with `xcode-select --install`, or use `clilaunch hud` for the browser HUD.',
+        'Install it with `xcode-select --install`, or use `baton hud` for the browser HUD.',
     );
   }
 
   const app = appPath();
-  const binary = join(app, 'Contents', 'MacOS', 'CLILaunchHUD');
+  const binary = join(app, 'Contents', 'MacOS', 'BatonHUD');
   const stamp = join(app, 'Contents', 'Resources', 'source.sha');
   const hash = createHash('sha256').update(readFileSync(source)).digest('hex');
 
@@ -85,6 +86,12 @@ export function buildPanelApp(onBuild?: () => void): string {
   mkdirSync(dirname(binary), { recursive: true });
   mkdirSync(dirname(stamp), { recursive: true });
   writeFileSync(join(app, 'Contents', 'Info.plist'), INFO_PLIST);
+
+  // The icon is generated from assets/baton.svg by `npm run icons`, so it is
+  // often absent. The panel lives in the menu bar and has no Dock tile, so a
+  // missing icon costs nothing but a generic look in Finder.
+  const icns = join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
+  if (existsSync(icns)) copyFileSync(icns, join(dirname(stamp), 'baton.icns'));
   execFileSync('xcrun', ['swiftc', '-O', '-o', binary, source], { stdio: 'inherit' });
   writeFileSync(stamp, hash);
   return app;

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { detectTargets, detectPackageManager } from '../src/config/detect.ts';
 
 function scratch(): string {
-  return mkdtempSync(join(tmpdir(), 'clilaunch-detect-'));
+  return mkdtempSync(join(tmpdir(), 'baton-detect-'));
 }
 
 test('detects Next.js dev script as a web-dev target', () => {

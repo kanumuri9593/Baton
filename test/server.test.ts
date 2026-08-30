@@ -5,8 +5,8 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// Keep the daemon's state out of the real ~/.clilaunch.
-process.env.CLILAUNCH_HOME = mkdtempSync(join(tmpdir(), 'clilaunch-server-'));
+// Keep the daemon's state out of the real ~/.baton.
+process.env.BATON_HOME = mkdtempSync(join(tmpdir(), 'baton-server-'));
 
 const { LaunchDaemon, matchTarget } = await import('../src/daemon/server.ts');
 
@@ -91,7 +91,7 @@ test('serves the HUD and a health endpoint', async () => {
   assert.equal(health.ok, true);
 
   const hud = await (await fetch(`http://127.0.0.1:${port}/`)).text();
-  assert.match(hud, /<title>CLI-Launch<\/title>/);
+  assert.match(hud, /<title>Baton<\/title>/);
   // the HUD must be self-contained: no external requests are permitted
   assert.ok(!/src="https?:\/\//.test(hud), 'HUD must not load external scripts');
 });
@@ -120,7 +120,7 @@ test('targets discovers the real McLane360 project', async () => {
 test('running an unknown target explains how to find the real ones', async () => {
   await assert.rejects(
     daemon.handle({ method: 'run', params: { target: 'no-such-target-xyz', cwd: process.cwd() } }),
-    /clilaunch list/,
+    /baton list/,
   );
 });
 
@@ -187,7 +187,7 @@ test('adding a directory that is not a project is refused, with the path', async
 });
 
 test('a project with no runnable targets yet is still worth tracking', async () => {
-  // CLI-Launch itself: a real project, but no dev script to run.
+  // Baton itself: a real project, but no dev script to run.
   const added: any = await daemon.handle({
     method: 'addProject', params: { path: process.cwd() },
   });

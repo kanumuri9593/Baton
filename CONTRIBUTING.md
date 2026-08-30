@@ -14,7 +14,7 @@ Node 24+ is required — TypeScript runs natively, so there is no build step. On
 
 ## Adding a framework adapter
 
-This is the most useful contribution. An adapter teaches CLI-Launch to control one kind of dev process.
+This is the most useful contribution. An adapter teaches Baton to control one kind of dev process.
 
 1. Extend `BaseSession` (or `ProcessSession` if it's process-shaped) in `src/adapters/`.
 2. Declare only the capabilities you genuinely implement. **Do not claim `hotReload` unless state is actually preserved** — an honest `UnsupportedCapability` is far more useful than a silent no-op, both to the HUD and to an agent.

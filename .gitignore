@@ -1,3 +1,7 @@
 node_modules/
 *.log
 .DS_Store
+
+# Generated from assets/baton.svg by `npm run icons` -- never edit by hand.
+assets/png/
+assets/baton.icns

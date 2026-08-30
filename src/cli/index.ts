@@ -5,29 +5,29 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 
-const HELP = `clilaunch — run and control dev sessions from any terminal
+const HELP = `baton — run and control dev sessions from any terminal
 
 Usage
-  clilaunch list                     what can be run here
-  clilaunch run <target> [-d <dev>]  start a target (--force to skip pre-flight)
-  clilaunch ps                       what is running
-  clilaunch reload [target|--all]    hot reload (keeps state)
-  clilaunch restart [target|--all]   hot restart
-  clilaunch stop [target|--all]      stop
-  clilaunch logs <target> [-n 200] [-f]
-  clilaunch devices [--all]          connected devices; --all adds bootable ones
-  clilaunch boot <device>            start a simulator or emulator
-  clilaunch projects                 projects the HUD knows about
-  clilaunch add <path>               track another project
-  clilaunch hud [--browser|--tab]    open the floating control panel
-  clilaunch daemon start|stop|status
+  baton list                     what can be run here
+  baton run <target> [-d <dev>]  start a target (--force to skip pre-flight)
+  baton ps                       what is running
+  baton reload [target|--all]    hot reload (keeps state)
+  baton restart [target|--all]   hot restart
+  baton stop [target|--all]      stop
+  baton logs <target> [-n 200] [-f]
+  baton devices [--all]          connected devices; --all adds bootable ones
+  baton boot <device>            start a simulator or emulator
+  baton projects                 projects the HUD knows about
+  baton add <path>               track another project
+  baton hud [--browser|--tab]    open the floating control panel
+  baton daemon start|stop|status
 
 Examples
-  clilaunch run "iOS Simulator (DEV / dev flavor)"
-  clilaunch run dev                  # matches "npm run dev"
-  clilaunch reload --all
-  clilaunch boot "iPhone 17 Pro Max" # boot it, then run on it
-  clilaunch add ~/code/storefront    # watch three projects in one HUD
+  baton run "iOS Simulator (DEV / dev flavor)"
+  baton run dev                  # matches "npm run dev"
+  baton reload --all
+  baton boot "iPhone 17 Pro Max" # boot it, then run on it
+  baton add ~/code/storefront    # watch three projects in one HUD
 `;
 
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -130,12 +130,12 @@ async function main() {
 
       case 'run': {
         const target = positional.join(' ');
-        if (!target) throw new Error('which target? try `clilaunch list`');
+        if (!target) throw new Error('which target? try `baton list`');
         const snapshot = await client.call('run', {
           target, cwd, deviceId: flags.device, force: flags.force === true,
         });
         console.log(`${green('▸')} ${bold(snapshot.name)} ${dim('→ ' + snapshot.id)}`);
-        console.log(dim('  follow with: clilaunch logs ' + snapshot.id + ' -f'));
+        console.log(dim('  follow with: baton logs ' + snapshot.id + ' -f'));
         break;
       }
 
@@ -143,7 +143,7 @@ async function main() {
       case 'restart': {
         const params = flags.all
           ? { all: true }
-          : { session: positional.join(' ') || required('which session? try `clilaunch ps`') };
+          : { session: positional.join(' ') || required('which session? try `baton ps`') };
         const results = await client.call(command, params);
         if (!results.length) { console.log('nothing running'); break; }
         for (const r of results) {
@@ -158,7 +158,7 @@ async function main() {
       case 'stop': {
         const params = flags.all
           ? { all: true }
-          : { session: positional.join(' ') || required('which session? try `clilaunch ps`') };
+          : { session: positional.join(' ') || required('which session? try `baton ps`') };
         const stopped = await client.call('stop', params);
         for (const s of stopped) console.log(`  ${dim('■')} ${s.id}`);
         break;
@@ -166,7 +166,7 @@ async function main() {
 
       case 'logs': {
         const session = positional.join(' ');
-        if (!session) throw new Error('which session? try `clilaunch ps`');
+        if (!session) throw new Error('which session? try `baton ps`');
         const lines = await client.call('logs', {
           session, tail: Number(flags.tail ?? 200), filter: flags.filter,
         });
@@ -207,13 +207,13 @@ async function main() {
           const where = b.runtime ? dim('  ' + b.runtime) : '';
           console.log(`  ${dim('○')} ${b.name.padEnd(28)} ${dim(b.id)}  ${b.platformType}${where}`);
         }
-        console.log(dim('\n  clilaunch boot "<name>"'));
+        console.log(dim('\n  baton boot "<name>"'));
         break;
       }
 
       case 'boot': {
         const query = positional.join(' ');
-        if (!query) throw new Error('which device? try `clilaunch devices --all`');
+        if (!query) throw new Error('which device? try `baton devices --all`');
         const bootables = await client.call('bootables', { cwd });
         const match = pickDevice(bootables, query);
         if (!match) {
@@ -226,7 +226,7 @@ async function main() {
         console.log(dim(`booting ${match.name}…`));
         const device = await client.call('boot', { id: match.id, cwd });
         console.log(`${green('●')} ${bold(device.name)} ${dim(device.id)}`);
-        console.log(dim(`  run on it with: clilaunch run <target> -d ${device.id}`));
+        console.log(dim(`  run on it with: baton run <target> -d ${device.id}`));
         break;
       }
 
@@ -239,7 +239,7 @@ async function main() {
             : dim(project.targets.length + ' targets');
           console.log(`  ${mark} ${bold(project.name.padEnd(22))} ${detail}  ${dim(project.root)}`);
         }
-        console.log(dim('\n  clilaunch add <path> to track another'));
+        console.log(dim('\n  baton add <path> to track another'));
         break;
       }
 

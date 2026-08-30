@@ -1,10 +1,33 @@
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+
+/**
+ * The brand assets, read once from `assets/`.
+ *
+ * Read rather than duplicated, so the page, the README and the app icon can
+ * never drift apart. A missing file degrades to no icon instead of a 500.
+ */
+function asset(name: string): string {
+  try {
+    return readFileSync(join(dirname(import.meta.dirname), '..', 'assets', name), 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
+
+const TILE = asset('baton.svg');
+const MARK = asset('baton-mark.svg');
+const FAVICON = TILE
+  ? `data:image/svg+xml;base64,${Buffer.from(TILE).toString('base64')}`
+  : '';
+
 /**
  * The floating control surface, served by the daemon.
  *
  * Deliberately a single self-contained page with no build step and no external
  * requests: it has to work identically on macOS, Linux and Windows, and open
  * instantly in whatever browser is around. Open it in a small always-on-top
- * window (`clilaunch hud --panel`) and it behaves like an IDE's debug toolbar.
+ * window (`baton hud --panel`) and it behaves like an IDE's debug toolbar.
  */
 export function renderHud(token: string): string {
   return `<!doctype html>
@@ -12,7 +35,8 @@ export function renderHud(token: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CLI-Launch</title>
+<title>Baton</title>
+<link rel="icon" href="${FAVICON}">
 <style>
   :root {
     --bg: #0f1115; --panel: #171a21; --panel-2: #1f232c; --line: #2a2f3a;
@@ -31,14 +55,15 @@ export function renderHud(token: string): string {
     font: 13px/1.45 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased; overflow-x: hidden;
   }
-  /* Reserved for the host window's drag strip; see hud/mac/CLILaunchHUD.swift. */
+  /* Reserved for the host window's drag strip; see hud/mac/BatonHUD.swift. */
   body.panel { padding-top: var(--drag-strip, 0px); }
   header {
     display: flex; align-items: center; gap: 6px; padding: 7px 9px;
     background: var(--panel); border-bottom: 1px solid var(--line);
     position: sticky; top: 0; z-index: 5;
   }
-  .brand { font-weight: 650; letter-spacing: -0.01em; }
+  .brand { display: flex; align-items: center; gap: 7px; font-weight: 650; letter-spacing: -0.01em; }
+  .brand svg { width: 22px; height: 22px; flex: none; color: var(--text); }
   .brand small { display: block; color: var(--muted); font-weight: 400; font-size: 10px; }
   button {
     background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
@@ -131,7 +156,7 @@ export function renderHud(token: string): string {
 </head>
 <body>
 <header>
-  <div class="brand">CLI-Launch<small id="status">connecting…</small></div>
+  <div class="brand">${MARK}<div>Baton<small id="status">connecting…</small></div></div>
   <span class="spacer"></span>
   <button class="icon" id="reloadAll" title="Hot reload every running session (r)">⟳</button>
   <button class="icon" id="restartAll" title="Hot restart every running session (R)">⟲</button>
@@ -506,7 +531,7 @@ function render() {
     const where = selectedRoot ? ' in ' + basename(selectedRoot) : '';
     list.innerHTML = '<div class="empty"><h2>Nothing running' + where + '</h2>' +
       'Pick a target above and press Run — or start one from a terminal with ' +
-      '<code>clilaunch run &lt;name&gt;</code>.</div>';
+      '<code>baton run &lt;name&gt;</code>.</div>';
     return;
   }
 

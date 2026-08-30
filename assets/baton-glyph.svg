@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Baton">
+  <title>Baton</title>
+  <!-- The baton alone. Below about 20px the lanes turn to mush, so the
+       menu bar, the favicon and any tiny placement use this instead. -->
+  <path d="M16.86 52.8 L54 10 L12.14 48.2 Z" fill="currentColor"/>
+  <circle cx="14.5" cy="50.5" r="4.6" fill="currentColor"/>
+</svg>

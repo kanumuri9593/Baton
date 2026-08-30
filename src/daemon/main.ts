@@ -9,9 +9,9 @@ const pkg = JSON.parse(
 );
 
 const daemon = new LaunchDaemon(pkg.version);
-const handshake = await daemon.listen(Number(process.env.CLILAUNCH_PORT ?? 0));
+const handshake = await daemon.listen(Number(process.env.BATON_PORT ?? 0));
 
-console.log(`clilaunch daemon ${pkg.version} listening on http://127.0.0.1:${handshake.port}`);
+console.log(`baton daemon ${pkg.version} listening on http://127.0.0.1:${handshake.port}`);
 
 const shutdown = async () => {
   await daemon.close();

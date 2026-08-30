@@ -3,13 +3,13 @@ import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 
 /**
- * Where CLI-Launch keeps its runtime state.
+ * Where Baton keeps its runtime state.
  *
- * `~/.clilaunch` resolves correctly on Windows, macOS and Linux; the override
+ * `~/.baton` resolves correctly on Windows, macOS and Linux; the override
  * exists so tests and sandboxes never touch a real user's directory.
  */
 export function stateDir(): string {
-  const dir = process.env.CLILAUNCH_HOME ?? join(homedir(), '.clilaunch');
+  const dir = process.env.BATON_HOME ?? join(homedir(), '.baton');
   mkdirSync(dir, { recursive: true });
   return dir;
 }

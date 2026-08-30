@@ -13,7 +13,7 @@ const DAEMON_ENTRY = join(HERE, '..', 'daemon', 'main.ts');
  * Thin client for the daemon, used by both the CLI and the MCP server.
  *
  * Starts the daemon on demand, so no one has to remember to launch it first --
- * `clilaunch run` from a cold machine just works.
+ * `baton run` from a cold machine just works.
  */
 export class DaemonClient {
   #socket?: WebSocket;
@@ -25,7 +25,7 @@ export class DaemonClient {
     let handshake = readHandshake();
     if (handshake && !(await isAlive(handshake))) handshake = undefined;
     if (!handshake && autoStart) handshake = await startDaemon();
-    if (!handshake) throw new Error('no daemon running (start one with `clilaunch daemon start`)');
+    if (!handshake) throw new Error('no daemon running (start one with `baton daemon start`)');
 
     await new Promise<void>((resolve, reject) => {
       const socket = new WebSocket(`ws://127.0.0.1:${handshake.port}?token=${handshake.token}`);

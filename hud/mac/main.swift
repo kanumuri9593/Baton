@@ -1,4 +1,4 @@
-// CLI-Launch HUD — a menu-bar item and a floating panel over the local daemon.
+// Baton HUD — a menu-bar item and a floating panel over the local daemon.
 //
 // The panel is an NSPanel at `.floating` level with `.canJoinAllSpaces`, so it
 // stays above a full-screen terminal on every desktop, and `becomesKeyOnlyIfNeeded`
@@ -18,8 +18,8 @@ struct Handshake: Decodable {
 
 /// Where the daemon leaves its port and token.
 func handshakeURL() -> URL {
-    let base = ProcessInfo.processInfo.environment["CLILAUNCH_HOME"]
-        ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".clilaunch").path
+    let base = ProcessInfo.processInfo.environment["BATON_HOME"]
+        ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".baton").path
     return URL(fileURLWithPath: base).appendingPathComponent("daemon.json")
 }
 
@@ -36,9 +36,10 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
+            button.image = HUDController.batonGlyph()
+            button.imagePosition = .imageLeading
             button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
-            button.title = "◌"
-            button.toolTip = "CLI-Launch"
+            button.toolTip = "Baton"
             button.target = self
             button.action = #selector(statusClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -58,6 +59,35 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
         return false
     }
 
+    /// The baton, drawn rather than shipped as a bitmap.
+    ///
+    /// Same geometry as `assets/baton-glyph.svg`, in a 64pt box flipped to
+    /// AppKit's bottom-left origin. A template image lets the system tint it,
+    /// so it is correct in a light menu bar, a dark one, and while highlighted.
+    static func batonGlyph(size: CGFloat = 17) -> NSImage {
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+            let scale = size / 64
+            let point = { (x: CGFloat, y: CGFloat) in
+                NSPoint(x: x * scale, y: (64 - y) * scale)
+            }
+
+            let shaft = NSBezierPath()
+            shaft.move(to: point(16.86, 52.8))
+            shaft.line(to: point(54, 10))
+            shaft.line(to: point(12.14, 48.2))
+            shaft.close()
+            shaft.fill()
+
+            let grip = point(14.5, 50.5)
+            let radius = 4.6 * scale
+            NSBezierPath(ovalIn: NSRect(x: grip.x - radius, y: grip.y - radius,
+                                        width: radius * 2, height: radius * 2)).fill()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
     // MARK: panel
 
     private func buildPanel() {
@@ -73,7 +103,7 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.title = "CLI-Launch"
+        panel.title = "Baton"
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.isFloatingPanel = true
@@ -86,7 +116,7 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.contentView = web
-        panel.setFrameAutosaveName("CLILaunchHUD")
+        panel.setFrameAutosaveName("BatonHUD")
         if panel.frame.origin == .zero {
             panel.center()
         }
@@ -117,7 +147,7 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
             .flatMap { try? JSONDecoder().decode(Handshake.self, from: $0) }
 
         guard let current = handshake else {
-            setTitle("◌", color: .disabledControlTextColor, tooltip: "CLI-Launch — daemon not running")
+            setTitle("", color: .disabledControlTextColor, tooltip: "Baton — daemon not running")
             if loadedPort != 0 { loadOffline() }
             return
         }
@@ -140,7 +170,7 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
         web.loadHTMLString("""
         <body style="font:13px -apple-system;color:#8b93a7;background:#0f1115;\
         display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">
-        <div>No daemon running.<br><br>Start one with<br><code>clilaunch daemon start</code></div>
+        <div>No daemon running.<br><br>Start one with<br><code>baton daemon start</code></div>
         </body>
         """, baseURL: nil)
     }
@@ -156,15 +186,17 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
             : starting > 0 ? .systemOrange
             : running > 0 ? .systemGreen
             : .secondaryLabelColor
-        setTitle(live > 0 ? "●\(live)" : "○", color: color,
-                 tooltip: "CLI-Launch — \(running) running, \(starting) starting, \(failed) failed")
+        setTitle(live > 0 ? " \(live)" : "", color: color,
+                 tooltip: "Baton — \(running) running, \(starting) starting, \(failed) failed")
     }
 
     private func setTitle(_ text: String, color: NSColor, tooltip: String) {
+        // The glyph is a template image the system tints; only the count is
+        // coloured, which is the part that actually carries information.
         statusItem.button?.attributedTitle = NSAttributedString(
             string: text,
             attributes: [.foregroundColor: color,
-                         .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)]
+                         .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)]
         )
         statusItem.button?.toolTip = tooltip
     }

@@ -35,7 +35,7 @@ const registry = new SessionRegistry();
 
 /** A real directory, because a child cannot be spawned in one that is absent. */
 function tmpProject(name: string): string {
-  const dir = join(tmpdir(), 'clilaunch-ids', name);
+  const dir = join(tmpdir(), 'baton-ids', name);
   mkdirSync(dir, { recursive: true });
   return dir;
 }

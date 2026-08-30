@@ -19,7 +19,7 @@ const run = promisify(execFile);
  * clicking anything. Every tool returns structured text so failures (a Dart
  * compile error, a dead device) are legible rather than scraped.
  */
-const server = new McpServer({ name: 'clilaunch', version: '0.1.0' });
+const server = new McpServer({ name: 'baton', version: '0.1.0' });
 
 let client: DaemonClient | undefined;
 async function daemon(): Promise<DaemonClient> {
@@ -148,7 +148,7 @@ server.tool(
       if (!found) return fail(`no session matching "${session}"`);
       if (!found.target) return fail(`session ${found.id} has no capturable device`);
 
-      const path = join(tmpdir(), `clilaunch-${found.id.replace(/[^a-z0-9]/gi, '_')}.png`);
+      const path = join(tmpdir(), `baton-${found.id.replace(/[^a-z0-9]/gi, '_')}.png`);
 
       if (/^[0-9A-F-]{36}$/i.test(found.target)) {
         await run('xcrun', ['simctl', 'io', found.target, 'screenshot', path]);

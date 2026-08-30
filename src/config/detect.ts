@@ -45,7 +45,7 @@ const WEB_FRAMEWORK_DEPS = [
 ];
 
 /**
- * Work out what can be run in a project, without requiring any CLI-Launch config.
+ * Work out what can be run in a project, without requiring any Baton config.
  *
  * Explicit launch.json entries win, because someone wrote them deliberately.
  * Everything else is inferred so a fresh clone is useful immediately.

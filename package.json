@@ -1,21 +1,22 @@
 {
-  "name": "clilaunch",
+  "name": "baton-run",
   "version": "0.1.0",
-  "description": "Run and hot-reload your dev sessions from any terminal - Flutter, Next.js, Vite, React Native - with a floating control HUD and MCP access for coding agents.",
+  "description": "Baton - conduct your dev sessions from any terminal. Flutter, Next.js, Vite, React Native: run, hot-reload, boot simulators, watch several projects at once, with a floating HUD and MCP access for coding agents.",
   "type": "module",
   "engines": {
     "node": ">=24"
   },
   "bin": {
-    "clilaunch": "./src/cli/index.ts",
-    "clilaunch-daemon": "./src/daemon/main.ts",
-    "clilaunch-mcp": "./src/mcp/index.ts"
+    "baton": "./src/cli/index.ts",
+    "baton-daemon": "./src/daemon/main.ts",
+    "baton-mcp": "./src/mcp/index.ts"
   },
   "scripts": {
     "test": "node --test --test-timeout=20000 \"test/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "daemon": "node src/daemon/main.ts",
-    "hud": "node src/cli/index.ts hud"
+    "hud": "node src/cli/index.ts hud",
+    "icons": "node scripts/render-icons.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -48,15 +49,16 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR_GITHUB_USERNAME/cli-launch.git"
+    "url": "git+https://github.com/YOUR_GITHUB_USERNAME/baton.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/cli-launch/issues"
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/baton/issues"
   },
-  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/cli-launch#readme",
+  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/baton#readme",
   "files": [
     "src",
     "hud",
+    "assets",
     "README.md",
     "LICENSE"
   ]

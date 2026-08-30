@@ -247,7 +247,7 @@ export class LaunchDaemon {
         const target = matchTarget(targets, p.target);
         if (!target) {
           throw new Error(
-            `no target matching "${p.target}" in ${root}. Run \`clilaunch list\` to see what is available.`,
+            `no target matching "${p.target}" in ${root}. Run \`baton list\` to see what is available.`,
           );
         }
         // Fail before spawning: a missing dart-define file surfaces deep inside

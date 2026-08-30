@@ -7,7 +7,7 @@ import { resolveFlutter } from '../src/config/flutter.ts';
 
 /** Build a throwaway project root; returns its path. */
 function project(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'clilaunch-'));
+  const dir = mkdtempSync(join(tmpdir(), 'baton-'));
   return dir;
 }
 
