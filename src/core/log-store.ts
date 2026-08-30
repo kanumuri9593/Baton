@@ -188,6 +188,18 @@ export class LogHistory {
     }
   }
 
+  /**
+   * The directory this store reads from and writes to.
+   *
+   * A writer (`LogSink`) must derive its own path from *this*, not from
+   * `sessionLogDir()` directly -- otherwise an injected `LogHistory` pointed
+   * at a different directory (the whole point of it being injectable) would
+   * write to one place and read from another, silently.
+   */
+  get dir(): string {
+    return this.#dir;
+  }
+
   /** Every run, newest first, tolerating unreadable or corrupt files by skipping them. */
   list(root?: string): RunInfo[] {
     const infos: RunInfo[] = [];
@@ -349,7 +361,20 @@ function readFirstLine(path: string, maxBytes: number): string | undefined {
   }
 }
 
-/** Look at the last `TAIL_SCAN_BYTES` of the file for an exit record. */
+/**
+ * Look at the last `TAIL_SCAN_BYTES` of the file for an exit record.
+ *
+ * A hot-restarted session can leave *several* header/exit pairs in one file
+ * (LogSink opens a fresh writer per restart segment, all appended to the
+ * same path). Scanning backward from the end of the file and returning on
+ * the first match is deliberate, not incidental: it is exactly "the last
+ * exit record in the file", i.e. the most recent one, never an earlier
+ * (stale) one from a prior segment -- even when more than one falls inside
+ * the scanned window. The true final exit record, if the run has one, is
+ * always the very last complete line of the file (nothing is ever appended
+ * after a writer's own `close()`), so it is always within this window
+ * regardless of how much log output precedes it.
+ */
 function scanExit(path: string, size: number): { endedAt?: number; exitCode?: number | null } {
   let fd: number;
   try {

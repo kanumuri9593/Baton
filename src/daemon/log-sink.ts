@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import type { SessionRegistry } from '../core/registry.ts';
 import { LogHistory, RunLogWriter, safe } from '../core/log-store.ts';
-import { sessionLogDir } from '../core/paths.ts';
 import type { SessionSnapshot } from '../core/types.ts';
 
 /**
@@ -22,21 +21,37 @@ import type { SessionSnapshot } from '../core/types.ts';
  * `appendLog`/`registry.ts`); older/other emitters that only send three
  * arguments still work, falling back to `Date.now()` at the sink.
  *
- * One wrinkle: a session's own `setStatus('stopped'|'failed')` already fires
- * `change` directly, and the registry *also* re-emits `change` a second time
- * off the session's `exit` event a moment later -- so every ordinary exit
- * delivers two `change` snapshots with the same terminal status, not one.
- * Naively reopening a writer whenever none is on hand would turn that into a
- * second header/exit pair appended to the same file on every single run.
- * `#closedRuns` remembers which specific run (by runId, not by session id --
- * a project's target keeps the same session id across separate runs) has
- * already been closed, so the second `change` in that pair is a no-op.
+ * Two wrinkles, both real (found empirically, not from reading the brief):
+ *
+ * 1. A session's own `setStatus('stopped'|'failed')` already fires `change`
+ *    directly, and the registry *also* re-emits `change` a second time off
+ *    the session's `exit` event a moment later -- every ordinary exit
+ *    delivers two `change` snapshots with the same terminal status, not one.
+ *
+ * 2. A hot restart (`ProcessSession.hotRestart`: stop, then start again on
+ *    the *same* session object) reuses the session's id and `startedAt`, so
+ *    it reuses the exact same runId and file -- a new segment of the same
+ *    run's file, not a new run. Two restarts back to back can deliver a
+ *    second open before the first open (which may itself still be waiting
+ *    on a prior close of the same file) has finished; naive dedup-by-id
+ *    tracking of "one open/close in flight" collapses that second, distinct
+ *    request into the first one instead of queuing behind it -- which is
+ *    exactly how a real exit record went missing during review (a restart
+ *    fast enough to outrun the previous segment's own open).
+ *
+ * `#queues` fixes both: every open/close for one session id is processed
+ * through a single strictly-ordered chain, one at a time, in the exact order
+ * the triggering `change`/`log` events occurred. A redundant close finds
+ * nothing to close (the first one in the chain already removed it) and is a
+ * no-op; a fast-arriving open or close for the next segment simply waits its
+ * turn instead of racing or merging with whatever came before it.
  */
 export class LogSink {
   #registry: SessionRegistry;
   #history: LogHistory;
   #writers = new Map<string, RunLogWriter>();
-  #closedRuns = new Set<string>();
+  /** sessionId -> the tail of its strictly-ordered open/close/append chain. */
+  #queues = new Map<string, Promise<unknown>>();
 
   constructor(registry: SessionRegistry, history: LogHistory) {
     this.#registry = registry;
@@ -53,42 +68,58 @@ export class LogSink {
   }
 
   #onChange(snapshot: SessionSnapshot): void {
-    const runId = runIdFor(snapshot);
-    if (this.#closedRuns.has(runId)) return; // the second of the two `change`s an exit delivers
-
-    let writer = this.#writers.get(snapshot.id);
-    if (!writer) writer = this.#open(snapshot, runId);
-
-    if (snapshot.status === 'stopped' || snapshot.status === 'failed') {
-      this.#closedRuns.add(runId);
-      this.#writers.delete(snapshot.id);
-      writer.close(snapshot.exitCode ?? null).catch(() => { /* RunLogWriter never rejects; defensive only */ });
-      this.#history.prune();
-    }
+    const terminal = snapshot.status === 'stopped' || snapshot.status === 'failed';
+    this.#enqueue(snapshot.id, () => (terminal ? this.#closeIfOpen(snapshot) : this.#openIfClosed(snapshot)));
   }
 
   #onLog(sessionId: string, text: string, error: boolean, at?: number): void {
-    let writer = this.#writers.get(sessionId);
-    if (!writer) {
-      // A log line arriving before the first `change` event is not expected
-      // (the registry emits `change` synchronously right after `start()`),
-      // but if it ever happens, open the writer from the session's own
-      // current snapshot rather than dropping the line -- unless the run has
-      // already ended, in which case this is a straggler arriving after its
-      // exit record and there is nowhere left to put it.
-      const session = this.#registry.get(sessionId);
-      if (!session || session.status === 'stopped' || session.status === 'failed') return;
-      const snapshot = session.snapshot();
-      writer = this.#open(snapshot, runIdFor(snapshot));
+    // Fast path: a writer is already open (true for the overwhelming
+    // majority of log lines), so most appends never touch the queue at all.
+    const writer = this.#writers.get(sessionId);
+    if (writer) {
+      writer.append({ at: at ?? Date.now(), text, error });
+      return;
     }
-    writer.append({ at: at ?? Date.now(), text, error });
+
+    // No writer yet. Either its own `open` is still ahead of us in the
+    // queue (in which case queuing behind it and appending once it's done
+    // is exactly right), or the run has already ended and this is a
+    // straggler line with nowhere left to go.
+    const session = this.#registry.get(sessionId);
+    if (!session) return;
+    this.#enqueue(sessionId, async () => {
+      if (session.status === 'stopped' || session.status === 'failed') return;
+      const opened = await this.#openIfClosed(session.snapshot());
+      opened.append({ at: at ?? Date.now(), text, error });
+    });
   }
 
-  #open(snapshot: SessionSnapshot, runId: string): RunLogWriter {
-    const path = join(sessionLogDir(), `${runId}.jsonl`);
+  /** Run `task` after every previously enqueued task for this session id, in order. */
+  #enqueue(sessionId: string, task: () => Promise<unknown>): void {
+    const previous = this.#queues.get(sessionId) ?? Promise.resolve();
+    // `task` runs whether the previous link settled or not -- a queue must
+    // never wedge permanently just because one earlier task somehow threw.
+    const next = previous.then(task, task);
+    this.#queues.set(sessionId, next.catch(() => {}));
+  }
+
+  async #openIfClosed(snapshot: SessionSnapshot): Promise<RunLogWriter> {
+    const existing = this.#writers.get(snapshot.id);
+    if (existing) return existing;
+
+    const runId = runIdFor(snapshot);
+    const path = join(this.#history.dir, `${runId}.jsonl`);
     const writer = new RunLogWriter(path, { runId, session: snapshot, root: snapshot.root ?? null });
     this.#writers.set(snapshot.id, writer);
     return writer;
+  }
+
+  async #closeIfOpen(snapshot: SessionSnapshot): Promise<void> {
+    const writer = this.#writers.get(snapshot.id);
+    if (!writer) return; // the redundant second `change` of an exit pair, or nothing was ever opened
+    this.#writers.delete(snapshot.id);
+    await writer.close(snapshot.exitCode ?? null);
+    this.#history.prune();
   }
 }
 

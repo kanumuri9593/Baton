@@ -364,7 +364,12 @@ export class LaunchDaemon {
       case 'logHistory': {
         const params = p as RpcMethods['logHistory']['params'];
         const limit = params.limit ?? 50;
-        const fromDisk = this.history.list(params.root);
+        // Like every other cwd/root-taking RPC (`targets`, `bootables`, ...),
+        // normalise to the actual project root before filtering -- a
+        // subdirectory of a project (which is all `params.root` is when it
+        // comes from an MCP `cwd`) must match, not just an exact root string.
+        const root = params.root ? findProjectRoot(params.root) : undefined;
+        const fromDisk = this.history.list(root);
         const live = new Map(fromDisk.map((r) => [r.runId, r] as const));
         // Overlay live sessions on top: their size on disk lags behind what is
         // actually in the ring, and a run that has not exited yet has nothing
@@ -375,7 +380,7 @@ export class LaunchDaemon {
           // above, if any, is authoritative for it.
           if (session.status === 'stopped' || session.status === 'failed') continue;
           const snapshot = session.snapshot();
-          if (params.root && snapshot.root !== params.root) continue;
+          if (root && snapshot.root !== root) continue;
           const runId = `${snapshot.startedAt}-${safe(snapshot.id)}`;
           const onDisk = live.get(runId);
           live.set(runId, {

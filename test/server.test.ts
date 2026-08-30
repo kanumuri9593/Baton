@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,6 +10,7 @@ process.env.BATON_HOME = mkdtempSync(join(tmpdir(), 'baton-server-'));
 
 const { LaunchDaemon, matchTarget } = await import('../src/daemon/server.ts');
 const { sessionLogDir } = await import('../src/core/paths.ts');
+const { LogHistory } = await import('../src/core/log-store.ts');
 
 let daemon: InstanceType<typeof LaunchDaemon>;
 let port: number;
@@ -289,6 +290,10 @@ test('logHistory shows a real run, logRead returns its lines, and logs falls bac
 
   const session = await daemon.registry.run(target);
   await waitForExit(session);
+  // Let LogSink's queued `writer.close()` actually finish flushing before
+  // reading it back through logHistory -- the session reporting `stopped` and
+  // its exit record having reached disk are two different, async, events.
+  await new Promise((resolve) => setTimeout(resolve, 50));
 
   const history: any = await daemon.handle({ method: 'logHistory', params: {} });
   const entry = history.find((r: any) => r.sessionId === session.id);
@@ -357,4 +362,126 @@ test('logHistory reports a still-running session as live, with its current size'
   } finally {
     await session.stop();
   }
+});
+
+// --- fix round 1: hotRestart, injected-LogHistory writes, root normalization
+
+/** Wait for a session to reach a specific status. */
+function waitForStatus(
+  session: { status: string; on: (event: 'change', fn: () => void) => unknown },
+  status: string,
+): Promise<void> {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (session.status === status) resolve();
+    };
+    check();
+    session.on('change', check);
+  });
+}
+
+test('hotRestart twice then stop: the run log ends with the correct final exit record, no stale metadata, and no leaked writer', async () => {
+  // Reproduces the bug found in review: a hot restart reuses the session's
+  // id/startedAt, hence the exact same runId/file. Before the fix, the
+  // #closedRuns guard (keyed only on "have we ever closed this runId")
+  // permanently blocked LogSink from closing it again -- the FIRST restart's
+  // reopen (via the log-fallback path) got a fresh header but no exit ever
+  // followed; a SECOND restart appended into that still-open writer with no
+  // header at all; and `scanExit` then reported the stale pre-restart exit
+  // record as if it were current.
+  //
+  // Each segment lingers so `hotRestart()`/`stop()` genuinely SIGTERM a live
+  // child rather than racing its own near-instant exit -- deterministic,
+  // rather than depending on exact timing.
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-runlog-restart-'));
+  const target: any = {
+    name: 'restart-me', kind: 'process', source: 'auto', cwd: scratch,
+    command: process.execPath,
+    args: ['-e', "console.log('segment up'); setTimeout(() => process.exit(0), 60000)"],
+  };
+
+  const session: any = await daemon.registry.run(target);
+  await waitForStatus(session, 'running');
+
+  await session.hotRestart(); // segment 1 -> segment 2
+  await waitForStatus(session, 'running');
+
+  await session.hotRestart(); // segment 2 -> segment 3
+  await waitForStatus(session, 'running');
+
+  await session.stop(); // segment 3 -> the final stop
+  await waitForStatus(session, 'stopped');
+
+  // Let every fire-and-forget `writer.close()` actually finish flushing.
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  const runId = `${session.snapshot().startedAt}-${session.id.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const path = join(sessionLogDir(), `${runId}.jsonl`);
+  const rows = readFileSync(path, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+
+  const headers = rows.filter((r) => r.kind === 'header');
+  const exits = rows.filter((r) => r.kind === 'exit');
+  assert.equal(rows.at(-1)!.kind, 'exit', 'the file must end with an exit record, not trail off mid-segment');
+  assert.equal(headers.length, exits.length, 'every opened segment must have been closed -- no leaked writer');
+  assert.ok(exits.length >= 3, 'each of the three segments (initial run + two restarts) got its own exit record');
+
+  const lastExit = exits.at(-1);
+  const history: any = await daemon.handle({ method: 'logHistory', params: {} });
+  const entry = history.find((r: any) => r.sessionId === session.id);
+  assert.ok(entry);
+  assert.equal(entry.live, false);
+  assert.equal(entry.exitCode, lastExit.code, 'logHistory must report the LAST exit code, not a stale one');
+  assert.equal(entry.endedAt, lastExit.at, 'logHistory must report the LAST exit time, not a stale one');
+});
+
+test('an injected LogHistory pointed at a custom directory is where LogSink actually writes, not the default sessionLogDir()', async () => {
+  // Before the fix, LogSink always resolved its write path via the module-
+  // level `sessionLogDir()` regardless of which LogHistory the daemon was
+  // constructed with -- an injected store silently only ever saw an empty
+  // history, because nothing was ever written to ITS directory.
+  const customDir = mkdtempSync(join(tmpdir(), 'baton-custom-history-'));
+  const customHistory = new LogHistory(customDir);
+  const customDaemon = new LaunchDaemon('test-custom-history', { history: customHistory });
+
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-runlog-custom-'));
+  const target: any = {
+    name: 'custom-dir', kind: 'process', source: 'auto', cwd: scratch,
+    command: process.execPath, args: ['-e', "console.log('elsewhere'); process.exit(0)"],
+  };
+
+  const session = await customDaemon.registry.run(target);
+  await waitForExit(session);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  const history: any = await customDaemon.handle({ method: 'logHistory', params: {} });
+  const entry = history.find((r: any) => r.sessionId === session.id);
+  assert.ok(entry, 'the run must be visible through the injected LogHistory it was constructed with');
+
+  const filesInCustomDir = readdirSync(customDir).filter((f) => f.endsWith('.jsonl'));
+  assert.ok(filesInCustomDir.length > 0, 'the run file must actually be written under the injected directory');
+  assert.ok(
+    !existsSync(join(sessionLogDir(), `${entry.runId}.jsonl`)),
+    'must NOT have written to the default sessionLogDir() instead of the injected one',
+  );
+});
+
+test('logHistory {root} normalizes a subdirectory the way targets/bootables do, instead of exact string matching', async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'baton-runlog-subdir-'));
+  const subdir = join(projectRoot, 'packages', 'app');
+  mkdirSync(subdir, { recursive: true });
+  // Make it look like a real project so findProjectRoot(subdir) resolves back up to it.
+  mkdirSync(join(projectRoot, '.git'), { recursive: true });
+
+  const target: any = {
+    name: 'subdir-target', kind: 'process', source: 'auto', cwd: projectRoot,
+    command: process.execPath, args: ['-e', "console.log('from a project root'); process.exit(0)"],
+  };
+  const session = await daemon.registry.run(target);
+  await waitForExit(session);
+
+  const history: any = await daemon.handle({ method: 'logHistory', params: { root: subdir } });
+  assert.ok(
+    history.some((r: any) => r.sessionId === session.id),
+    'a subdirectory of the project root must still match, the same way `targets {cwd}` resolves it',
+  );
 });
