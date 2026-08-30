@@ -12,6 +12,7 @@ import type { Target, TargetKind } from '../config/detect.ts';
 import type { ValidationIssue } from '../config/validate.ts';
 import type { Bootable } from '../daemon/simulators.ts';
 import type { Device } from '../daemon/devices.ts';
+import type { RunInfo } from './log-store.ts';
 
 /** A detected target plus its pre-flight state, as sent to clients. */
 export type TargetInfo = Target & { issues: ValidationIssue[] };
@@ -89,6 +90,14 @@ export type RpcMethods = {
   };
   logs: {
     params: { session: string; tail?: number; filter?: string };
+    result: LogLine[];
+  };
+  logHistory: {
+    params: { root?: string; limit?: number };
+    result: RunInfo[];
+  };
+  logRead: {
+    params: { run: string; tail?: number; filter?: string };
     result: LogLine[];
   };
   serviceExtension: {

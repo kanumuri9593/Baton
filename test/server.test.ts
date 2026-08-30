@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -9,6 +9,7 @@ import { join } from 'node:path';
 process.env.BATON_HOME = mkdtempSync(join(tmpdir(), 'baton-server-'));
 
 const { LaunchDaemon, matchTarget } = await import('../src/daemon/server.ts');
+const { sessionLogDir } = await import('../src/core/paths.ts');
 
 let daemon: InstanceType<typeof LaunchDaemon>;
 let port: number;
@@ -260,4 +261,100 @@ test('POST /rpc without the token is refused', async () => {
     body: JSON.stringify({ method: 'sessions' }),
   });
   assert.equal(response.status, 401);
+});
+
+// --- persistent per-run logs (T2) -------------------------------------------
+
+/** Wait for a session to reach a terminal status. */
+function waitForExit(session: { status: string; on: (event: 'change', fn: () => void) => unknown }): Promise<void> {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (session.status === 'stopped' || session.status === 'failed') resolve();
+    };
+    check();
+    session.on('change', check);
+  });
+}
+
+test('logHistory shows a real run, logRead returns its lines, and logs falls back to disk after forget + a fresh daemon', async () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-runlog-'));
+  const target: any = {
+    name: 'echo-once',
+    kind: 'process',
+    source: 'auto',
+    cwd: scratch,
+    command: process.execPath,
+    args: ['-e', "console.log('hello from run'); process.exit(0)"],
+  };
+
+  const session = await daemon.registry.run(target);
+  await waitForExit(session);
+
+  const history: any = await daemon.handle({ method: 'logHistory', params: {} });
+  const entry = history.find((r: any) => r.sessionId === session.id);
+  assert.ok(entry, 'the run must show up in logHistory once it has exited');
+  assert.equal(entry.exitCode, 0);
+  assert.equal(entry.root, scratch);
+  assert.equal(entry.live, false, 'a session no longer running is not live');
+
+  const read: any = await daemon.handle({ method: 'logRead', params: { run: entry.runId } });
+  assert.ok(read.some((l: any) => l.text.includes('hello from run')));
+
+  const forgotten: any = await daemon.handle({ method: 'forget', params: { session: session.id } });
+  assert.equal(forgotten.forgotten, true);
+
+  // A brand new daemon (simulating a restart) on the same BATON_HOME must
+  // still be able to serve this run's logs through the plain `logs` RPC.
+  const { LaunchDaemon: FreshDaemon } = await import('../src/daemon/server.ts');
+  const fresh = new FreshDaemon('test-fresh');
+  const lines: any = await fresh.handle({ method: 'logs', params: { session: session.id } });
+  assert.ok(lines.some((l: any) => l.text.includes('hello from run')));
+});
+
+test('an ordinary exit writes exactly one header and one exit record, not a duplicate pair', async () => {
+  // The registry fires `change` twice for the same terminal status on every
+  // exit (once from the session's own setStatus, once re-derived from its
+  // `exit` event) -- a regression test for LogSink treating the second one
+  // as a no-op instead of reopening and re-closing the same file.
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-runlog-dup-'));
+  const target: any = {
+    name: 'echo-dup', kind: 'process', source: 'auto', cwd: scratch,
+    command: process.execPath, args: ['-e', "console.log('once'); process.exit(0)"],
+  };
+
+  const session = await daemon.registry.run(target);
+  await waitForExit(session);
+  // Let LogSink's fire-and-forget `writer.close()` actually finish flushing.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  const runId = `${session.snapshot().startedAt}-${session.id.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+  const path = join(sessionLogDir(), `${runId}.jsonl`);
+  const rows = readFileSync(path, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.equal(rows.filter((r) => r.kind === 'header').length, 1, 'exactly one header line');
+  assert.equal(rows.filter((r) => r.kind === 'exit').length, 1, 'exactly one exit line');
+  assert.equal(rows[0].kind, 'header', 'the header must be the first line');
+});
+
+test('logHistory reports a still-running session as live, with its current size', async () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-runlog-live-'));
+  const target: any = {
+    name: 'sleeper',
+    kind: 'process',
+    source: 'auto',
+    cwd: scratch,
+    command: process.execPath,
+    args: ['-e', "console.log('still going'); setTimeout(() => {}, 5000)"],
+  };
+
+  const session = await daemon.registry.run(target);
+  try {
+    // Give the child a moment to actually emit its log line.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const history: any = await daemon.handle({ method: 'logHistory', params: { root: scratch } });
+    const entry = history.find((r: any) => r.sessionId === session.id);
+    assert.ok(entry, 'a running session must appear in logHistory too');
+    assert.equal(entry.live, true);
+  } finally {
+    await session.stop();
+  }
 });

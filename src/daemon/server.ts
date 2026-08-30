@@ -8,10 +8,17 @@ import { SessionRegistry } from '../core/registry.ts';
 import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.ts';
 import { validate } from '../config/validate.ts';
 import { ProjectRegistry } from '../core/projects.ts';
-import { handshakePath } from '../core/paths.ts';
+import { handshakePath, sessionLogDir } from '../core/paths.ts';
 import { renderHud, HUD_ASSETS } from '../hud/render.ts';
+import { LogHistory, safe } from '../core/log-store.ts';
+import { LogSink } from './log-sink.ts';
 import type { Capability } from '../core/types.ts';
 import type { ProjectInfo, PushEvent, RpcMethods, TargetInfo } from '../core/api.ts';
+
+export type LaunchDaemonOptions = {
+  /** Injectable for tests; defaults to a real store rooted at `stateDir()`. */
+  history?: LogHistory;
+};
 
 export type Handshake = { port: number; token: string; pid: number; version: string };
 
@@ -27,14 +34,18 @@ export type RpcRequest = { id?: number; method: string; params?: Record<string, 
 export class LaunchDaemon {
   readonly registry = new SessionRegistry();
   readonly projects = new ProjectRegistry();
+  readonly history: LogHistory;
+  #logSink: LogSink;
   #wss?: WebSocketServer;
   #http = createServer((req, res) => this.#handleHttp(req, res));
   #clients = new Set<WebSocket>();
   #token = randomBytes(24).toString('hex');
   #version: string;
 
-  constructor(version = '0.1.0') {
+  constructor(version = '0.1.0', options: LaunchDaemonOptions = {}) {
     this.#version = version;
+    this.history = options.history ?? new LogHistory(sessionLogDir());
+    this.#logSink = new LogSink(this.registry, this.history);
     this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
     this.registry.on('log', (sessionId, text, error) =>
       this.#broadcast({ event: 'log', sessionId, text, error } satisfies PushEvent),
@@ -331,12 +342,62 @@ export class LaunchDaemon {
 
       case 'logs': {
         const params = p as RpcMethods['logs']['params'];
-        const session = this.#require(params.session);
+        // A live session always wins; fall back to disk so `baton logs <id>`
+        // keeps working once the session (or a whole daemon restart) is gone.
+        let session;
+        try {
+          session = this.#require(params.session);
+        } catch (err) {
+          if (this.history.has(params.session)) {
+            const fromDisk = this.history.read(params.session, { tail: params.tail, filter: params.filter });
+            return fromDisk satisfies RpcMethods['logs']['result'];
+          }
+          throw err;
+        }
         const lines = session.recentLogs(params.tail ?? 200);
         const filtered = params.filter
           ? lines.filter((l) => new RegExp(params.filter!, 'i').test(l.text))
           : lines;
         return filtered satisfies RpcMethods['logs']['result'];
+      }
+
+      case 'logHistory': {
+        const params = p as RpcMethods['logHistory']['params'];
+        const limit = params.limit ?? 50;
+        const fromDisk = this.history.list(params.root);
+        const live = new Map(fromDisk.map((r) => [r.runId, r] as const));
+        // Overlay live sessions on top: their size on disk lags behind what is
+        // actually in the ring, and a run that has not exited yet has nothing
+        // for `list()` to scrape an exit record from.
+        for (const session of this.registry.list()) {
+          // A session that has already exited but is still in the registry
+          // (not yet `forget`-ten) is not "live" -- the disk record from
+          // above, if any, is authoritative for it.
+          if (session.status === 'stopped' || session.status === 'failed') continue;
+          const snapshot = session.snapshot();
+          if (params.root && snapshot.root !== params.root) continue;
+          const runId = `${snapshot.startedAt}-${safe(snapshot.id)}`;
+          const onDisk = live.get(runId);
+          live.set(runId, {
+            runId,
+            sessionId: snapshot.id,
+            name: snapshot.name,
+            kind: snapshot.kind,
+            root: snapshot.root ?? null,
+            startedAt: snapshot.startedAt,
+            endedAt: onDisk?.endedAt,
+            exitCode: snapshot.exitCode ?? onDisk?.exitCode,
+            sizeBytes: onDisk?.sizeBytes ?? 0,
+            live: true,
+          });
+        }
+        const merged = [...live.values()].sort((a, b) => b.startedAt - a.startedAt);
+        return merged.slice(0, limit) satisfies RpcMethods['logHistory']['result'];
+      }
+
+      case 'logRead': {
+        const params = p as RpcMethods['logRead']['params'];
+        return this.history.read(params.run, { tail: params.tail, filter: params.filter }) satisfies RpcMethods['logRead']['result'];
       }
 
       case 'serviceExtension': {
