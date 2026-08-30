@@ -9,7 +9,7 @@ import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.
 import { validate } from '../config/validate.ts';
 import { ProjectRegistry } from '../core/projects.ts';
 import { handshakePath } from '../core/paths.ts';
-import { renderHud } from '../hud/render.ts';
+import { renderHud, HUD_ASSETS } from '../hud/render.ts';
 import type { Capability } from '../core/types.ts';
 import type { ProjectInfo, PushEvent, RpcMethods, TargetInfo } from '../core/api.ts';
 
@@ -91,9 +91,24 @@ export class LaunchDaemon {
 
     // The HUD is served unauthenticated because it is bound to loopback and
     // ships the token to the page itself; the token still guards the socket.
+    // no-store so a reload after an upgrade never shows a stale page.
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
       res.end(renderHud(this.#token));
+      return;
+    }
+    // The HUD's own CSS/JS, looked up in a fixed allowlist rather than joined
+    // onto a filesystem path -- a name that is not one of the known assets
+    // (including any `..` traversal attempt) simply isn't in the map and
+    // falls through to the generic 404 below.
+    if (url.pathname.startsWith('/assets/')) {
+      const asset = HUD_ASSETS.get(url.pathname.slice('/assets/'.length));
+      if (asset) {
+        res.writeHead(200, { 'content-type': asset.contentType, 'cache-control': 'no-store' });
+        res.end(readFileSync(asset.path));
+      } else {
+        res.writeHead(404).end('not found');
+      }
       return;
     }
     // A plain request/response door into the same methods. The macOS menu-bar

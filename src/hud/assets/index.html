@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baton</title>
+<link rel="icon" href="%%FAVICON%%">
+<link rel="stylesheet" href="/assets/hud.css">
+</head>
+<body>
+<header>
+  <div class="brand">%%MARK%%<div>Baton<small id="status">connecting…</small></div></div>
+  <span class="spacer"></span>
+  <button class="icon" id="reloadAll" title="Hot reload every running session (r)">⟳</button>
+  <button class="icon" id="restartAll" title="Hot restart every running session (R)">⟲</button>
+  <button class="icon danger" id="stopAll" title="Stop every running session">■</button>
+</header>
+
+<nav id="tabs"></nav>
+
+<div class="launcher" id="addRow" hidden>
+  <input type="text" id="addPath" placeholder="~/code/my-app — path to another project" spellcheck="false">
+  <button class="go" id="addGo">Add</button>
+  <button id="addCancel">Cancel</button>
+</div>
+
+<div class="launcher">
+  <select id="picker"><option value="">Loading targets…</option></select>
+  <select id="device" title="Device"><option value="">Auto</option></select>
+  <button class="go" id="run">Run</button>
+</div>
+
+<main id="list"></main>
+<div class="toast" id="toast"></div>
+
+<script>window.BATON_TOKEN='%%TOKEN%%';</script>
+<script src="/assets/core.js"></script>
+<script src="/assets/network.js"></script>
+<script src="/assets/editor.js"></script>
+</body>
+</html>
