@@ -63,14 +63,28 @@ export class SessionRegistry extends EventEmitter {
   }
 
   async run(target: Target, options: RunOptions = {}): Promise<Session> {
-    const session = await this.#create(target, options);
+    const session = this.adopt(await this.#create(target, options), target.cwd);
+    session.start();
+    this.emit('change', session.snapshot());
+    return session;
+  }
+
+  /**
+   * Take ownership of an already-built session: register it and wire its events.
+   *
+   * Split out of `run` because creating a session and owning one are different
+   * jobs -- `run` has to pick a device and spawn a process, while a session that
+   * already exists (a replay, a future attach-to-a-running-app) needs only this
+   * half. Does not `start()` it: the caller decides when, or whether, to.
+   */
+  adopt(session: Session, root?: string): Session {
     // Which project this came from -- the HUD groups by it, so three projects
     // can be watched side by side without their sessions blurring together.
-    (session as { root?: string }).root = target.cwd;
+    if (root !== undefined) (session as { root?: string }).root = root;
 
     if (this.#sessions.has(session.id)) {
       throw new Error(
-        `a session for "${target.name}" is already running on this device (${session.id})`,
+        `a session for "${session.name}" is already running on this device (${session.id})`,
       );
     }
 
@@ -80,9 +94,6 @@ export class SessionRegistry extends EventEmitter {
       this.emit('log', session.id, text, error, at),
     );
     session.on('exit', () => this.emit('change', session.snapshot()));
-
-    session.start();
-    this.emit('change', session.snapshot());
     return session;
   }
 

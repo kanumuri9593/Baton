@@ -130,7 +130,9 @@ export class FlutterSession extends BaseSession {
   }
 
   protected extraSnapshot(): Partial<SessionSnapshot> {
-    return { target: this.deviceId, devToolsUri: this.devToolsUri };
+    // `vmServiceUri` is what the network inspector attaches to; publishing it on
+    // the snapshot is also what tells the daemon a session is worth attaching to.
+    return { target: this.deviceId, devToolsUri: this.devToolsUri, vmServiceUri: this.vmServiceUri };
   }
 
   #requireAppId(): string {

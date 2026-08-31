@@ -7,7 +7,9 @@
  * returns. Changing the wire format means changing that switch and this file
  * together; changing only one is a bug.
  */
-import type { LogLine, OperationResult, SessionSnapshot } from './types.ts';
+import type {
+  LogLine, NetworkRequestDetail, NetworkRequestSnapshot, OperationResult, SessionSnapshot,
+} from './types.ts';
 import type { Target, TargetKind } from '../config/detect.ts';
 import type { ValidationIssue } from '../config/validate.ts';
 import type { Bootable } from '../daemon/simulators.ts';
@@ -104,6 +106,27 @@ export type RpcMethods = {
     params: { session: string; method: string; params?: Record<string, unknown> };
     result: unknown;
   };
+  /**
+   * Captured HTTP traffic for one session, newest last.
+   *
+   * Only sessions carrying the `network` capability answer this -- a session
+   * without live capture refuses rather than returning an empty list, which
+   * would read as "this app made no requests".
+   */
+  network: {
+    params: { session: string; since?: number; filter?: string; tail?: number };
+    result: NetworkRequestSnapshot[];
+  };
+  /** One request in full, fetched from the running app -- headers, timeline, bodies. */
+  networkDetail: {
+    params: { session: string; id: string; maxBody?: number };
+    result: NetworkRequestDetail;
+  };
+  /** Drop the captured window, and the buffer inside the app with it. */
+  networkClear: {
+    params: { session: string };
+    result: { cleared: boolean };
+  };
   forget: {
     params: { session: string };
     result: { forgotten: boolean };
@@ -119,4 +142,6 @@ export type PushEvent =
   | { event: 'hello'; sessions: SessionSnapshot[] }
   | { event: 'session'; snapshot: SessionSnapshot }
   | { event: 'log'; sessionId: string; text: string; error: boolean }
+  /** One captured HTTP request, pushed as it starts and again as it finishes. */
+  | { event: 'network'; sessionId: string; request: NetworkRequestSnapshot }
   | { event: 'devices' };

@@ -12,12 +12,18 @@ import { handshakePath, sessionLogDir } from '../core/paths.ts';
 import { renderHud, HUD_ASSETS } from '../hud/render.ts';
 import { LogHistory, safe } from '../core/log-store.ts';
 import { LogSink } from './log-sink.ts';
-import type { Capability } from '../core/types.ts';
+import { NetworkStore } from '../core/network-store.ts';
+import { NetworkService, type CreateVmClient } from './network.ts';
+import type { Capability, Session } from '../core/types.ts';
 import type { ProjectInfo, PushEvent, RpcMethods, TargetInfo } from '../core/api.ts';
 
 export type LaunchDaemonOptions = {
   /** Injectable for tests; defaults to a real store rooted at `stateDir()`. */
   history?: LogHistory;
+  /** How network capture opens a VM service connection; injected in tests. */
+  createClient?: CreateVmClient;
+  /** How often capture polls the app's HTTP profile. Tests use a few milliseconds. */
+  networkPollIntervalMs?: number;
 };
 
 export type Handshake = { port: number; token: string; pid: number; version: string };
@@ -35,6 +41,7 @@ export class LaunchDaemon {
   readonly registry = new SessionRegistry();
   readonly projects = new ProjectRegistry();
   readonly history: LogHistory;
+  readonly network: NetworkService;
   #logSink: LogSink;
   #wss?: WebSocketServer;
   #http = createServer((req, res) => this.#handleHttp(req, res));
@@ -46,9 +53,20 @@ export class LaunchDaemon {
     this.#version = version;
     this.history = options.history ?? new LogHistory(sessionLogDir());
     this.#logSink = new LogSink(this.registry, this.history);
+    this.network = new NetworkService(
+      this.registry,
+      new NetworkStore(),
+      options.createClient,
+      { pollIntervalMs: options.networkPollIntervalMs },
+    );
     this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
     this.registry.on('log', (sessionId, text, error) =>
       this.#broadcast({ event: 'log', sessionId, text, error } satisfies PushEvent),
+    );
+    // Every captured request, pushed as it happens -- the HUD's network pane and
+    // `baton network -f` both live on this rather than polling the daemon.
+    this.network.store.on('request', (sessionId: string, request) =>
+      this.#broadcast({ event: 'network', sessionId, request } satisfies PushEvent),
     );
   }
 
@@ -78,6 +96,7 @@ export class LaunchDaemon {
   }
 
   async close(): Promise<void> {
+    this.network.disposeAll();
     await this.registry.stopAll();
     for (const client of this.#clients) client.close();
     this.#wss?.close();
@@ -414,9 +433,38 @@ export class LaunchDaemon {
         return (session as any).callServiceExtension(params.method, params.params ?? {}) satisfies Promise<RpcMethods['serviceExtension']['result']>;
       }
 
+      case 'network': {
+        const params = p as RpcMethods['network']['params'];
+        const session = this.#requireCapture(params.session);
+        return this.network.store.list(session.id, {
+          since: params.since, filter: params.filter, tail: params.tail,
+        }) satisfies RpcMethods['network']['result'];
+      }
+
+      case 'networkDetail': {
+        const params = p as RpcMethods['networkDetail']['params'];
+        // Deliberately not gated on the capability: a session that has stopped
+        // capturing gets the specific "no longer capturing" message from the
+        // service, which is more useful than the generic refusal.
+        const session = this.#require(params.session);
+        return this.network.detail(session.id, params.id, params.maxBody) satisfies Promise<RpcMethods['networkDetail']['result']>;
+      }
+
+      case 'networkClear': {
+        const params = p as RpcMethods['networkClear']['params'];
+        const session = this.#requireCapture(params.session);
+        await this.network.clear(session.id);
+        return { cleared: true } satisfies RpcMethods['networkClear']['result'];
+      }
+
       case 'forget': {
         const params = p as RpcMethods['forget']['params'];
-        return { forgotten: this.registry.forget(params.session) } satisfies RpcMethods['forget']['result'];
+        // Resolve before forgetting: `params.session` may be a prefix, and the
+        // network store is keyed by the full id.
+        const session = this.registry.get(params.session);
+        const forgotten = this.registry.forget(params.session);
+        if (forgotten && session) this.network.forget(session.id);
+        return { forgotten } satisfies RpcMethods['forget']['result'];
       }
 
       case 'shutdown':
@@ -474,6 +522,26 @@ export class LaunchDaemon {
       .list()
       .find((root) => existsSync(join(root, 'pubspec.yaml')));
     return flutterProject ?? asked;
+  }
+
+  /**
+   * A session that is actually capturing HTTP traffic.
+   *
+   * The capability, not the store, is what is checked: a capturing session that
+   * has simply seen no traffic yet must answer with an empty list, while a
+   * session that cannot capture at all has to say so -- an empty list would be
+   * read as "this app made no requests", and the reader would go looking for the
+   * wrong bug.
+   */
+  #requireCapture(id: string): Session {
+    const session = this.#require(id);
+    if (!session.capabilities.has('network' as Capability)) {
+      throw new Error(
+        `${session.id} has no network capture — it needs a Flutter app running in debug or ` +
+          'profile mode (capture attaches by itself once the VM service is up)',
+      );
+    }
+    return session;
   }
 
   #require(id: string) {
