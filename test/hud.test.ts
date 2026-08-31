@@ -49,7 +49,7 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
   const core = read('core.js');
   const editor = read('editor.js');
 
-  for (const name of ['network.js', 'editor.js']) {
+  for (const name of ['network.js', 'editor.js', 'inspector.js']) {
     assert.match(read(name), /window\.baton/, `${name} must go through the hook registry`);
   }
   // core.js knows nothing about the launch.json feature: every one of those
@@ -68,10 +68,42 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
     assert.match(provided, new RegExp('\\b' + name + '\\b'), `core.js must still expose ${name}`);
   }
 
-  // And the hooks editor.js registers must still be dispatched.
-  for (const hook of ['openProject', 'chip']) {
+  // And the hooks editor.js and inspector.js register must still be dispatched.
+  for (const hook of ['openProject', 'chip', 'sessionFocus', 'density']) {
     assert.ok(core.includes(hook), `core.js must still call the "${hook}" hook`);
   }
+
+  const inspector = read('inspector.js');
+  assert.ok(inspector.includes('extend('), 'inspector.js must register as an add-on');
+  assert.match(inspector, /matchLog/, 'inspector.js must use the shared log filter');
+  assert.match(inspector, /matchNetwork/, 'inspector.js must use the shared network filter');
+});
+
+test('session actions are named SVG icons, not unicode glyphs', () => {
+  const core = readFileSync(HUD_ASSETS.get('core.js')!.path, 'utf8');
+  const icons = readFileSync(HUD_ASSETS.get('icons.js')!.path, 'utf8');
+  assert.match(core, /iconButton\(/);
+  for (const glyph of ['⟳', '⟲', '▤', '⇅']) {
+    assert.ok(!core.includes(`'${glyph}'`), `core.js must not use ${glyph} as a button label`);
+  }
+  for (const name of ['run', 'reload', 'restart', 'stop', 'logs', 'network', 'expand', 'minimize']) {
+    assert.match(icons, new RegExp('\\b' + name + '\\s*:'), `icons.js must define ${name}`);
+  }
+});
+
+test('the page has a chip, a peek strip, and an inspector pane', () => {
+  const html = renderHud('tok123');
+  assert.match(html, /id="chip"/);
+  assert.match(html, /id="peek"/);
+  assert.match(html, /id="inspector"/);
+  assert.match(html, /data-density/);
+});
+
+test('the macOS panel pins resize to the trailing edge', () => {
+  const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  assert.match(source, /batonHud/);
+  assert.match(source, /pinTrailing/);
+  assert.match(source, /WKScriptMessageHandler/);
 });
 
 // --- the daemon's asset route ------------------------------------------------

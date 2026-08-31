@@ -23,7 +23,7 @@ func handshakeURL() -> URL {
     return URL(fileURLWithPath: base).appendingPathComponent("daemon.json")
 }
 
-final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
+final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScriptMessageHandler {
     private var statusItem: NSStatusItem!
     private var panel: NSPanel!
     private var web: WKWebView!
@@ -93,12 +93,13 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
     private func buildPanel() {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
+        configuration.userContentController.add(self, name: "batonHud")
         web = WKWebView(frame: .zero, configuration: configuration)
         web.uiDelegate = self
         web.setValue(false, forKey: "drawsBackground")
 
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 430, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 64, height: 76),
             styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -116,9 +117,53 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate {
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.contentView = web
-        panel.setFrameAutosaveName("BatonHUD")
+        // v2: chip-sized default. The previous autosave restored a 430pt HUD
+        // and would fight the density-driven resize.
+        panel.setFrameAutosaveName("BatonHUD.v2")
         if panel.frame.origin == .zero {
-            panel.center()
+            if let vis = NSScreen.main?.visibleFrame {
+                panel.setFrameOrigin(NSPoint(x: vis.maxX - 80, y: vis.midY - 40))
+            } else {
+                panel.center()
+            }
+        }
+    }
+
+    /// Grow or shrink the panel while keeping its trailing edge planted, so
+    /// expand opens left into the screen rather than sliding the chip.
+    private func pinTrailing(_ body: [String: Any]) {
+        let width = cgFloat(body["width"], fallback: panel.frame.width)
+        let height = cgFloat(body["height"], fallback: panel.frame.height)
+        var frame = panel.frame
+        let trailing = frame.maxX
+        let top = frame.maxY
+        frame.size.width = max(52, width)
+        frame.size.height = max(52, height)
+        frame.origin.x = trailing - frame.size.width
+        frame.origin.y = top - frame.size.height
+        if let vis = (panel.screen ?? NSScreen.main)?.visibleFrame {
+            if frame.maxX > vis.maxX { frame.origin.x = vis.maxX - frame.width }
+            if frame.minX < vis.minX { frame.origin.x = vis.minX }
+            if frame.minY < vis.minY { frame.origin.y = vis.minY }
+            if frame.maxY > vis.maxY { frame.origin.y = vis.maxY - frame.height }
+        }
+        panel.setFrame(frame, display: true, animate: true)
+    }
+
+    private func cgFloat(_ value: Any?, fallback: CGFloat) -> CGFloat {
+        if let number = value as? Double { return CGFloat(number) }
+        if let number = value as? Int { return CGFloat(number) }
+        if let number = value as? NSNumber { return CGFloat(truncating: number) }
+        return fallback
+    }
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        guard message.name == "batonHud",
+              let body = message.body as? [String: Any],
+              let type = body["type"] as? String else { return }
+        DispatchQueue.main.async { [weak self] in
+            if type == "resize" { self?.pinTrailing(body) }
         }
     }
 

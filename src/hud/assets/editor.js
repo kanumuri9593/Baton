@@ -12,7 +12,7 @@
 // Hooks into core.js through `window.baton` rather than being wired into it, so
 // the whole feature is this file plus its stylesheet block.
 (function () {
-  const { call, toast, projects, activeRoot, focusProject, refresh, extend } = window.baton;
+  const { call, toast, projects, activeRoot, focusProject, refresh, extend, iconButton, iconEl } = window.baton;
 
   const basename = (path) => String(path).split(/[\\/]/).filter(Boolean).pop() || path;
 
@@ -124,7 +124,7 @@
     const head = el('div', 'sheet-head');
     head.appendChild(el('strong', null, 'Open a project'));
     head.appendChild(el('span', 'spacer'));
-    head.appendChild(button('×', 'Close', closeModal, 'icon'));
+    head.appendChild(iconButton('close', 'Close', true, closeModal));
     body.appendChild(head);
 
     // Shortcuts: home, the folders this machine actually has, mounted volumes.
@@ -139,7 +139,7 @@
 
     const crumbBar = el('div', 'crumbs');
     if (listing.parent) {
-      crumbBar.appendChild(button('↑', 'Up one level', () => browse(listing.parent), 'icon'));
+      crumbBar.appendChild(iconButton('up', 'Up one level', true, () => browse(listing.parent)));
     }
     crumbs(here).forEach((crumb, i, all) => {
       const part = el('span', 'crumb' + (i === all.length - 1 ? ' on' : ''), crumb.label);
@@ -157,7 +157,8 @@
     for (const entry of listing.entries) {
       const row = el('div', 'sheet-row' + (entry.isProject ? ' project' : ''));
       row.onclick = () => browse(entry.path);
-      row.appendChild(el('span', 'sheet-icon', '📁'));
+      row.appendChild(iconEl('folder'));
+      row.lastChild.classList.add('sheet-icon');
       row.appendChild(el('span', 'name', entry.name));
       if (entry.isProject) row.appendChild(el('span', 'tag', '▶ project'));
       if (entry.hasLaunchJson) row.appendChild(el('span', 'tag', 'launch.json'));
@@ -238,7 +239,7 @@
     const head = el('div', 'sheet-head');
     head.appendChild(el('strong', null, 'No launch config in ' + project.name));
     head.appendChild(el('span', 'spacer'));
-    head.appendChild(button('×', 'Close', closeModal, 'icon'));
+    head.appendChild(iconButton('close', 'Close', true, closeModal));
     body.appendChild(head);
 
     body.appendChild(el('div', 'sheet-note', targets.length
@@ -359,7 +360,7 @@
     }
 
     head.appendChild(el('span', 'spacer'));
-    head.appendChild(button('×', 'Close the editor', closeEditor, 'icon'));
+    head.appendChild(iconButton('close', 'Close the editor', true, closeEditor));
     panel.appendChild(head);
 
     const body = el('div', 'ed-body');
@@ -805,7 +806,8 @@
     openProject,
 
     chip(project, element) {
-      const gear = el('span', 'x', '⚙');
+      const gear = iconEl('inspect');
+      gear.classList.add('x');
       gear.title = 'Edit ' + project.name + '’s launch.json';
       gear.onclick = (e) => {
         e.stopPropagation();

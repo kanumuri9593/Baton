@@ -26,6 +26,7 @@
   // is open instead of asking the app for it again.
   const details = new Map();         // "session|request" -> detail
   const loading = new Set();
+  const listeners = [];
 
   const bucket = (id) => {
     let map = rows.get(id);
@@ -322,8 +323,9 @@
   extend({
     row(session, ctx) {
       const can = session.capabilities.indexOf('network') !== -1;
-      const button = ctx.button(
-        '⇅',
+      const make = ctx.iconButton || ctx.button;
+      const button = make(
+        ctx.iconButton ? 'network' : '⇅',
         can ? COVERAGE : 'network capture needs a Flutter debug session',
         can,
         () => toggle(session.id),
@@ -348,7 +350,39 @@
         details.delete(msg.sessionId + '|' + msg.request.id);
         while (map.size > CAP) map.delete(map.keys().next().value);
         if (open.has(msg.sessionId)) paint(msg.sessionId);
+        for (const fn of listeners) {
+          try { fn(msg.sessionId); } catch (err) { console.error(err); }
+        }
       }
     },
   });
+
+  window.baton.network = {
+    list(sessionId) { return [...bucket(sessionId).values()]; },
+    async pull(sessionId) {
+      const captured = await call('network', { session: sessionId, tail: CAP });
+      const map = bucket(sessionId);
+      for (const request of captured) map.set(request.id, request);
+      return [...map.values()];
+    },
+    async detail(sessionId, requestId) {
+      const key = sessionId + '|' + requestId;
+      if (details.has(key)) return details.get(key);
+      const detail = await call('networkDetail', { session: sessionId, id: requestId });
+      details.set(key, detail);
+      return detail;
+    },
+    async clear(sessionId) {
+      await call('networkClear', { session: sessionId });
+      bucket(sessionId).clear();
+      expanded.delete(sessionId);
+      for (const key of [...details.keys()]) {
+        if (key.startsWith(sessionId + '|')) details.delete(key);
+      }
+      if (open.has(sessionId)) paint(sessionId);
+    },
+    asCurl, pretty, statusClass, statusText, duration, size, shortUri,
+    coverage: COVERAGE,
+    onUpdate(fn) { listeners.push(fn); },
+  };
 })();

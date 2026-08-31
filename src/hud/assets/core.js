@@ -7,6 +7,7 @@ const historyList = $('historyList'), historyLogs = $('historyLogs');
 
 let socket, nextId = 1;
 let sessions = new Map();
+let activeSessionId = null; // session the peek strip and inspector follow
 let projects = [];          // [{root, name, targets, error}]
 let selectedRoot = null;    // null = show every project at once
 let devices = [];           // connected, runnable now
@@ -19,6 +20,32 @@ const logBuffers = new Map();
 const basename = (path) => String(path).split(/[\\/]/).filter(Boolean).pop() || path;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function iconEl(name) {
+  const html = (typeof BatonIcons !== 'undefined' && BatonIcons[name]) || '';
+  const span = document.createElement('span');
+  span.className = 'ico';
+  // Icons are a closed set of SVG strings we own, not user content.
+  if (html) span.innerHTML = html;
+  else span.textContent = name;
+  return span;
+}
+
+function iconButton(name, title, enabled, onClick, cls) {
+  const b = document.createElement('button');
+  b.className = 'icon ' + (cls || '');
+  b.title = title;
+  b.disabled = !enabled;
+  b.appendChild(iconEl(name));
+  if (onClick) b.onclick = onClick;
+  return b;
+}
+
+function fillIcon(node, name) {
+  if (!node) return;
+  node.textContent = '';
+  node.appendChild(iconEl(name));
+}
 
 function toast(text, bad) {
   toastEl.textContent = text;
@@ -73,7 +100,7 @@ function connect() {
  */
 const addons = [];
 window.baton = {
-  call, toast, esc, humanSize,
+  call, toast, esc, humanSize, iconEl, iconButton,
   extend(addon) { addons.push(addon); render(); },
 
   // --- project-level state, for addons that work on projects rather than
@@ -81,6 +108,12 @@ window.baton = {
   // addon cannot mutate what this file re-renders from.
   projects: () => projects.slice(),
   activeRoot: () => selectedRoot,
+  sessions: () => [...sessions.values()],
+  logBuffer: (id) => (logBuffers.get(id) ?? []).slice(),
+  hydrateLogs,
+  activeSession: () => activeSessionId,
+  setActiveSession,
+  setDensity,
   /** Show this project and reload the list -- what adding one does. */
   async focusProject(root) {
     selectedRoot = root;
@@ -488,6 +521,7 @@ function render() {
     list.innerHTML = '<div class="empty"><h2>Nothing running' + where + '</h2>' +
       'Pick a target above and press Run — or start one from a terminal with ' +
       '<code>baton run &lt;name&gt;</code>.</div>';
+    paintPeek();
     return;
   }
 
@@ -511,6 +545,7 @@ function render() {
     }
     for (const s of group) list.appendChild(renderRow(s));
   }
+  paintPeek();
 }
 
 function renderRow(s) {
@@ -526,6 +561,8 @@ function renderRow(s) {
     '<span class="dot ' + s.status + '"></span>' +
     '<span class="name" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
     '<span class="tag">' + esc(s.kind) + '</span><span class="spacer"></span>';
+  top.querySelector('.name').onclick = () => setActiveSession(s.id);
+  if (s.id === activeSessionId) row.classList.add('active');
 
   const button = (label, title, enabled, onClick, cls) => {
     const b = document.createElement('button');
@@ -537,19 +574,19 @@ function renderRow(s) {
     return b;
   };
 
-  top.appendChild(button('⟳', can('hotReload') ? 'Hot reload (keeps state)'
+  top.appendChild(iconButton('reload', can('hotReload') ? 'Hot reload (keeps state)'
     : 'Hot reload not available for ' + s.kind, live && can('hotReload'),
     () => act('reload', { session: s.id })));
-  top.appendChild(button('⟲', can('hotRestart') || can('restartProcess')
+  top.appendChild(iconButton('restart', can('hotRestart') || can('restartProcess')
     ? 'Hot restart' : 'Restart not available', live && (can('hotRestart') || can('restartProcess')),
     () => act('restart', { session: s.id })));
-  top.appendChild(button('■', 'Stop', live || s.status === 'starting',
+  top.appendChild(iconButton('stop', 'Stop', live || s.status === 'starting',
     () => act('stop', { session: s.id }), 'danger'));
-  top.appendChild(button('▤', 'Toggle logs', true, () => toggleLogs(s.id)));
+  top.appendChild(iconButton('logs', 'Toggle logs', true, () => toggleLogs(s.id)));
 
-  if (s.url) top.appendChild(button('↗', 'Open ' + s.url, true, () => window.open(s.url, '_blank')));
+  if (s.url) top.appendChild(iconButton('external', 'Open ' + s.url, true, () => window.open(s.url, '_blank')));
   if (s.devToolsUri) {
-    top.appendChild(button('⚙', 'Open DevTools', true, () => window.open(s.devToolsUri, '_blank')));
+    top.appendChild(iconButton('inspect', 'Open DevTools', true, () => window.open(s.devToolsUri, '_blank')));
   }
   row.appendChild(top);
 
@@ -574,7 +611,7 @@ function renderRow(s) {
   row.appendChild(logs);
   if (openLogs.has(s.id)) queueMicrotask(() => (logs.scrollTop = logs.scrollHeight));
 
-  hook('row', s, { row, top, button });
+  hook('row', s, { row, top, button, iconButton });
   return row;
 }
 
@@ -610,10 +647,136 @@ async function toggleLogs(id) {
   render();
 }
 
+async function hydrateLogs(id) {
+  try {
+    const lines = await call('logs', { session: id, tail: 400 });
+    logBuffers.set(id, lines.map((l) => ({ text: l.text, error: l.error })));
+  } catch { /* keep whatever was streamed */ }
+}
+
+function setActiveSession(id) {
+  activeSessionId = id || null;
+  paintPeek();
+  hook('sessionFocus', id);
+}
+
+const DENSITY_KEY = 'baton.density';
+const DENSITY_SIZE = {
+  chip: { width: 64, height: 76 },
+  peek: { width: 348, height: 76 },
+  inspector: { width: 980, height: 680 },
+};
+
+function setDensity(name, persist) {
+  if (name !== 'chip' && name !== 'peek' && name !== 'inspector') return;
+  document.body.dataset.density = name;
+  const expand = $('chipExpand');
+  if (expand) {
+    expand.title = name === 'inspector' ? 'Minimize to chip' : 'Expand inspector';
+    fillIcon(expand, name === 'inspector' ? 'minimize' : 'expand');
+  }
+  if (persist && name !== 'peek') {
+    try { localStorage.setItem(DENSITY_KEY, name); } catch { /* private mode */ }
+  }
+  const size = DENSITY_SIZE[name];
+  const handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.batonHud;
+  if (handler) handler.postMessage({ type: 'resize', width: size.width, height: size.height, pin: 'trailing' });
+  hook('density', name);
+}
+
+function paintPeek() {
+  const live = [...sessions.values()].filter((s) => s.status === 'running' || s.status === 'starting');
+  const failed = [...sessions.values()].some((s) => s.status === 'failed');
+  const starting = live.some((s) => s.status === 'starting');
+  const count = $('chipCount');
+  const dot = $('chipDot');
+  if (count) count.textContent = String(live.length);
+  if (dot) {
+    dot.className = 'dot' + (failed ? ' failed' : starting ? ' starting' : live.length ? ' running' : '');
+  }
+
+  const all = [...sessions.values()].sort((a, b) => a.startedAt - b.startedAt);
+  if (!activeSessionId || !sessions.has(activeSessionId)) {
+    activeSessionId = (live[0] || all[all.length - 1] || {}).id || null;
+  }
+
+  const sel = $('peekSession');
+  const meta = $('peekMeta');
+  const actions = $('peekActions');
+  if (!sel || !actions) return;
+
+  const previous = sel.value;
+  sel.innerHTML = '';
+  if (!all.length) {
+    sel.innerHTML = '<option value="">No session</option>';
+    meta.textContent = '';
+    actions.textContent = '';
+    actions.appendChild(iconButton('run', 'Run the selected target', true, () => $('run').click()));
+    return;
+  }
+  for (const s of all) {
+    const option = document.createElement('option');
+    option.value = s.id;
+    option.textContent = s.name;
+    sel.appendChild(option);
+  }
+  if (activeSessionId) sel.value = activeSessionId;
+  else if (previous && sessions.has(previous)) sel.value = previous;
+  const current = sessions.get(sel.value);
+  if (current) activeSessionId = current.id;
+  meta.textContent = current ? current.status : '';
+
+  actions.textContent = '';
+  if (current) {
+    const can = (c) => current.capabilities.includes(c);
+    const liveNow = current.status === 'running';
+    actions.appendChild(iconButton('reload', 'Hot reload (keeps state)', liveNow && can('hotReload'),
+      () => act('reload', { session: current.id })));
+    actions.appendChild(iconButton('restart', 'Hot restart', liveNow && (can('hotRestart') || can('restartProcess')),
+      () => act('restart', { session: current.id })));
+    actions.appendChild(iconButton('stop', 'Stop', liveNow || current.status === 'starting',
+      () => act('stop', { session: current.id }), 'danger'));
+  }
+  actions.appendChild(iconButton('run', 'Run the selected target', true, () => $('run').click(), 'go'));
+}
+
+function wireChip() {
+  const chip = $('chip');
+  const expand = $('chipExpand');
+  if (!chip || !expand) return;
+  fillIcon(expand, 'expand');
+  expand.onclick = (e) => {
+    e.stopPropagation();
+    const open = document.body.dataset.density === 'inspector';
+    setDensity(open ? 'chip' : 'inspector', true);
+  };
+
+  let linger;
+  chip.addEventListener('mouseenter', () => {
+    if (document.body.dataset.density === 'inspector') return;
+    clearTimeout(linger);
+    setDensity('peek', false);
+  });
+  chip.addEventListener('mouseleave', () => {
+    if (document.body.dataset.density === 'inspector') return;
+    linger = setTimeout(() => setDensity('chip', false), 180);
+  });
+
+  $('peekSession').onchange = () => setActiveSession($('peekSession').value);
+}
+
+function restoreDensity() {
+  let saved = 'chip';
+  try { saved = localStorage.getItem(DENSITY_KEY) || 'chip'; } catch { /* private mode */ }
+  if (saved !== 'inspector') saved = 'chip';
+  setDensity(saved, false);
+}
+
 // Keyboard shortcuts mirroring the flutter run terminal: r reload, R restart.
 addEventListener('keydown', (e) => {
   const tag = e.target.tagName;
   if (tag === 'SELECT' || tag === 'INPUT' || e.metaKey || e.ctrlKey) return;
+  if (e.key === 'Escape' && e.target.blur) e.target.blur();
   if (e.key === 'r') act('reload', scopedAll());
   if (e.key === 'R') act('restart', scopedAll());
 });
@@ -621,5 +784,16 @@ addEventListener('keydown', (e) => {
 if (new URLSearchParams(location.search).get('chrome') === 'panel') {
   document.body.classList.add('panel');
 }
+
+fillIcon($('reloadAll'), 'reload');
+fillIcon($('restartAll'), 'restart');
+fillIcon($('stopAll'), 'stop');
+const runBtn = $('run');
+if (runBtn && !runBtn.querySelector('.ico')) {
+  runBtn.prepend(iconEl('run'));
+}
+wireChip();
+restoreDensity();
+paintPeek();
 
 connect();

@@ -33,9 +33,12 @@ export const HUD_ASSET_DIR = join(import.meta.dirname, 'assets');
 
 export const HUD_ASSETS: ReadonlyMap<string, { path: string; contentType: string }> = new Map([
   ['hud.css', { path: join(HUD_ASSET_DIR, 'hud.css'), contentType: 'text/css' }],
+  ['icons.js', { path: join(HUD_ASSET_DIR, 'icons.js'), contentType: 'text/javascript' }],
   ['core.js', { path: join(HUD_ASSET_DIR, 'core.js'), contentType: 'text/javascript' }],
+  ['filters.js', { path: join(HUD_ASSET_DIR, 'filters.js'), contentType: 'text/javascript' }],
   ['network.js', { path: join(HUD_ASSET_DIR, 'network.js'), contentType: 'text/javascript' }],
   ['editor.js', { path: join(HUD_ASSET_DIR, 'editor.js'), contentType: 'text/javascript' }],
+  ['inspector.js', { path: join(HUD_ASSET_DIR, 'inspector.js'), contentType: 'text/javascript' }],
 ]);
 
 const TEMPLATE_PATH = join(HUD_ASSET_DIR, 'index.html');

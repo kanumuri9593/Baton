@@ -56,7 +56,8 @@
     background: var(--ok); color: #06210f; border-radius: 999px;
     font-size: 10px; font-weight: 700; padding: 0 5px; min-width: 15px; text-align: center;
   }
-  .chip .x { color: var(--muted); font-size: 13px; line-height: 1; }
+  .chip .x { color: var(--muted); font-size: 13px; line-height: 1; display: inline-flex; }
+  .chip .x svg { width: 12px; height: 12px; }
   .chip .x:hover { color: var(--err); }
 
   /* launcher */
@@ -213,7 +214,8 @@
   .sheet-row:hover { background: var(--panel-2); }
   .sheet-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sheet-row.project .name { color: var(--text); }
-  .sheet-icon { flex: none; }
+  .sheet-icon { flex: none; display: flex; color: var(--muted); }
+  .sheet-icon svg { width: 16px; height: 16px; }
   /* The row's own action, revealed on hover so a list of 400 folders is not a
      wall of buttons -- but always present for keyboard and touch. */
   .sheet-go { margin-left: auto; flex: none; padding: 2px 8px; font-size: 11px; opacity: .5; }
@@ -288,3 +290,112 @@
   .toast.show { opacity: 1; }
   .toast.bad { border-color: var(--err); color: var(--err); }
   [hidden] { display: none !important; }
+
+  /* --- densities: chip / peek / inspector -------------------------------- */
+
+  button.icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 28px; min-height: 28px;
+  }
+  button.icon .ico, button.go .ico { display: flex; }
+  button.icon .ico svg, button.go .ico svg { display: block; }
+  button.go { display: inline-flex; align-items: center; gap: 6px; }
+  .insp-chip .ico { display: inline-flex; margin-right: 4px; vertical-align: middle; }
+  .insp-chip .ico svg { width: 12px; height: 12px; }
+
+  html, body { height: 100%; }
+  body {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.35fr);
+    grid-template-rows: 1fr;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  #chip {
+    grid-column: 1; grid-row: 1;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px; background: var(--panel); border-right: 1px solid var(--line);
+    z-index: 6; min-width: 0;
+  }
+  .chip-face {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; min-width: 36px; flex: none;
+  }
+  #chipCount { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  #peek {
+    display: none; align-items: center; gap: 8px; min-width: 0; flex: 1;
+  }
+  #peekSession { flex: 1; min-width: 72px; max-width: 140px; }
+  .peek-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .peek-actions { display: flex; gap: 4px; flex: none; }
+  #hudMain {
+    grid-column: 2; min-width: 0; overflow: auto;
+    display: flex; flex-direction: column; background: var(--bg);
+  }
+  #hudMain header, #hudMain nav { position: sticky; }
+  #inspector {
+    grid-column: 3; min-width: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+    border-left: 1px solid var(--line); background: var(--panel);
+  }
+  .row.active { border-color: var(--accent); }
+
+  body[data-density="chip"] #hudMain,
+  body[data-density="chip"] #inspector,
+  body[data-density="peek"] #hudMain,
+  body[data-density="peek"] #inspector { display: none; }
+  body[data-density="chip"],
+  body[data-density="peek"] { grid-template-columns: 1fr; }
+  body[data-density="chip"] #chip,
+  body[data-density="peek"] #chip {
+    border-right: none; width: 100%; height: 100%;
+  }
+  body[data-density="peek"] #peek { display: flex; }
+  body[data-density="inspector"] #chip {
+    flex-direction: column; justify-content: flex-start; width: 52px; padding: 10px 6px;
+  }
+  body[data-density="inspector"] #peek { display: none; }
+
+  /* Browser tab: chip is a sticky corner widget; inspector fills the viewport. */
+  body:not(.panel)[data-density="chip"] #chip,
+  body:not(.panel)[data-density="peek"] #chip {
+    position: fixed; right: 16px; bottom: 16px; top: auto; left: auto;
+    width: auto; height: auto; border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .4);
+  }
+
+  .insp-head, .insp-bar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 6px 8px; border-bottom: 1px solid var(--line);
+  }
+  .insp-tabs { display: flex; gap: 4px; }
+  .insp-chip {
+    background: var(--panel-2); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 999px; padding: 2px 8px; font: inherit; font-size: 11px; cursor: pointer;
+  }
+  .insp-chip.on { color: var(--text); border-color: var(--accent); background: var(--bg); }
+  .insp-bar input[type=text] { padding: 3px 6px; font-size: 11px; min-width: 0; flex: 1; }
+  .insp-body { flex: 1; min-height: 0; overflow: auto; }
+  .insp-body.insp-net {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .insp-logs {
+    font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 8px; white-space: pre-wrap; word-break: break-word;
+  }
+  .insp-logs .err { color: var(--err); }
+  .insp-empty { color: var(--muted); padding: 16px 12px; }
+  .insp-rows { overflow: auto; min-width: 0; border-right: 1px solid var(--line); }
+  .insp-detail {
+    overflow: auto; min-width: 0; padding: 8px;
+    display: grid; gap: 8px; align-content: start;
+  }
+  .insp-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .insp-detail-body { display: grid; gap: 6px; min-width: 0; }
+  .insp-detail-body pre {
+    margin: 0; max-height: 50vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px;
+    font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .toast { grid-column: 1; grid-row: 1; }

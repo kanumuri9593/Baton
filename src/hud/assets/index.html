@@ -6,15 +6,30 @@
 <title>Baton</title>
 <link rel="icon" href="%%FAVICON%%">
 <link rel="stylesheet" href="/assets/hud.css">
+<link rel="modulepreload" href="/assets/filters.js">
 </head>
-<body>
+<body data-density="chip">
+<aside id="chip" title="Baton — hover for run controls">
+  <div class="chip-face" id="chipFace">
+    <span class="dot" id="chipDot"></span>
+    <span id="chipCount">0</span>
+  </div>
+  <div id="peek">
+    <select id="peekSession" title="Active session"></select>
+    <span class="peek-meta" id="peekMeta"></span>
+    <span class="peek-actions" id="peekActions"></span>
+  </div>
+  <button class="icon" id="chipExpand" title="Expand inspector"></button>
+</aside>
+
+<div id="hudMain">
 <header>
   <div class="brand">%%MARK%%<div>Baton<small id="status">connecting…</small></div></div>
   <span class="spacer"></span>
   <button id="historyBtn" title="Past runs, persisted on disk -- survives a daemon restart">History</button>
-  <button class="icon" id="reloadAll" title="Hot reload every running session (r)">⟳</button>
-  <button class="icon" id="restartAll" title="Hot restart every running session (R)">⟲</button>
-  <button class="icon danger" id="stopAll" title="Stop every running session">■</button>
+  <button class="icon" id="reloadAll" title="Hot reload every running session (r)"></button>
+  <button class="icon" id="restartAll" title="Hot restart every running session (R)"></button>
+  <button class="icon danger" id="stopAll" title="Stop every running session"></button>
 </header>
 
 <nav id="tabs"></nav>
@@ -37,11 +52,16 @@
 </div>
 
 <main id="list"></main>
+</div>
+
+<section id="inspector"></section>
 <div class="toast" id="toast"></div>
 
 <script>window.BATON_TOKEN='%%TOKEN%%';</script>
+<script src="/assets/icons.js"></script>
 <script src="/assets/core.js"></script>
 <script src="/assets/network.js"></script>
 <script src="/assets/editor.js"></script>
+<script type="module" src="/assets/inspector.js"></script>
 </body>
 </html>
