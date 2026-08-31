@@ -618,8 +618,8 @@ test('writeLaunchConfig saves the file, remembers the project, and reports what 
 
   assert.equal(result.file, join(root, '.vscode', 'launch.json'));
   assert.equal(typeof result.mtimeMs, 'number');
-  assert.ok(result.configs.some((c: any) => c.name === 'dev'));
-  assert.deepEqual(result.issues, { dev: [] });
+  assert.ok(result.configs.some((c: any) => c.name === 'npm dev'));
+  assert.deepEqual(result.issues, { 'npm dev': [] });
 
   const listed: any = await daemon.handle({ method: 'projects', params: {} });
   assert.ok(
@@ -738,5 +738,9 @@ test('a written launch.json is what the project then runs', async () => {
 
   const targets: any = await daemon.handle({ method: 'targets', params: { cwd: root } });
   const fromFile = targets.targets.filter((t: any) => t.source === 'launch.json');
-  assert.ok(fromFile.some((t: any) => t.name === 'dev'), 'the generated file must round-trip into targets');
+  assert.ok(fromFile.some((t: any) => t.name === 'npm dev'), 'the generated file must round-trip into targets');
+  assert.equal(
+    targets.targets.filter((t: any) => t.name === 'npm dev').length, 1,
+    'the generated config must absorb the package.json target it came from, not double it',
+  );
 });

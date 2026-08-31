@@ -107,12 +107,12 @@ export type RpcMethods = {
   };
   /** A project's launch.json: raw text for the editor, parsed configs for everything else. */
   readLaunchConfig: {
-    params: { root: string };
+    params: { root?: string };
     result: LaunchConfigView;
   };
   /** What a launch.json for this project would look like. Writes nothing. */
   generateLaunchConfig: {
-    params: { root: string };
+    params: { root?: string };
     result: { text: string; targets: TargetInfo[] };
   };
   /**
@@ -125,17 +125,17 @@ export type RpcMethods = {
    * retry is the deliberate "overwrite anyway".
    */
   writeLaunchConfig: {
-    params: { root: string; text: string; file?: 'vscode' | 'claude'; expectedMtimeMs?: number };
+    params: { root?: string; text: string; file?: 'vscode' | 'claude'; expectedMtimeMs?: number };
     result: LaunchWriteResult;
   };
   /** Change named values in place, leaving comments and layout untouched. */
   editLaunchConfig: {
-    params: { root: string; edits: LaunchEdit[]; expectedMtimeMs?: number };
+    params: { root?: string; edits: LaunchEdit[]; expectedMtimeMs?: number };
     result: LaunchWriteResult;
   };
   /** Check launch.json text without saving it -- what the editor calls as you type. */
   validateLaunchConfig: {
-    params: { root: string; text: string };
+    params: { root?: string; text: string };
     result: { parseErrors: LaunchParseError[]; issues: Record<string, ValidationIssue[]> };
   };
   bootables: {

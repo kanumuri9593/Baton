@@ -147,18 +147,21 @@ function configurationFor(target: Target, root: string): Record<string, unknown>
   const args = target.args ?? [];
   if (!target.command) return undefined;
 
-  // A detected dev script is named "npm run dev" only because that is how the
-  // picker labels it; in a launch.json the script's own name reads better. A
-  // config that came from an existing launch.json keeps the name its author
-  // chose -- regenerating must not rename someone's configuration.
-  const fromScript = target.source === 'package.json';
+  // The target's own name, not the bare script name.
+  //
+  // `detectTargets` de-duplicates by name, so a config called "npm dev" absorbs
+  // the package.json target it was generated from; one called "dev" would not,
+  // and the picker would offer the same command twice. It also keeps
+  // regeneration idempotent -- a second pass over a file this function wrote
+  // sees the same names and produces the same file, instead of a second
+  // configuration colliding with the first.
   return {
-    name: (fromScript ? args.at(-1) : undefined) ?? target.name,
+    name: target.name,
     type: 'node',
     request: 'launch',
     // Spelled out rather than assumed: a pnpm/bun project run with `npm` fails
     // in a way that looks like a broken script.
-    runtimeExecutable: fromScript ? detectPackageManager(root).command : target.command,
+    runtimeExecutable: target.source === 'package.json' ? detectPackageManager(root).command : target.command,
     runtimeArgs: args,
   };
 }

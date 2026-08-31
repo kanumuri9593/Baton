@@ -50,7 +50,7 @@ test('a generated launch.json round-trips through loadConfigs into the detected 
   assert.equal(flutter.program, 'lib/main.dart');
 
   const script = configs.find((c) => c.kind === 'process')!;
-  assert.equal(script.name, 'dev');
+  assert.equal(script.name, 'npm dev', 'the detected target name, so detectTargets absorbs the duplicate');
   assert.equal(script.runtimeExecutable, 'npm');
   assert.deepEqual(script.runtimeArgs, ['run', 'dev']);
   rmSync(root, { recursive: true, force: true });

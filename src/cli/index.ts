@@ -24,6 +24,8 @@ Usage
   baton boot <device>            start a simulator or emulator
   baton projects                 projects the HUD knows about
   baton add <path>               track another project
+  baton init [--force] [--claude]
+                                 write a launch.json from what is detected here
   baton hud [--browser|--tab]    open the floating control panel
   baton daemon start|stop|status
 
@@ -34,6 +36,7 @@ Examples
   baton boot "iPhone 17 Pro Max" # boot it, then run on it
   baton network mclane360 --filter 'POST|4\\d\\d'
   baton add ~/code/storefront    # watch three projects in one HUD
+  baton init                     # .vscode/launch.json you can then edit anywhere
 `;
 
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -353,6 +356,44 @@ async function main() {
         const project = await client.call('addProject', { path });
         console.log(`${green('+')} ${bold(project.name)} ${dim(project.root)}`);
         for (const t of project.targets) console.log(`    ${t.name}  ${dim(t.kind)}`);
+        // Not tracked yet, on purpose -- say what would make it stick, rather
+        // than leaving the next `baton projects` looking like the add failed.
+        if (project.needsConfig) {
+          console.log(yellow('    nothing runnable found here yet'));
+          console.log(dim('    baton init  writes a launch.json from what is detected'));
+        }
+        break;
+      }
+
+      case 'init': {
+        // The point of the whole command: get a first launch.json without
+        // anyone having to learn the schema or open an IDE to write it.
+        const current = await client.call('readLaunchConfig', { root: cwd });
+        if (current.file && flags.force !== true) {
+          throw new Error(`${current.file} already exists — pass --force to replace it`);
+        }
+
+        const { text, targets } = await client.call('generateLaunchConfig', { root: cwd });
+        if (!targets.length) {
+          console.log(yellow('nothing detected here — writing an empty launch.json to fill in'));
+        }
+        const written = await client.call('writeLaunchConfig', {
+          root: cwd,
+          text,
+          // Only forced when asked: otherwise the daemon writes back to whichever
+          // file this project already uses, instead of shadowing it with a new one.
+          file: flags.claude === true ? 'claude' : undefined,
+        });
+
+        console.log(`${green('+')} ${bold(written.file)}`);
+        for (const config of written.configs) {
+          const issues = written.issues[config.name] ?? [];
+          console.log(`    ${issues.length ? yellow(config.name) : config.name}  ${dim(config.kind)}`);
+          for (const issue of issues) {
+            console.log(`      ${yellow('!')} missing ${issue.path} ${dim('— ' + issue.hint)}`);
+          }
+        }
+        console.log(dim('\n  VS Code and Cursor read the same file; edit it there, or with ⚙ in the HUD'));
         break;
       }
 

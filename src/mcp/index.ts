@@ -217,6 +217,52 @@ function readable(body?: { text?: string; size: number; truncated: boolean }) {
 }
 
 server.tool(
+  'read_launch_config',
+  'Read a project\'s launch.json exactly as written -- comments, formatting and all -- plus the ' +
+    'configurations it defines and any pre-flight problems with them. Returns file: null when the ' +
+    'project has none; a file that does not parse still returns its text, with the parse errors.',
+  { cwd: z.string().optional().describe('Project directory. Defaults to the daemon\'s current project.') },
+  async ({ cwd }) =>
+    guarded(async () => {
+      const view = await (await daemon()).call('readLaunchConfig', { root: cwd });
+      if (!view.file) return 'no launch.json in this project (neither .vscode/ nor .claude/)';
+      return {
+        file: view.file,
+        text: view.text,
+        parseErrors: view.parseErrors,
+        configurations: view.configs.map((c) => c.name),
+        // Only the configs that have something wrong: an agent reading this
+        // needs the problems, not a wall of empty arrays.
+        issues: Object.fromEntries(Object.entries(view.issues).filter(([, list]) => list.length > 0)),
+      };
+    }),
+);
+
+server.tool(
+  'write_launch_config',
+  'OVERWRITE a project\'s launch.json with the text given. The whole file is replaced, so read it ' +
+    'with read_launch_config first and send the full text back, or comments and configurations you ' +
+    'did not mean to touch are lost. Invalid JSONC is refused before anything is written. Returns ' +
+    'the path written and any pre-flight issues in the result.',
+  {
+    cwd: z.string().optional().describe('Project directory. Defaults to the daemon\'s current project.'),
+    text: z.string().describe('The complete file contents. JSONC: comments and trailing commas are allowed.'),
+    file: z.enum(['vscode', 'claude']).optional()
+      .describe('Which convention to create for a project that has neither. A project that already ' +
+        'has a launch.json is written back to that same file.'),
+  },
+  async ({ cwd, text, file }) =>
+    guarded(async () => {
+      const result = await (await daemon()).call('writeLaunchConfig', { root: cwd, text, file });
+      return {
+        file: result.file,
+        configurations: result.configs.map((c) => c.name),
+        issues: Object.fromEntries(Object.entries(result.issues).filter(([, list]) => list.length > 0)),
+      };
+    }),
+);
+
+server.tool(
   'list_devices',
   'List connected devices, simulators and emulators available to Flutter.',
   { cwd: z.string().optional() },
