@@ -8,6 +8,17 @@ const METHOD_NOT_FOUND = -32601;
 /** How many polls in a row may fail completely before we call the app gone. */
 const FAILURE_LIMIT = 3;
 
+/**
+ * How many polls with no isolate at all before we call the app gone.
+ *
+ * More forgiving than a failed poll, because the honest reading of "every
+ * isolate has exited" is usually "a hot restart is in progress": the new
+ * isolate arrives, and enabling it can take a -32601 retry on top. Ten rounds
+ * (ten seconds at the default interval) is far longer than that gap and far
+ * shorter than polling a dead app forever.
+ */
+const IDLE_LIMIT = 10;
+
 /** Default body cap. Enough for any sane JSON payload, small enough to page around. */
 export const MAX_BODY = 262_144;
 
@@ -49,6 +60,8 @@ export class NetworkMonitor extends EventEmitter {
   #since = new Map<string, number>();
   #timer?: ReturnType<typeof setInterval>;
   #consecutiveFailures = 0;
+  /** Polls in a row with nothing to poll -- every isolate gone, none replacing them. */
+  #idleRounds = 0;
   #stopped = false;
 
   constructor(client: VmServiceClient, options: NetworkMonitorOptions = {}) {
@@ -105,7 +118,16 @@ export class NetworkMonitor extends EventEmitter {
   async pollOnce(): Promise<void> {
     if (this.#stopped) return;
     const isolates = [...this.#enabled];
-    if (isolates.length === 0) return;
+    if (isolates.length === 0) {
+      // Nothing to poll is not nothing happening: either a restart is between
+      // isolates, or the app is gone and no one will ever tell us.
+      if (++this.#idleRounds >= IDLE_LIMIT) {
+        this.#stopPolling();
+        this.emit('detached');
+      }
+      return;
+    }
+    this.#idleRounds = 0;
 
     let failures = 0;
     for (const isolateId of isolates) {

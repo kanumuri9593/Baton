@@ -10,7 +10,26 @@ export type CreateVmClient = (uri: string) => Promise<VmServiceClient>;
 export type NetworkServiceOptions = {
   /** Poll interval handed to every monitor; the monitor's own default when unset. */
   pollIntervalMs?: number;
+  /** First backoff after a failed attach; doubles with each further failure. */
+  retryBaseMs?: number;
 };
+
+/**
+ * How long to wait after a failed attach before trying that session again, and
+ * how many times.
+ *
+ * Retrying at all matters: the VM service can be up a moment before its isolate
+ * is runnable, and the first attach genuinely can be too early. Retrying
+ * *unboundedly* is the trap -- a Flutter session emits `change` on every daemon
+ * event, including every line the app logs, so an attach driven straight off
+ * those events becomes one connection attempt per log line. Five tries over
+ * roughly half a minute covers a slow start; past that the app is telling us it
+ * cannot do this.
+ */
+const RETRY_BASE_MS = 2000;
+const MAX_ATTACH_ATTEMPTS = 5;
+
+type AttachFailure = { attempts: number; nextAttemptAt: number };
 
 const defaultCreateClient: CreateVmClient = async (uri) => new VmServiceClient(await connectVmWs(uri));
 
@@ -39,9 +58,12 @@ export class NetworkService {
   #registry: SessionRegistry;
   #createClient: CreateVmClient;
   #pollIntervalMs?: number;
+  #retryBaseMs: number;
   #monitors = new Map<string, NetworkMonitor>();
   /** Sessions with an attach in flight, so a burst of `change` events attaches once. */
   #attaching = new Set<string>();
+  /** Sessions whose attach has failed, with when they may be tried again. */
+  #failures = new Map<string, AttachFailure>();
 
   constructor(
     registry: SessionRegistry,
@@ -53,6 +75,7 @@ export class NetworkService {
     this.store = store;
     this.#createClient = createClient;
     this.#pollIntervalMs = options.pollIntervalMs;
+    this.#retryBaseMs = options.retryBaseMs ?? RETRY_BASE_MS;
     registry.on('change', (snapshot: SessionSnapshot) => this.#consider(snapshot));
   }
 
@@ -121,6 +144,9 @@ export class NetworkService {
 
   /** Stop capturing for a session, keeping everything already captured. */
   dispose(sessionId: string): void {
+    // A stopped session's failure history is worthless: whatever is next under
+    // this id is a new run, and it deserves a fresh set of attempts.
+    this.#failures.delete(sessionId);
     const monitor = this.#monitors.get(sessionId);
     if (!monitor) return;
     this.#monitors.delete(sessionId);
@@ -148,6 +174,12 @@ export class NetworkService {
     if (snapshot.kind !== 'flutter' || snapshot.status !== 'running') return;
     if (!snapshot.vmServiceUri) return;
     if (this.#monitors.has(snapshot.id) || this.#attaching.has(snapshot.id)) return;
+
+    // A session that has already failed waits out its backoff. Without this,
+    // every log line the app writes would buy another connection attempt --
+    // `change` fires for all of them.
+    const failure = this.#failures.get(snapshot.id);
+    if (failure && (failure.attempts >= MAX_ATTACH_ATTEMPTS || Date.now() < failure.nextAttemptAt)) return;
 
     const session = this.#registry.get(snapshot.id);
     if (!session) return;
@@ -177,16 +209,26 @@ export class NetworkService {
       // which comes straight back here, and the monitor has to be findable by
       // then or this would attach a second time.
       this.#monitors.set(id, monitor);
+      this.#failures.delete(id);
       grantNetwork(session);
     } catch (err) {
       monitor?.dispose();
-      // The session's own log, not the daemon's: this is news about that app,
-      // and it is where anyone looking at the session will actually see it.
-      warn(
-        session,
-        `baton: network capture unavailable — ${(err as Error).message}. ` +
-          'The session is otherwise unaffected.',
-      );
+      const attempts = (this.#failures.get(id)?.attempts ?? 0) + 1;
+      this.#failures.set(id, {
+        attempts,
+        nextAttemptAt: Date.now() + this.#retryBaseMs * 2 ** (attempts - 1),
+      });
+      // Once per streak of failures. The session's own log, not the daemon's:
+      // this is news about that app, and it is where anyone looking at the
+      // session will see it -- which is exactly why repeating it every retry
+      // would be vandalism, flooding the 2000-line ring with one message.
+      if (attempts === 1) {
+        warn(
+          session,
+          `baton: network capture unavailable — ${(err as Error).message}. ` +
+            'Retrying quietly for a short while; the session is otherwise unaffected.',
+        );
+      }
     } finally {
       this.#attaching.delete(id);
     }

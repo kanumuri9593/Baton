@@ -435,12 +435,29 @@ function networkRow(r: {
   // The isolate half of the id is noise to a reader -- `--detail` takes the short
   // form and resolves it, so that is what the table shows.
   const id = ' #' + r.id.slice(r.id.lastIndexOf('#') + 1);
-  // 30 columns of fixed prefix, plus a little slack so wrapping never doubles
-  // a row -- a wrapped table is much harder to scan than a truncated one.
-  const room = Math.max(20, (process.stdout.columns || 100) - 32 - id.length);
+  // The prefix above is exactly 33 columns wide (2 + 6 + 1 + 5 + 1 + 6 + 1 + 9 + 2).
+  // Truncate rather than let a long URI wrap: a wrapped row is much harder to
+  // scan than a shortened one.
+  const room = Math.max(20, (process.stdout.columns || 100) - 33 - id.length);
   const uri = shortUri(r.uri);
   return prefix + (uri.length > room ? uri.slice(0, room - 1) + '…' : uri) +
     dim(id) + (r.error ? '  ' + red(r.error) : '');
+}
+
+/**
+ * First value of a header, matched case-insensitively.
+ *
+ * Header names come back exactly as the app set them -- `Content-Type` from one
+ * client, `content-type` from another -- so a lookup that assumes either case
+ * silently finds nothing and the body prints unformatted. Mirrors
+ * `headerValue` in vm/network-monitor.ts.
+ */
+function headerValue(headers: Record<string, string[]> | undefined, name: string): string | undefined {
+  const wanted = name.toLowerCase();
+  for (const [key, values] of Object.entries(headers ?? {})) {
+    if (key.toLowerCase() === wanted) return values[0];
+  }
+  return undefined;
 }
 
 /** Headers as `name: value`, one line per value -- a repeated header is not a list to squint at. */
@@ -498,8 +515,7 @@ function printRequestDetail(
     console.log(dim('\n  --body to print the request and response bodies'));
     return;
   }
-  const requestType = (detail.requestHeaders['content-type'] ?? detail.requestHeaders['Content-Type'] ?? [])[0];
-  printBody('request body', detail.requestBody, requestType);
+  printBody('request body', detail.requestBody, headerValue(detail.requestHeaders, 'content-type'));
   printBody('response body', detail.responseBody, detail.contentType);
 }
 

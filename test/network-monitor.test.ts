@@ -293,7 +293,48 @@ class ScriptedTransport implements VmTransport {
   onMessage(cb: (text: string) => void): void { this.#onMessage = cb; }
   onClose(cb: () => void): void { this.#onClose = cb; }
   close(): void { this.closed = true; this.#onClose(); }
+
+  /** Deliver one unsolicited frame, the way the Isolate stream does. */
+  push(frame: unknown): void { this.#onMessage(JSON.stringify(frame)); }
 }
+
+/** An `IsolateExit` for one isolate, as it arrives on the Isolate stream. */
+const isolateExit = (id: string) => ({
+  jsonrpc: '2.0',
+  method: 'streamNotify',
+  params: { streamId: 'Isolate', event: { type: 'Event', kind: 'IsolateExit', isolate: { id } } },
+});
+
+test('an app with no isolates left is let go, but not before a restart could replace them', async () => {
+  const transport = new ScriptedTransport({
+    getVM: () => ({ isolates: [{ id: 'isolates/1' }] }),
+    'ext.dart.io.httpEnableTimelineLogging': () => ({ type: 'HttpTimelineLoggingState', enabled: true }),
+    streamListen: () => ({ type: 'Success' }),
+    'ext.dart.io.getHttpProfile': () => ({ type: 'HttpProfile', timestamp: 1, requests: [] }),
+  });
+  const monitor = new NetworkMonitor(new VmServiceClient(transport), {
+    pollIntervalMs: 3_600_000, retryDelayMs: 0,
+  });
+  let detached = 0;
+  monitor.on('detached', () => detached++);
+  await monitor.attach();
+
+  transport.push(isolateExit('isolates/1'));
+  assert.deepEqual(monitor.isolates, [], 'the exited isolate is dropped');
+
+  // A hot restart is a beat with nothing to poll, and the new isolate may need
+  // a moment (plus a -32601 retry) before it accepts capture. Detaching then
+  // would kill capture for the rest of the run.
+  for (let i = 0; i < 9; i++) await monitor.pollOnce();
+  assert.equal(detached, 0, 'a short gap with no isolate is a restart, not a death');
+
+  await monitor.pollOnce();
+  assert.equal(detached, 1, 'ten rounds with nothing to poll means the app is gone');
+
+  await monitor.pollOnce();
+  assert.equal(detached, 1, 'and it is said once, with polling stopped');
+  monitor.dispose();
+});
 
 test('attach fails when no isolate accepts capture, so no capability is ever claimed', async () => {
   const transport = new ScriptedTransport({

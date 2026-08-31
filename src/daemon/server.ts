@@ -24,6 +24,8 @@ export type LaunchDaemonOptions = {
   createClient?: CreateVmClient;
   /** How often capture polls the app's HTTP profile. Tests use a few milliseconds. */
   networkPollIntervalMs?: number;
+  /** How long capture waits before retrying a failed attach. Tests shorten it. */
+  networkRetryBaseMs?: number;
 };
 
 export type Handshake = { port: number; token: string; pid: number; version: string };
@@ -57,7 +59,7 @@ export class LaunchDaemon {
       this.registry,
       new NetworkStore(),
       options.createClient,
-      { pollIntervalMs: options.networkPollIntervalMs },
+      { pollIntervalMs: options.networkPollIntervalMs, retryBaseMs: options.networkRetryBaseMs },
     );
     this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
     this.registry.on('log', (sessionId, text, error) =>

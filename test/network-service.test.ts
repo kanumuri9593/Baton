@@ -22,6 +22,8 @@ const LIFECYCLE = readFileSync(join(import.meta.dirname, 'fixtures', 'flutter-ru
 const line = (event: string) => LIFECYCLE.find((l) => l.includes(`"event":"${event}"`))!;
 
 const ISOLATE = 'isolates/1963006521159535';
+/** The isolate a hot restart creates; request numbers start again from 1 in it. */
+const SECOND_ISOLATE = 'isolates/7215544120983311';
 
 /**
  * A VM service that answers from memory, and can be told to invent traffic.
@@ -30,6 +32,8 @@ const ISOLATE = 'isolates/1963006521159535';
  * `createClient` that hands out one of these.
  */
 class FakeVm implements VmTransport {
+  /** The isolates this app reports. A second one is what a hot restart leaves behind. */
+  isolates: string[] = [ISOLATE];
   requests: any[] = [];
   enabled: string[] = [];
   cleared: string[] = [];
@@ -48,7 +52,7 @@ class FakeVm implements VmTransport {
 
     switch (frame.method) {
       case 'getVM':
-        return reply({ result: { isolates: [{ id: ISOLATE, name: 'main' }] } });
+        return reply({ result: { isolates: this.isolates.map((id) => ({ id, name: 'main' })) } });
       case 'ext.dart.io.httpEnableTimelineLogging':
         if (this.failEnable) return reply({ error: { code: -32601, message: 'Method not found' } });
         this.enabled.push(frame.params.isolateId);
@@ -64,11 +68,15 @@ class FakeVm implements VmTransport {
         // Faithful to the real extension: only what changed since the caller's
         // last answer, and a fresh server-side timestamp to ask with next time.
         const since = frame.params.updatedSince ?? -1;
-        const fresh = this.requests.filter((r) => (this.#updatedAt.get(r.id) ?? 0) > since);
+        const fresh = this.requests.filter(
+          (r) => r.isolateId === frame.params.isolateId && (this.#updatedAt.get(key(r)) ?? 0) > since,
+        );
         return reply({ result: { type: 'HttpProfile', timestamp: ++this.#now, requests: fresh } });
       }
       case 'ext.dart.io.getHttpProfileRequest': {
-        const found = this.requests.find((r) => r.id === frame.params.id);
+        const found = this.requests.find(
+          (r) => r.id === frame.params.id && r.isolateId === frame.params.isolateId,
+        );
         if (!found) return reply({ error: { code: 112, message: 'Unknown request id' } });
         return reply({
           result: { ...found, responseBody: [...Buffer.from('{"ok":true}', 'utf8')] },
@@ -84,18 +92,21 @@ class FakeVm implements VmTransport {
   close(): void { this.closed = true; this.#onClose(); }
 
   /** Make the app look like it just did an HTTP call. */
-  record(id: string, over: Record<string, unknown> = {}): void {
+  record(id: string, over: Record<string, unknown> = {}, isolateId = ISOLATE): void {
     this.requests.push({
-      id, isolateId: ISOLATE, method: 'GET', uri: `https://api.mclane360.test/v2/thing/${id}`,
+      id, isolateId, method: 'GET', uri: `https://api.mclane360.test/v2/thing/${id}`,
       startTime: 1_756_540_800_000_000, endTime: 1_756_540_800_120_000,
       events: [],
       request: { headers: { accept: ['application/json'] }, contentLength: -1, cookies: [] },
       response: { headers: { 'content-type': ['application/json'] }, statusCode: 200, reasonPhrase: 'OK', contentLength: 11, redirects: [] },
       ...over,
     });
-    this.#updatedAt.set(id, ++this.#now);
+    this.#updatedAt.set(`${isolateId}#${id}`, ++this.#now);
   }
 }
+
+/** Request ids are only unique within an isolate, here as in the real profile. */
+const key = (request: { isolateId: string; id: string }) => `${request.isolateId}#${request.id}`;
 
 const CONFIG: LaunchConfig = {
   name: 'iOS Simulator (DEV / dev flavor)',
@@ -120,17 +131,30 @@ let token: string;
 const vms: FakeVm[] = [];
 /** Makes the next app answer `httpEnableTimelineLogging` with -32601, forever. */
 let breakNextApp = false;
+/** Makes the connection itself fail, the way a dead VM service port does. */
+let breakConnect = false;
+/** Makes the next app report two isolates, as one that has been hot-restarted does. */
+let twoIsolatesNext = false;
+/** Every attempt the daemon has made to open a VM service connection. */
+let connectAttempts = 0;
+
+/** How long the daemon waits before retrying a failed attach, in this suite. */
+const RETRY_BASE_MS = 1000;
 
 before(async () => {
   daemon = new LaunchDaemon('test-network', {
     createClient: async () => {
+      connectAttempts++;
+      if (breakConnect) throw new Error('connect ECONNREFUSED 127.0.0.1:59175');
       const vm = new FakeVm();
       vm.failEnable = breakNextApp;
+      if (twoIsolatesNext) vm.isolates.push(SECOND_ISOLATE);
       vms.push(vm);
       return new VmServiceClient(vm);
     },
     // Fast enough that a test does not wait on a real second.
     networkPollIntervalMs: 20,
+    networkRetryBaseMs: RETRY_BASE_MS,
   });
   const handshake = await daemon.listen(0);
   port = handshake.port;
@@ -180,6 +204,10 @@ async function runFlutter(name: string) {
   session.ingest(line('app.started') + '\n');
   return session;
 }
+
+/** One `app.log` line in the machine protocol -- the chattiest thing a real app does. */
+const logLine = (n: number) =>
+  JSON.stringify([{ event: 'app.log', params: { appId: 'app', log: `flutter: frame ${n}` } }]) + '\n';
 
 /** Wait for capture to attach, and hand back the app it attached to. */
 async function captured(session: { id: string; snapshot: () => { capabilities: string[] } }) {
@@ -290,6 +318,111 @@ test('every captured request is pushed over the socket as it happens', async () 
   assert.equal(pushed.sessionId, session.id);
   assert.equal(pushed.request.uri, 'https://api.mclane360.test/v2/pushed');
   socket.close();
+});
+
+test('a short request id resolves against what has been captured', async () => {
+  const session = await runFlutter('short-id');
+  const vm = await captured(session);
+  vm.record('7');
+  await until(
+    async () => ((await daemon.handle({ method: 'network', params: { session: session.id } })) as any[]).length > 0,
+    'a captured request',
+  );
+
+  // What the CLI's `--detail 7` sends, and what the MCP tool advertises.
+  const detail: any = await daemon.handle({
+    method: 'networkDetail', params: { session: session.id, id: '7' },
+  });
+  assert.equal(detail.id, `${ISOLATE}#7`, 'the bare number names the one request that has it');
+  assert.equal(detail.responseBody.text, '{"ok":true}');
+
+  await assert.rejects(
+    daemon.handle({ method: 'networkDetail', params: { session: session.id, id: '404' } }),
+    /no captured request "404"/,
+    'an id that was never captured says so, rather than asking the app about it',
+  );
+});
+
+test('a short id that two isolates both used is refused, not guessed at', async () => {
+  // Two isolates is what an app looks like after a hot restart: request numbers
+  // start again from 1 in the new one.
+  twoIsolatesNext = true;
+  let session;
+  let vm;
+  try {
+    session = await runFlutter('ambiguous-id');
+    vm = await captured(session);
+  } finally {
+    twoIsolatesNext = false;
+  }
+  vm.record('1');
+  vm.record('1', {}, SECOND_ISOLATE);
+  await until(
+    async () => ((await daemon.handle({ method: 'network', params: { session: session.id } })) as any[]).length >= 2,
+    'a request from each isolate',
+  );
+
+  await assert.rejects(
+    daemon.handle({ method: 'networkDetail', params: { session: session.id, id: '1' } }),
+    (err: Error) =>
+      /matches 2 requests/.test(err.message) &&
+      err.message.includes(`${ISOLATE}#1`) &&
+      err.message.includes(`${SECOND_ISOLATE}#1`),
+    'the refusal has to name the candidates, or it is not actionable',
+  );
+
+  // The full id it printed is of course still accepted.
+  const detail: any = await daemon.handle({
+    method: 'networkDetail', params: { session: session.id, id: `${SECOND_ISOLATE}#1` },
+  });
+  assert.equal(detail.id, `${SECOND_ISOLATE}#1`);
+});
+
+test('an unreachable VM service is complained about once, not once per log line', async () => {
+  breakConnect = true;
+  const before = connectAttempts;
+  try {
+    const session = await runFlutter('unreachable');
+    await until(() => connectAttempts > before, 'the first connect attempt');
+
+    // A running app talks constantly, and every daemon event emits `change`.
+    // Before the backoff existed, each of these bought another connect and
+    // another copy of the warning.
+    // Spaced out, the way a real app's output arrives: each line lands after the
+    // previous failed attach has settled, which is what made this a storm.
+    for (let i = 0; i < 40; i++) {
+      session.ingest(logLine(i));
+      await delay(2);
+    }
+    await delay(50);
+
+    assert.equal(connectAttempts - before, 1, 'one failed attach must not become forty');
+    const warnings = session.recentLogs().filter((l) => l.text.includes('network capture unavailable'));
+    assert.equal(warnings.length, 1, 'and the reason is said once, not once per line');
+    assert.match(warnings[0].text, /ECONNREFUSED/, 'with the actual reason in it');
+  } finally {
+    breakConnect = false;
+  }
+});
+
+test('capture is retried after the backoff, so a slow VM service is not written off', async () => {
+  breakConnect = true;
+  const before = connectAttempts;
+  let session;
+  try {
+    session = await runFlutter('slow-vm');
+    await until(() => connectAttempts > before, 'the first connect attempt');
+    assert.equal(connectAttempts - before, 1);
+  } finally {
+    breakConnect = false;
+  }
+
+  // Past the backoff, the next thing the app says gets capture another try --
+  // an isolate that was not runnable yet usually is by now.
+  await delay(RETRY_BASE_MS + 100);
+  session.ingest(logLine(99));
+  await until(() => session.snapshot().capabilities.includes('network'), 'the retry to succeed');
+  assert.equal(connectAttempts - before, 2, 'exactly one retry, not a flood of them');
 });
 
 test('networkDetail on a session that never captured refuses like the rest', async () => {

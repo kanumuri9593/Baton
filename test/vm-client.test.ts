@@ -142,6 +142,28 @@ test('streamListen still propagates an error that is not 103', async () => {
   await assert.rejects(client.streamListen('Isolate'), /Feature is disabled/);
 });
 
+test('a call the VM service accepts but never answers gives up on its own', async () => {
+  // The nastiest failure mode: the socket is open, so nothing looks wrong, and
+  // without a timeout the caller waits forever -- in the daemon that meant an
+  // attach stuck in flight, blocking every later retry, with nothing logged.
+  const transport = new FakeTransport(); // nothing is ever answered
+  const client = new VmServiceClient(transport, { requestTimeoutMs: 20 });
+
+  // The method has to be in the message: "something timed out" is not a bug report.
+  await assert.rejects(client.request('getVM', {}), /did not answer getVM within 20ms/);
+
+  // The abandoned call must be forgotten, not left to reject a second time.
+  client.close();
+  await assert.rejects(client.request('getVM', {}), /closed/i);
+});
+
+test('a request answered in time is unaffected by the timeout', async () => {
+  const transport = new FakeTransport({ getVM: { isolates: [] } });
+  const client = new VmServiceClient(transport, { requestTimeoutMs: 5000 });
+  assert.deepEqual(await client.request('getVM', {}), { isolates: [] });
+  client.close();
+});
+
 test('close rejects every pending request instead of leaving them hanging forever', async () => {
   const transport = new FakeTransport(); // nothing is ever answered
   const client = new VmServiceClient(transport);

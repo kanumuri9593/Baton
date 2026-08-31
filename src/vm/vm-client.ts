@@ -36,15 +36,39 @@ export class VmServiceError extends Error {
 /** `streamListen` for a stream this connection already subscribed to. */
 const ALREADY_SUBSCRIBED = 103;
 
+/**
+ * How long to wait for a reply before giving up on one call.
+ *
+ * The socket being open is not evidence that the VM service is answering: a
+ * paused isolate, a wedged app or a half-open connection all accept frames and
+ * say nothing back. Without a deadline those calls never settle, and everything
+ * waiting on them -- an attach, a poll -- waits forever with nothing logged.
+ * Generous enough that a busy app fetching a large body is never cut off.
+ */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+export type VmServiceClientOptions = {
+  /** Per-call deadline. Tests use a few milliseconds. */
+  requestTimeoutMs?: number;
+};
+
+type Pending = {
+  resolve: (value: any) => void;
+  reject: (err: Error) => void;
+  timer?: ReturnType<typeof setTimeout>;
+};
+
 export class VmServiceClient {
   #transport: VmTransport;
   #nextId = 1;
-  #pending = new Map<number, { resolve: (value: any) => void; reject: (err: Error) => void }>();
+  #pending = new Map<number, Pending>();
   #streams = new Map<string, Set<(event: any) => void>>();
   #closed = false;
+  #timeoutMs: number;
 
-  constructor(transport: VmTransport) {
+  constructor(transport: VmTransport, options: VmServiceClientOptions = {}) {
     this.#transport = transport;
+    this.#timeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
     transport.onMessage((text) => this.#receive(text));
     // The app being killed (or hot-restarted hard enough) drops the socket; the
     // owner of this client learns about it through its pending calls rejecting.
@@ -56,14 +80,30 @@ export class VmServiceClient {
     if (this.#closed) return Promise.reject(new Error('vm service connection closed'));
     const id = this.#nextId++;
     return new Promise<T>((resolve, reject) => {
-      this.#pending.set(id, { resolve, reject });
+      const timer = setTimeout(() => {
+        this.#pending.delete(id);
+        reject(new Error(`vm service did not answer ${method} within ${this.#timeoutMs}ms`));
+      }, this.#timeoutMs);
+      // A call in flight must never be the reason the daemon cannot exit.
+      timer.unref?.();
+
+      this.#pending.set(id, { resolve, reject, timer });
       try {
         this.#transport.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
       } catch (err) {
-        this.#pending.delete(id);
+        this.#settle(id);
         reject(err as Error);
       }
     });
+  }
+
+  /** Forget one pending call and cancel its deadline. */
+  #settle(id: number): Pending | undefined {
+    const pending = this.#pending.get(id);
+    if (!pending) return undefined;
+    this.#pending.delete(id);
+    if (pending.timer) clearTimeout(pending.timer);
+    return pending;
   }
 
   /** Register a handler for one stream's `streamNotify` events. */
@@ -120,9 +160,8 @@ export class VmServiceClient {
     }
 
     if (typeof frame.id !== 'number') return;
-    const pending = this.#pending.get(frame.id);
+    const pending = this.#settle(frame.id);
     if (!pending) return; // a reply to a call we already gave up on
-    this.#pending.delete(frame.id);
     if (frame.error) {
       pending.reject(
         new VmServiceError(
@@ -140,7 +179,10 @@ export class VmServiceClient {
   #finish(reason: string): void {
     if (this.#closed) return;
     this.#closed = true;
-    for (const [, pending] of this.#pending) pending.reject(new Error(reason));
+    for (const [, pending] of this.#pending) {
+      if (pending.timer) clearTimeout(pending.timer);
+      pending.reject(new Error(reason));
+    }
     this.#pending.clear();
   }
 }
