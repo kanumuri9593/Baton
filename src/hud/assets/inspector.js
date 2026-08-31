@@ -7,6 +7,13 @@
  * in filters.js so the tests and this page cannot drift apart.
  */
 import { matchLog, matchNetwork } from '/assets/filters.js';
+import {
+  clampDetailWidth,
+  clampInspectorWidth,
+  loadSplits,
+  saveSplits,
+  wireGutter,
+} from '/assets/splits.js';
 
 (function () {
   const { call, toast, esc, humanSize, iconButton, extend, hydrateLogs, logBuffer, setDensity } = window.baton;
@@ -24,6 +31,7 @@ import { matchLog, matchNetwork } from '/assets/filters.js';
   let detailTab = 'headers'; // 'headers' | 'request' | 'response' | 'error'
   let detailCache = null;
   const pulled = new Set();
+  const splits = loadSplits();
 
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -202,8 +210,42 @@ import { matchLog, matchNetwork } from '/assets/filters.js';
     } else {
       renderDetail(detail, selectedRequest);
     }
+    const gutter = el('div', 'gutter');
+    gutter.title = 'Resize request detail';
+    gutter.setAttribute('role', 'separator');
+    gutter.setAttribute('aria-orientation', 'vertical');
     body.appendChild(list);
+    body.appendChild(gutter);
     body.appendChild(detail);
+    applyInner(body);
+    wireGutter(gutter, (delta) => {
+      document.body.classList.add('splitting');
+      const current = parsePx(body.style.getPropertyValue('--detail-w'))
+        || clampDetailWidth(body.clientWidth, splits.detail);
+      splits.detail = clampDetailWidth(body.clientWidth, current + delta);
+      applyInner(body);
+    }, persistSplits);
+  }
+
+  function parsePx(value) {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function persistSplits() {
+    document.body.classList.remove('splitting');
+    saveSplits(splits);
+  }
+
+  function applyOuter() {
+    if (document.body.dataset.density !== 'inspector') return;
+    const width = clampInspectorWidth(document.body.clientWidth, splits.inspector);
+    document.body.style.setProperty('--insp-w', width + 'px');
+  }
+
+  function applyInner(body) {
+    const width = clampDetailWidth(body.clientWidth, splits.detail);
+    body.style.setProperty('--detail-w', width + 'px');
   }
 
   function renderDetail(host, requestId) {
@@ -349,6 +391,7 @@ import { matchLog, matchNetwork } from '/assets/filters.js';
   extend({
     event(msg) {
       if (document.body.dataset.density !== 'inspector') return;
+      if (document.body.classList.contains('splitting')) return;
       if (msg.event === 'log' && tab === 'logs' && msg.sessionId === sessionId) paintLogs();
       if (msg.event === 'network' && tab === 'network' && msg.sessionId === sessionId) {
         if (selectedRequest === msg.request.id) detailCache = null;
@@ -358,6 +401,7 @@ import { matchLog, matchNetwork } from '/assets/filters.js';
     },
     sessionFocus() { paint(); },
     density(name) {
+      if (name === 'inspector') applyOuter();
       if (name !== 'inspector') return;
       const id = selectedSession();
       if (id && hydrateLogs) hydrateLogs(id).then(() => paint());
@@ -368,9 +412,23 @@ import { matchLog, matchNetwork } from '/assets/filters.js';
   if (net() && net().onUpdate) {
     net().onUpdate((id) => {
       if (document.body.dataset.density !== 'inspector') return;
+      if (document.body.classList.contains('splitting')) return;
       if (tab === 'network' && id === sessionId) paintNetwork();
     });
   }
+
+  const outer = document.getElementById('splitOuter');
+  if (outer) {
+    wireGutter(outer, (delta) => {
+      document.body.classList.add('splitting');
+      const current = parsePx(document.body.style.getPropertyValue('--insp-w'))
+        || clampInspectorWidth(document.body.clientWidth, splits.inspector);
+      splits.inspector = clampInspectorWidth(document.body.clientWidth, current + delta);
+      applyOuter();
+    }, persistSplits);
+  }
+  addEventListener('resize', applyOuter);
+  applyOuter();
 
   if (document.body.dataset.density === 'inspector') {
     const id = selectedSession();

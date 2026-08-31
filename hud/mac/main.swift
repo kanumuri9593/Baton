@@ -45,7 +45,12 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        NSApp.applicationIconImage = HUDController.dockIcon()
+        if let url = Bundle.main.url(forResource: "baton", withExtension: "icns"),
+           let icon = NSImage(contentsOf: url) {
+            NSApp.applicationIconImage = icon
+        } else {
+            NSApp.applicationIconImage = HUDController.dockIcon()
+        }
 
         buildPanel()
         refresh()
@@ -78,14 +83,82 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     }
 
     /// Dock / Cmd-Tab tile: the full mark on a rounded field, matching `assets/baton.svg`.
+    ///
+    /// Drawn into a 4× bitmap so the Dock never upscales a 1× 128px needle into
+    /// jaggies. The bundle `.icns` is preferred when `npm run icons` has run.
     static func dockIcon(size: CGFloat = 128) -> NSImage {
-        NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
-            NSColor(calibratedRed: 79 / 255, green: 125 / 255, blue: 1, alpha: 1).setFill()
-            NSBezierPath(roundedRect: rect, xRadius: size * 15 / 64, yRadius: size * 15 / 64).fill()
-            NSColor.white.setFill()
-            HUDController.fillBaton(size: size)
-            return true
+        let image = NSImage(size: NSSize(width: size, height: size))
+        let pixels = Int(size * 4)
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixels,
+            pixelsHigh: pixels,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else { return image }
+        rep.size = NSSize(width: size, height: size)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        HUDController.drawDockTile(in: NSRect(origin: .zero, size: NSSize(width: size, height: size)))
+        NSGraphicsContext.restoreGraphicsState()
+        image.addRepresentation(rep)
+        return image
+    }
+
+    /// Same geometry and palette as `assets/baton.svg`: gradient tile, three
+    /// lanes cut by the sweep, then the baton on top.
+    private static func drawDockTile(in rect: NSRect) {
+        let size = rect.width
+        let scale = size / 64
+        let radius = size * 15 / 64
+        NSColor.clear.setFill()
+        rect.fill(using: .copy)
+
+        NSGraphicsContext.current?.saveGraphicsState()
+        let tile = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+        tile.addClip()
+        NSGradient(colors: [
+            NSColor(calibratedRed: 123 / 255, green: 124 / 255, blue: 1, alpha: 1), // #7b7cff
+            NSColor(calibratedRed: 79 / 255, green: 125 / 255, blue: 1, alpha: 1),
+            NSColor(calibratedRed: 37 / 255, green: 198 / 255, blue: 189 / 255, alpha: 1),
+        ])?.draw(from: NSPoint(x: 0, y: size), to: NSPoint(x: size, y: 0), options: [])
+
+        let point = { (x: CGFloat, y: CGFloat) in
+            NSPoint(x: x * scale, y: (64 - y) * scale)
         }
+
+        if let ctx = NSGraphicsContext.current?.cgContext {
+            ctx.saveGState()
+            ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+            NSColor.white.withAlphaComponent(0.62).setStroke()
+            let lanes = NSBezierPath()
+            lanes.lineWidth = 6 * scale
+            lanes.lineCapStyle = .round
+            lanes.move(to: point(13, 20)); lanes.line(to: point(44, 20))
+            lanes.move(to: point(13, 32)); lanes.line(to: point(52, 32))
+            lanes.move(to: point(31, 44)); lanes.line(to: point(49, 44))
+            lanes.stroke()
+
+            ctx.setBlendMode(.destinationOut)
+            let sweep = NSBezierPath()
+            sweep.lineWidth = 13.5 * scale
+            sweep.lineCapStyle = .round
+            sweep.move(to: point(14.5, 50.5))
+            sweep.line(to: point(54, 10))
+            NSColor.black.setStroke()
+            sweep.stroke()
+            ctx.endTransparencyLayer()
+            ctx.restoreGState()
+        }
+
+        NSColor.white.setFill()
+        HUDController.fillBaton(size: size)
+        NSGraphicsContext.current?.restoreGraphicsState()
     }
 
     private static func fillBaton(size: CGFloat) {

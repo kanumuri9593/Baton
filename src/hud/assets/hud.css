@@ -312,6 +312,18 @@
     min-height: 100vh;
     overflow: hidden;
   }
+  body.splitting { cursor: col-resize; user-select: none; }
+  .gutter {
+    position: relative; z-index: 5; cursor: col-resize; touch-action: none;
+    background: transparent;
+  }
+  .gutter::before {
+    content: ""; position: absolute; inset: 0 2px; background: var(--line);
+  }
+  .gutter:hover::before, body.splitting .gutter:hover::before {
+    inset: 0 1px; background: var(--accent);
+  }
+  #splitOuter { grid-column: 3; grid-row: 1; width: 6px; }
   #chip {
     grid-column: 1; grid-row: 1;
     display: flex; align-items: center; gap: 8px;
@@ -346,14 +358,22 @@
     display: flex; flex-direction: column;
     border-left: 1px solid var(--line); background: var(--panel);
   }
+  body[data-density="inspector"] {
+    grid-template-columns: 52px minmax(0, 1fr) 6px var(--insp-w, 42%);
+  }
+  body[data-density="inspector"] #inspector {
+    grid-column: 4; border-left: none;
+  }
   .row.active { border-color: var(--accent); }
   .row.heavy { border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); }
   .tag.heaviest { color: var(--warn); border-color: var(--warn); }
 
   body[data-density="chip"] #hudMain,
   body[data-density="chip"] #inspector,
+  body[data-density="chip"] #splitOuter,
   body[data-density="peek"] #hudMain,
-  body[data-density="peek"] #inspector { display: none; }
+  body[data-density="peek"] #inspector,
+  body[data-density="peek"] #splitOuter { display: none; }
   body[data-density="chip"],
   body[data-density="peek"] { grid-template-columns: 1fr; }
   body[data-density="chip"] #chip,
@@ -387,15 +407,16 @@
   .insp-bar input[type=text] { padding: 3px 6px; font-size: 11px; min-width: 0; flex: 1; }
   .insp-body { flex: 1; min-height: 0; overflow: auto; }
   .insp-body.insp-net {
-    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--detail-w, 1fr);
   }
+  .insp-body.insp-net > .gutter { width: 6px; }
   .insp-logs {
     font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     padding: 8px; white-space: pre-wrap; word-break: break-word;
   }
   .insp-logs .err { color: var(--err); }
   .insp-empty { color: var(--muted); padding: 16px 12px; }
-  .insp-rows { overflow: auto; min-width: 0; border-right: 1px solid var(--line); }
+  .insp-rows { overflow: auto; min-width: 0; }
   .insp-detail {
     overflow: auto; min-width: 0; padding: 8px;
     display: grid; gap: 8px; align-content: start;

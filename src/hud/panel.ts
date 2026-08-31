@@ -58,9 +58,9 @@ export function hasSwift(): boolean {
 /**
  * Compile the panel app if it is missing or out of date, and return its path.
  *
- * Keyed on a hash of the Swift source, so editing the source rebuilds and
- * nothing else does -- compiling takes a few seconds and should not happen on
- * every `baton hud`.
+ * Keyed on a hash of the Swift source, Info.plist, and the generated icns, so
+ * editing any of them rebuilds and nothing else does -- compiling takes a few
+ * seconds and should not happen on every `baton hud`.
  */
 export function buildPanelApp(onBuild?: () => void): string {
   const source = sourcePath();
@@ -75,13 +75,13 @@ export function buildPanelApp(onBuild?: () => void): string {
   const app = appPath();
   const binary = join(app, 'Contents', 'MacOS', 'BatonHUD');
   const stamp = join(app, 'Contents', 'Resources', 'source.sha');
-  const hash = createHash('sha256')
-    .update(readFileSync(source))
-    .update(INFO_PLIST)
-    .digest('hex');
+  const icns = join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
+  const hash = createHash('sha256').update(readFileSync(source)).update(INFO_PLIST);
+  if (existsSync(icns)) hash.update(readFileSync(icns));
+  const digest = hash.digest('hex');
 
   const current = existsSync(stamp) ? readFileSync(stamp, 'utf8').trim() : '';
-  if (existsSync(binary) && current === hash) return app;
+  if (existsSync(binary) && current === digest) return app;
 
   onBuild?.();
   mkdirSync(dirname(binary), { recursive: true });
@@ -90,10 +90,9 @@ export function buildPanelApp(onBuild?: () => void): string {
 
   // The icon is generated from assets/baton.svg by `npm run icons`. A missing
   // icns still gets a drawn Dock tile from the Swift host.
-  const icns = join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
   if (existsSync(icns)) copyFileSync(icns, join(dirname(stamp), 'baton.icns'));
   execFileSync('xcrun', ['swiftc', '-O', '-o', binary, source], { stdio: 'inherit' });
-  writeFileSync(stamp, hash);
+  writeFileSync(stamp, digest);
   return app;
 }
 

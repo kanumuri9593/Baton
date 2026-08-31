@@ -81,6 +81,7 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
   assert.ok(inspector.includes('extend('), 'inspector.js must register as an add-on');
   assert.match(inspector, /matchLog/, 'inspector.js must use the shared log filter');
   assert.match(inspector, /matchNetwork/, 'inspector.js must use the shared network filter');
+  assert.match(inspector, /splits\.js/, 'inspector.js must own the column splitters');
 });
 
 test('session actions are named SVG icons, not unicode glyphs', () => {
@@ -101,6 +102,7 @@ test('the page has a chip, a peek strip, and an inspector pane', () => {
   assert.match(html, /id="chipMark"/);
   assert.match(html, /id="peek"/);
   assert.match(html, /id="inspector"/);
+  assert.match(html, /id="splitOuter"/);
   assert.match(html, /data-density/);
   assert.ok(!html.includes('id="chipDot"'), 'the chip shows the Baton mark, not a status LED');
 });
@@ -121,6 +123,21 @@ test('the generated HUD app is a regular Mac app with a Dock icon', () => {
   const source = readFileSync(join(import.meta.dirname, '../src/hud/panel.ts'), 'utf8');
   assert.ok(!source.includes('LSUIElement'), 'LSUIElement would hide the Dock tile');
   assert.match(source, /CFBundleIconFile/);
+  assert.match(source, /baton\.icns/, 'rebuild must copy the generated icns into the app');
+  assert.match(
+    source,
+    /\.update\(readFileSync\(icns\)\)/,
+    'icns contents must participate in the rebuild stamp so a new icon is picked up',
+  );
+});
+
+test('the Dock tile is the full Baton mark at retina resolution', () => {
+  const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  assert.match(source, /url\(forResource: "baton", withExtension: "icns"\)/);
+  assert.match(source, /NSBitmapImageRep/);
+  assert.match(source, /NSGradient/);
+  assert.match(source, /#7b7cff|#7B7CFF|123 \/ 255.*124 \/ 255.*1/, 'tile gradient start from baton.svg');
+  assert.match(source, /destinationOut|CGBlendMode/, 'lanes are cut where the baton sweeps, as in the SVG mask');
 });
 
 test('the HUD posts density with resize so native chrome can follow', () => {
