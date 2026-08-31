@@ -783,3 +783,41 @@ test('an edit addressed by the reported index changes that configuration and no 
   assert.equal(edited.configs.find((c: any) => c.name === 'second').program, 'lib/two.dart');
   assert.equal(edited.configs.find((c: any) => c.name === 'first').program, undefined);
 });
+
+test('appending a configuration goes after a trailing nameless entry, not on top of it', async () => {
+  // configCount is the raw array length; configIndexes.at(-1) + 1 is not. With
+  // an unnamed trailing entry the two differ, and appending at the wrong one
+  // replaces that entry instead of adding after it.
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), JSON.stringify({
+    configurations: [{ name: 'first', type: 'dart' }, { type: 'dart', program: 'orphan.dart' }],
+  }, null, 2) + '\n');
+
+  const view: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  assert.equal(view.configCount, 2);
+  assert.deepEqual(view.configIndexes, [0], 'the nameless entry is not a config');
+
+  await daemon.handle({
+    method: 'editLaunchConfig',
+    params: {
+      root,
+      edits: [{ path: ['configurations', view.configCount], value: { name: 'second', type: 'dart' } }],
+    },
+  });
+
+  const after: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  assert.equal(after.configCount, 3, 'the entry must have been added, not substituted');
+  assert.deepEqual(after.configs.map((c: any) => c.name), ['first', 'second']);
+  assert.ok(readFileSync(after.file, 'utf8').includes('orphan.dart'), 'the nameless entry survives');
+});
+
+test('editLaunchConfig rejects a malformed edit with something the caller can act on', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), '{ "configurations": [] }\n');
+  await assert.rejects(
+    daemon.handle({ method: 'editLaunchConfig', params: { root, edits: [{ value: 1 }] } }),
+    /each edit needs a `path` array/,
+  );
+});

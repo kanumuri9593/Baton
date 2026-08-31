@@ -62,6 +62,14 @@ export type LaunchConfigView = {
    * would land on the wrong configuration.
    */
   configIndexes: number[];
+  /**
+   * How many entries the raw `configurations` array holds, named or not.
+   *
+   * Appending a configuration means writing at exactly this index: writing at
+   * `configIndexes.at(-1) + 1` instead would land ON a trailing nameless entry
+   * (which `configs` skipped) and replace it rather than appending after it.
+   */
+  configCount: number;
   /** Pre-flight issues, keyed by configuration name. */
   issues: Record<string, ValidationIssue[]>;
   /** Non-empty when the file could not be understood; `configs` is then empty. */

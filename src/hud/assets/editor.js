@@ -404,7 +404,7 @@
     body.appendChild(addConfigRow());
 
     const foot = el('div', 'ed-foot');
-    const save = button('Save', 'Write these changes, keeping the file\'s comments and layout', saveForm, 'go');
+    const save = button('Save', 'Write these changes, keeping the file\'s comments and layout', saveForm, 'go ed-save');
     save.disabled = edits.size === 0;
     foot.appendChild(save);
     foot.appendChild(el('span', 'ed-key',
@@ -429,7 +429,7 @@
     const path = ['configurations', index, key];
     edits.set(JSON.stringify(path), { path, value });
     if (structural) return repaint();
-    const save = panel.querySelector('.ed-foot button');
+    const save = panel.querySelector('.ed-save');
     if (save) save.disabled = false;
     const count = panel.querySelector('.ed-foot .ed-key');
     if (count) count.textContent = edits.size + ' unsaved change' + (edits.size === 1 ? '' : 's');
@@ -625,9 +625,11 @@
       body = (parsed.configurations || []).find((c) => c.name === target.name);
     } catch { /* fall through to the guard below */ }
     if (!body) return toast('could not work out a configuration for ' + target.name, true);
-    // Appended at the end of the array, applied on its own so no queued edit is
-    // addressed against a stale length.
-    const at = (view.configIndexes[view.configIndexes.length - 1] ?? -1) + 1;
+    // The raw array's length, not one past the last *named* entry: a file whose
+    // last entry has no name is skipped by `configs`, and writing at that
+    // entry's index would replace it instead of appending after it. Applied on
+    // its own so no queued edit is addressed against a stale length.
+    const at = view.configCount;
     await applyEdits([{ path: ['configurations', at], value: body }], 'added ' + target.name);
   }
 

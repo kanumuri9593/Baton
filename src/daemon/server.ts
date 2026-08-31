@@ -288,7 +288,8 @@ export class LaunchDaemon {
         const file = launchFileFor(root);
         if (!file) {
           return {
-            file: null, text: null, configs: [], configIndexes: [], issues: {}, parseErrors: [],
+            file: null, text: null, configs: [], configIndexes: [], configCount: 0,
+            issues: {}, parseErrors: [],
           } satisfies RpcMethods['readLaunchConfig']['result'];
         }
 
@@ -300,8 +301,11 @@ export class LaunchDaemon {
         // leave the user with no way to see, let alone fix, the problem.
         const parseErrors = [...errors];
         let entries: Array<{ index: number; config: LaunchConfig }> = [];
+        let configCount = 0;
         if (parseErrors.length === 0) {
-          if (!Array.isArray((doc as { configurations?: unknown } | undefined)?.configurations)) {
+          const configurations = (doc as { configurations?: unknown } | undefined)?.configurations;
+          if (Array.isArray(configurations)) configCount = configurations.length;
+          if (!Array.isArray(configurations)) {
             // Valid JSON that is not a launch.json. Said in the same words
             // `loader.ts` uses, so the two never read as different problems.
             parseErrors.push({ line: 1, col: 1, message: `${file}: no "configurations" array` });
@@ -311,7 +315,7 @@ export class LaunchDaemon {
         }
         const configs = entries.map((entry) => entry.config);
         return {
-          file, text, mtimeMs, configs,
+          file, text, mtimeMs, configs, configCount,
           configIndexes: entries.map((entry) => entry.index),
           issues: issuesFor(configs), parseErrors,
         } satisfies RpcMethods['readLaunchConfig']['result'];
@@ -354,7 +358,14 @@ export class LaunchDaemon {
         if (!file) {
           throw new Error(`no launch.json in ${root} — generate one first (baton init, or Create in the HUD)`);
         }
-        const edited = applyLaunchEdits(readFileSync(file, 'utf8'), params.edits ?? []);
+        // Straight off the wire, so the shape is checked rather than assumed:
+        // a malformed `edits` would otherwise throw a TypeError from inside
+        // jsonc-parser, which says nothing useful to whoever sent it.
+        const list = Array.isArray(params.edits) ? params.edits : [];
+        if (list.some((edit) => !edit || !Array.isArray(edit.path))) {
+          throw new Error('each edit needs a `path` array, e.g. ["configurations", 0, "program"]');
+        }
+        const edited = applyLaunchEdits(readFileSync(file, 'utf8'), list);
         const { mtimeMs } = writeLaunchFile(file, edited, params.expectedMtimeMs);
         this.projects.remember(root);
         return this.#launchResult(file, root, mtimeMs);
