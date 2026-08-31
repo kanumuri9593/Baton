@@ -277,6 +277,11 @@ export class LaunchDaemon {
         return described satisfies RpcMethods['addProject']['result'];
       }
 
+      case 'removeProject': {
+        const params = p as RpcMethods['removeProject']['params'];
+        return { removed: this.projects.forget(String(params.root ?? '')) } satisfies RpcMethods['removeProject']['result'];
+      }
+
       case 'browseDirs': {
         const params = p as RpcMethods['browseDirs']['params'];
         return browseDirs(params.path ?? undefined) satisfies RpcMethods['browseDirs']['result'];
@@ -384,11 +389,6 @@ export class LaunchDaemon {
         return {
           parseErrors: [], issues: issuesFor(configsFromText(text, root)),
         } satisfies RpcMethods['validateLaunchConfig']['result'];
-      }
-
-      case 'removeProject': {
-        const params = p as RpcMethods['removeProject']['params'];
-        return { removed: this.projects.forget(String(params.root ?? '')) } satisfies RpcMethods['removeProject']['result'];
       }
 
       case 'bootables': {
