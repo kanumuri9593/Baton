@@ -138,6 +138,10 @@ test('the Dock tile is the full Baton mark at retina resolution', () => {
   assert.match(source, /NSGradient/);
   assert.match(source, /#7b7cff|#7B7CFF|123 \/ 255.*124 \/ 255.*1/, 'tile gradient start from baton.svg');
   assert.match(source, /destinationOut|CGBlendMode/, 'lanes are cut where the baton sweeps, as in the SVG mask');
+  assert.ok(
+    !/applicationIconImage = icon/.test(source),
+    'assigning the icns to applicationIconImage makes a running Dock tile use a low-res bitmap; the bundle icon is enough',
+  );
 });
 
 test('the HUD posts density with resize so native chrome can follow', () => {

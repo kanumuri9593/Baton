@@ -36,6 +36,7 @@ const INFO_PLIST = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleExecutable</key><string>BatonHUD</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleVersion</key><string>2</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>CFBundleIconFile</key><string>baton</string>
   <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->

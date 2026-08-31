@@ -45,10 +45,10 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        if let url = Bundle.main.url(forResource: "baton", withExtension: "icns"),
-           let icon = NSImage(contentsOf: url) {
-            NSApp.applicationIconImage = icon
-        } else {
+        // Leave CFBundleIconFile alone when the icns is in the bundle. Assigning
+        // it to applicationIconImage flattens the icon to a low-res bitmap, which
+        // is why the Dock looked right while quit and wrong once the HUD launched.
+        if Bundle.main.url(forResource: "baton", withExtension: "icns") == nil {
             NSApp.applicationIconImage = HUDController.dockIcon()
         }
 
