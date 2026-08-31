@@ -1,6 +1,6 @@
 const TOKEN = window.BATON_TOKEN;
 const $ = (id) => document.getElementById(id);
-const list = $('list'), picker = $('picker'), deviceSel = $('device');
+const list = $('list'), picker = $('picker'), deviceSel = $('device'), checkoutSel = $('checkout');
 const tabs = $('tabs'), statusEl = $('status'), toastEl = $('toast');
 const historyBtn = $('historyBtn'), historyPanel = $('historyPanel');
 const historyList = $('historyList'), historyLogs = $('historyLogs');
@@ -13,6 +13,8 @@ let selectedRoot = null;    // null = show every project at once
 let devices = [];           // connected, runnable now
 let bootables = [];         // not running, but startable
 let devicesLoaded = false;
+let checkouts = [];
+let checkoutsLoaded = false;
 const openLogs = new Set();
 const pending = new Map();
 const logBuffers = new Map();
@@ -81,6 +83,7 @@ function connect() {
     }
     if (msg.event === 'hello') { sessions = new Map(msg.sessions.map((s) => [s.id, s])); render(); }
     if (msg.event === 'session') { sessions.set(msg.snapshot.id, msg.snapshot); render(); }
+    if (msg.event === 'forgotten') { sessions.delete(msg.sessionId); render(); }
     if (msg.event === 'devices') loadDevices(true);
     if (msg.event === 'log') appendLog(msg);
     hook('event', msg);
@@ -141,6 +144,7 @@ async function loadProjects() {
     renderPicker();
     render();
     loadDevices();
+    loadCheckouts();
   } catch (err) { toast(err.message, true); }
 }
 
@@ -162,7 +166,7 @@ function renderTabs() {
       const x = document.createElement('span');
       x.className = 'x';
       x.textContent = '×';
-      x.title = 'Remove ' + project.name + ' from this list (nothing on disk changes)';
+        x.title = 'Remove ' + project.name + ' from this list. Baton-owned branch copies are deleted; agent worktrees stay.';
       x.onclick = async (e) => {
         e.stopPropagation();
         await call('removeProject', { root: project.root }).catch(() => {});
@@ -215,6 +219,7 @@ function select(root) {
   renderTabs();
   renderPicker();
   render();
+  loadCheckouts(true);
   if (!historyPanel.hidden) loadHistory();
 }
 
@@ -441,6 +446,54 @@ deviceSel.onchange = () => {
   loadDevices(true);
 };
 
+async function loadCheckouts(force) {
+  if (checkoutsLoaded && !force) return;
+  checkoutsLoaded = true;
+  const cwd = selectedRoot;
+  try {
+    checkouts = (await call('checkouts', { cwd })) ?? [];
+    renderCheckouts();
+  } catch (err) {
+    checkoutsLoaded = false;
+    checkouts = [{ id: 'inplace', kind: 'inplace', label: 'This checkout', group: 'this' }];
+    renderCheckouts();
+    statusEl.title = 'checkout list failed: ' + err.message;
+    return;
+  }
+  call('checkouts', { cwd, fetch: true }).then((listed) => {
+    checkouts = listed ?? checkouts;
+    renderCheckouts();
+  }).catch(() => {});
+}
+
+function renderCheckouts() {
+  if (!checkoutSel) return;
+  const previous = checkoutSel.value;
+  checkoutSel.innerHTML = '';
+  const groups = { this: null, worktrees: 'Worktrees', local: 'Local', remote: 'Remote' };
+  const buckets = { this: [], worktrees: [], local: [], remote: [] };
+  for (const entry of checkouts) {
+    (buckets[entry.group] || buckets.this).push(entry);
+  }
+  for (const group of ['this', 'worktrees', 'local', 'remote']) {
+    const items = buckets[group];
+    if (!items.length) continue;
+    const parent = groups[group]
+      ? Object.assign(document.createElement('optgroup'), { label: groups[group] })
+      : checkoutSel;
+    for (const entry of items) {
+      const option = document.createElement('option');
+      option.value = entry.id;
+      option.textContent = entry.label;
+      option.title = entry.cwd || entry.ref || entry.label;
+      parent.appendChild(option);
+    }
+    if (groups[group] && items.length) checkoutSel.appendChild(parent);
+  }
+  if (previous) checkoutSel.value = previous;
+  if (!checkoutSel.value) checkoutSel.value = 'inplace';
+}
+
 // --- running --------------------------------------------------------------
 
 $('run').onclick = async () => {
@@ -466,7 +519,11 @@ $('run').onclick = async () => {
       deviceSel.value = 'use:' + device.id;
       loadDevices(true);
     }
-    await call('run', { target, cwd: root, deviceId });
+    const pick = checkoutSel ? checkoutSel.value : 'inplace';
+    let branch, checkout;
+    if (pick && pick.startsWith('worktree:')) checkout = pick.slice('worktree:'.length);
+    else if (pick && pick.startsWith('ref:')) branch = pick.slice('ref:'.length);
+    await call('run', { target, cwd: root, deviceId, branch, checkout });
   } catch (err) {
     toast(err.message, true);
   } finally {
@@ -535,6 +592,7 @@ function render() {
     groups.get(key).push(s);
   }
   const labelled = selectedRoot === null && groups.size > 1;
+  const hog = heaviestId(all);
   for (const [root, group] of groups) {
     if (labelled) {
       const title = document.createElement('div');
@@ -543,17 +601,31 @@ function render() {
       title.title = root;
       list.appendChild(title);
     }
-    for (const s of group) list.appendChild(renderRow(s));
+    for (const s of group) list.appendChild(renderRow(s, hog));
   }
   paintPeek();
 }
 
-function renderRow(s) {
+function heaviestId(list) {
+  let best = null, bestRss = -1;
+  for (const s of list) {
+    if (s.status !== 'running' && s.status !== 'starting') continue;
+    if (s.rssBytes == null) continue;
+    if (s.rssBytes > bestRss) {
+      bestRss = s.rssBytes;
+      best = s.id;
+    }
+  }
+  return best;
+}
+
+function renderRow(s, hog) {
   const can = (c) => s.capabilities.includes(c);
   const live = s.status === 'running';
+  const heavy = hog && s.id === hog;
 
   const row = document.createElement('div');
-  row.className = 'row';
+  row.className = 'row' + (heavy ? ' heavy' : '');
 
   const top = document.createElement('div');
   top.className = 'row-top';
@@ -582,6 +654,19 @@ function renderRow(s) {
     () => act('restart', { session: s.id })));
   top.appendChild(iconButton('stop', 'Stop', live || s.status === 'starting',
     () => act('stop', { session: s.id }), 'danger'));
+  if (s.status === 'stopped' || s.status === 'failed') {
+    top.appendChild(iconButton('close',
+      s.checkout && s.checkout.kind === 'owned'
+        ? 'Dismiss and delete this branch copy'
+        : 'Dismiss from the list',
+      true, async () => {
+        try {
+          await call('forget', { session: s.id });
+          sessions.delete(s.id);
+          render();
+        } catch (err) { toast(err.message, true); }
+      }, 'danger'));
+  }
   top.appendChild(iconButton('logs', 'Toggle logs', true, () => toggleLogs(s.id)));
 
   if (s.url) top.appendChild(iconButton('external', 'Open ' + s.url, true, () => window.open(s.url, '_blank')));
@@ -594,9 +679,20 @@ function renderRow(s) {
   meta.className = 'meta';
   const bits = [s.status];
   if (s.progress) bits.push(s.progress);
+  if (s.checkout && s.checkout.kind !== 'inplace') bits.push(s.checkout.ref || s.checkout.cwd);
   if (s.target) bits.push(deviceName(s.target));
+  if (s.rssBytes != null) bits.push(humanSize(s.rssBytes));
+  if (s.cpuPct != null) bits.push(Math.round(s.cpuPct) + '%');
   if (s.exitCode !== undefined && s.exitCode !== null) bits.push('exit ' + s.exitCode);
   meta.textContent = bits.join('  ·  ');
+  if (heavy) {
+    const tag = document.createElement('span');
+    tag.className = 'tag heaviest';
+    tag.textContent = 'heaviest';
+    tag.title = 'This run is using the most memory of the live sessions';
+    meta.appendChild(document.createTextNode('  '));
+    meta.appendChild(tag);
+  }
   row.appendChild(meta);
 
   const logs = document.createElement('div');
@@ -680,7 +776,9 @@ function setDensity(name, persist) {
   }
   const size = DENSITY_SIZE[name];
   const handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.batonHud;
-  if (handler) handler.postMessage({ type: 'resize', width: size.width, height: size.height, pin: 'trailing' });
+  if (handler) handler.postMessage({
+    type: 'resize', width: size.width, height: size.height, pin: 'trailing', density: name,
+  });
   hook('density', name);
 }
 
@@ -689,10 +787,10 @@ function paintPeek() {
   const failed = [...sessions.values()].some((s) => s.status === 'failed');
   const starting = live.some((s) => s.status === 'starting');
   const count = $('chipCount');
-  const dot = $('chipDot');
+  const mark = $('chipMark');
   if (count) count.textContent = String(live.length);
-  if (dot) {
-    dot.className = 'dot' + (failed ? ' failed' : starting ? ' starting' : live.length ? ' running' : '');
+  if (mark) {
+    mark.className = 'chip-mark' + (failed ? ' failed' : starting ? ' starting' : live.length ? ' running' : '');
   }
 
   const all = [...sessions.values()].sort((a, b) => a.startedAt - b.startedAt);
@@ -797,3 +895,22 @@ restoreDensity();
 paintPeek();
 
 connect();
+
+/** Refresh rss/cpu without a second websocket; one `ps -p` on the daemon. */
+async function refreshResources() {
+  const live = [...sessions.values()].filter((s) => s.status === 'running' || s.status === 'starting');
+  if (!live.length) return;
+  try {
+    const list = await call('sessions');
+    let changed = false;
+    for (const s of list) {
+      const current = sessions.get(s.id);
+      if (!current) continue;
+      if (current.rssBytes === s.rssBytes && current.cpuPct === s.cpuPct && current.pid === s.pid) continue;
+      sessions.set(s.id, { ...current, pid: s.pid, rssBytes: s.rssBytes, cpuPct: s.cpuPct });
+      changed = true;
+    }
+    if (changed) render();
+  } catch { /* daemon offline */ }
+}
+setInterval(refreshResources, 2000);

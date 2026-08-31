@@ -32,7 +32,11 @@ export class ReactNativeSession extends ProcessSession {
   }
 
   static create(name: string, options: ReactNativeOptions): ReactNativeSession {
-    return new ReactNativeSession(sessionId(options.cwd, name), name, options);
+    return new ReactNativeSession(
+      sessionId(options.idRoot ?? options.cwd, name, options.checkoutSlug),
+      name,
+      options,
+    );
   }
 
   get url(): string {

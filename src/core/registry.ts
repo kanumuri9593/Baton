@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import type { Session, SessionSnapshot } from './types.ts';
+import type { Session, SessionCheckout, SessionSnapshot } from './types.ts';
 import type { Target } from '../config/detect.ts';
 import { FlutterSession } from '../adapters/flutter.ts';
 import { WebDevSession } from '../adapters/web-dev.ts';
@@ -7,8 +7,15 @@ import { ReactNativeSession } from '../adapters/react-native.ts';
 import { ProcessSession } from '../adapters/process.ts';
 import { DeviceRegistry } from '../daemon/devices.ts';
 import { resolveFlutter } from '../config/flutter.ts';
+import { slug } from './session-base.ts';
 
-export type RunOptions = { deviceId?: string };
+export type RunOptions = {
+  deviceId?: string;
+  /** Project the HUD groups this under. Defaults to `target.cwd`. */
+  projectRoot?: string;
+  /** When set and not inplace, the process runs from `checkout.cwd`. */
+  checkout?: SessionCheckout;
+};
 
 /**
  * Owns every running session and turns targets into the right adapter.
@@ -63,7 +70,10 @@ export class SessionRegistry extends EventEmitter {
   }
 
   async run(target: Target, options: RunOptions = {}): Promise<Session> {
-    const session = this.adopt(await this.#create(target, options), target.cwd);
+    const session = this.adopt(await this.#create(target, options), options.projectRoot ?? target.cwd);
+    if (options.checkout && options.checkout.kind !== 'inplace') {
+      session.checkout = options.checkout;
+    }
     session.start();
     this.emit('change', session.snapshot());
     return session;
@@ -98,10 +108,16 @@ export class SessionRegistry extends EventEmitter {
   }
 
   async #create(target: Target, options: RunOptions): Promise<Session> {
+    const idRoot = options.projectRoot;
+    const checkoutSlug = options.checkout && options.checkout.kind !== 'inplace'
+      ? slug(options.checkout.ref ?? options.checkout.cwd.split(/[\\/]/).pop() ?? 'checkout')
+      : undefined;
+    const ids = { idRoot, checkoutSlug };
+
     switch (target.kind) {
       case 'flutter': {
         const config = target.config!;
-        const devices = this.devices(target.cwd);
+        const devices = this.devices(idRoot ?? target.cwd);
         const device = await devices.waitForDevice(
           config.name,
           options.deviceId ?? config.deviceId,
@@ -120,23 +136,28 @@ export class SessionRegistry extends EventEmitter {
         return new FlutterSession(config, {
           deviceId: device.id,
           flutter: resolveFlutter(target.cwd),
+          ...ids,
         });
       }
 
       case 'web-dev':
         return WebDevSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
         });
 
       case 'react-native':
         return ReactNativeSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
         });
 
-      default:
+      case 'process':
         return ProcessSession.forCommand(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
         });
+      default: {
+        const _exhaustive: never = target.kind;
+        throw new Error(`unknown target kind: ${_exhaustive}`);
+      }
     }
   }
 

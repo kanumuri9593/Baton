@@ -55,15 +55,24 @@ server.tool(
 );
 
 server.tool(
+  'list_checkouts',
+  'List git checkouts this project can run from: This checkout, linked worktrees, local branches, remotes.',
+  { cwd: z.string().optional().describe('Project directory. Defaults to the daemon working directory.') },
+  async ({ cwd }) => guarded(async () => (await daemon()).call('checkouts', { cwd, fetch: true })),
+);
+
+server.tool(
   'run_target',
-  'Start a target by name. Returns the new session id to use with the other tools.',
+  'Start a target by name. Returns the new session id to use with the other tools. Optional branch or checkout runs from a git worktree without moving the current folder.',
   {
     target: z.string().describe('Target name or an unambiguous substring of it.'),
     cwd: z.string().optional(),
     deviceId: z.string().optional().describe('Force a specific device or simulator.'),
+    branch: z.string().optional().describe('Git branch or remote ref to run from a Baton-owned copy. Mutually exclusive with checkout.'),
+    checkout: z.string().optional().describe('Path to an existing worktree to attach. Mutually exclusive with branch.'),
   },
-  async ({ target, cwd, deviceId }) =>
-    guarded(async () => (await daemon()).call('run', { target, cwd, deviceId })),
+  async ({ target, cwd, deviceId, branch, checkout }) =>
+    guarded(async () => (await daemon()).call('run', { target, cwd, deviceId, branch, checkout })),
 );
 
 server.tool(

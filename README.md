@@ -12,12 +12,14 @@
 
 Run, hot-reload, restart and stop everything you are building, from the terminal you already have open. Several projects at once, on devices you can boot from the same place, with a floating panel that never steals your focus — and the same controls exposed to any MCP-capable agent.
 
-If the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — this replaces that, and adds the half an IDE can't give you: your agent can press the same buttons.
+If the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — this replaces that, and adds the half an IDE can't give you: your agent can press the same buttons. Pick a **branch** (or an agent's worktree) and Baton runs it from a copy, so VS Code never has to stash or switch.
 
 ```bash
 baton list                                  # what can I run here?
 baton run "iOS Simulator (DEV / dev flavor)"
+baton run "iOS Simulator (DEV)" --branch origin/main
 baton reload --all                          # hot reload every session
+```
 baton boot "iPhone 17 Pro Max"              # start a simulator that isn't running
 baton add ~/code/storefront                 # watch another project too
 baton hud                                   # floating panel + menu-bar item
@@ -108,6 +110,18 @@ baton projects
 
 The HUD then shows a tab per project with a live count, plus **All** — every session from every project in one list, grouped and labelled. Reload-all while looking at one project reloads only that project. Session ids are project-scoped (`storefront/npm-dev`, `api/npm-dev`), so two projects can both have an `npm dev` without colliding.
 
+### A branch without switching git
+
+The launcher's **Checkout** menu is This checkout (your current folder, dirty files included) by default. Pick a local or remote branch and Baton makes a git worktree under `~/.baton/worktrees`, copies secrets/config from your folder (not `build/` or `node_modules`), and runs from that copy. Your branch, stash, and VS Code folder do not move.
+
+Existing worktrees of the repo (the folders agents already edit) show up in the same menu — attach one to a sim and hot reload follows **that** folder. Stop keeps the copy so the next Run is warm. Dismissing the session deletes only copies Baton created; agent worktrees stay.
+
+```bash
+baton run "iOS Simulator (DEV)" --branch origin/main
+baton run "iOS Simulator (DEV)" --checkout ~/wt/agent-a
+baton checkouts
+```
+
 Sessions live in a background daemon, so **closing the terminal doesn't kill your app**. Open a new terminal and `baton ps` still shows everything.
 
 ### Pre-flight checks
@@ -160,7 +174,7 @@ claude mcp add baton -- baton-mcp
 }
 ```
 
-Tools: `list_targets`, `list_sessions`, `run_target`, `hot_reload`, `hot_restart`, `stop_session`, `read_logs`, `list_devices`, `set_debug_flag`, `screenshot`.
+Tools: `list_targets`, `list_sessions`, `list_checkouts`, `run_target`, `hot_reload`, `hot_restart`, `stop_session`, `read_logs`, `list_devices`, `set_debug_flag`, `screenshot`.
 
 Agents that don't speak MCP can just use the CLI — every command is scriptable and exits non-zero on failure.
 

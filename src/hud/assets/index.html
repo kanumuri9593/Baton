@@ -11,7 +11,7 @@
 <body data-density="chip">
 <aside id="chip" title="Baton — hover for run controls">
   <div class="chip-face" id="chipFace">
-    <span class="dot" id="chipDot"></span>
+    <span class="chip-mark" id="chipMark">%%CHIP_MARK%%</span>
     <span id="chipCount">0</span>
   </div>
   <div id="peek">
@@ -47,6 +47,7 @@
 
 <div class="launcher">
   <select id="picker"><option value="">Loading targets…</option></select>
+  <select id="checkout" title="Checkout"><option value="">This checkout</option></select>
   <select id="device" title="Device"><option value="">Auto</option></select>
   <button class="go" id="run">Run</button>
 </div>

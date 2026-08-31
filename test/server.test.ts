@@ -275,6 +275,37 @@ test('a bulk operation can be scoped to named sessions', async () => {
   assert.deepEqual(result, []);
 });
 
+test('sessions overlays rss and cpu from the sampler onto the matching pid', async () => {
+  const overlayDaemon = new LaunchDaemon('test', {
+    samplePids: async (pids) => {
+      const map = new Map();
+      for (const pid of pids) map.set(pid, { pid, cpuPct: 11, rssBytes: 8192 });
+      return map;
+    },
+  });
+  const config: LaunchConfig = {
+    name: 'probe', kind: 'flutter', cwd: '/proj', program: 'lib/main.dart',
+    toolArgs: [], args: [],
+  };
+  const session = new FlutterSession(config, {
+    deviceId: 'DEV',
+    flutter: { command: '/fake/flutter', prefixArgs: [], source: 'path' },
+    spawn: () => ({ write() {}, kill() {}, pid: 321 }),
+  });
+  overlayDaemon.registry.adopt(session, '/proj');
+  session.start();
+  try {
+    const list: any = await overlayDaemon.handle({ method: 'sessions' });
+    assert.equal(list.length, 1);
+    assert.equal(list[0].pid, 321);
+    assert.equal(list[0].rssBytes, 8192);
+    assert.equal(list[0].cpuPct, 11);
+  } finally {
+    session.handleExit(0);
+    await overlayDaemon.close();
+  }
+});
+
 test('POST /rpc answers the same methods as the socket', async () => {
   const response = await fetch(`http://127.0.0.1:${port}/rpc`, {
     method: 'POST',

@@ -47,7 +47,11 @@ export class WebDevSession extends ProcessSession {
   }
 
   static create(name: string, options: ProcessSessionOptions): WebDevSession {
-    return new WebDevSession(sessionId(options.cwd, name), name, options);
+    return new WebDevSession(
+      sessionId(options.idRoot ?? options.cwd, name, options.checkoutSlug),
+      name,
+      options,
+    );
   }
 
   protected markRunningWhenReady(): void {

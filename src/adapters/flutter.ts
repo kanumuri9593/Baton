@@ -5,11 +5,19 @@ import { MachineCodec, encodeRequest, type DaemonEvent, type DaemonResponse } fr
 import { buildFlutterArgv, type LaunchConfig } from '../config/loader.ts';
 import type { FlutterBinary } from '../config/flutter.ts';
 
-export type ChildHandle = { write: (line: string) => void; kill: (signal?: string) => void };
+export type ChildHandle = {
+  write: (line: string) => void;
+  kill: (signal?: string) => void;
+  pid?: number;
+};
 
 export type FlutterSessionOptions = {
   deviceId: string;
   flutter: FlutterBinary;
+  /** Folder whose basename prefixes the session id (the HUD project). */
+  idRoot?: string;
+  /** Extra id fragment when this run is not This checkout. */
+  checkoutSlug?: string;
   /** Injected in tests so a session can be driven without a simulator. */
   spawn?: (command: string, args: string[], cwd: string, env?: Record<string, string>) => ChildHandle;
   /** How long to wait for `app.stop` before SIGTERM-killing the child. Tests shorten this. */
@@ -48,7 +56,8 @@ export class FlutterSession extends BaseSession {
   #pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
 
   constructor(config: LaunchConfig, options: FlutterSessionOptions) {
-    super(sessionId(config.cwd, config.name, options.deviceId.slice(0, 8)), config.name, CAPABILITIES);
+    const suffix = [options.deviceId.slice(0, 8), options.checkoutSlug].filter(Boolean).join('+');
+    super(sessionId(options.idRoot ?? config.cwd, config.name, suffix), config.name, CAPABILITIES);
     this.config = config;
     this.deviceId = options.deviceId;
     this.#options = options;
@@ -65,6 +74,7 @@ export class FlutterSession extends BaseSession {
 
     if (this.#options.spawn) {
       this.#child = this.#options.spawn(command, args, this.config.cwd, this.config.env);
+      this.pid = this.#child.pid;
       return;
     }
 
@@ -82,9 +92,11 @@ export class FlutterSession extends BaseSession {
       this.setStatus('failed');
       this.#rejectAll(err.message);
     });
+    this.pid = proc.pid;
     this.#child = {
       write: (line) => proc.stdin.write(line),
       kill: (signal) => proc.kill((signal as NodeJS.Signals) ?? 'SIGTERM'),
+      pid: proc.pid,
     };
   }
 
@@ -146,6 +158,7 @@ export class FlutterSession extends BaseSession {
   handleExit(code: number): void {
     this.#codec.flush();
     this.exitCode = code;
+    this.pid = undefined;
     this.setStatus(code === 0 || this.status === 'running' ? 'stopped' : 'failed');
     this.#rejectAll(`session exited with code ${code}`);
     this.emit('exit', code);

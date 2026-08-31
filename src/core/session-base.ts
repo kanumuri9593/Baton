@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type {
-  Capability, LogLine, OperationResult, Session, SessionSnapshot, SessionStatus,
+  Capability, LogLine, OperationResult, Session, SessionCheckout, SessionSnapshot, SessionStatus,
 } from './types.ts';
 import { UnsupportedCapability } from './types.ts';
 
@@ -25,8 +25,12 @@ export abstract class BaseSession extends EventEmitter implements Session {
   status: SessionStatus = 'starting';
   progress?: string;
   exitCode?: number;
+  /** OS pid of the spawned child, once it exists. */
+  pid?: number;
   /** Set by the registry when the session is created; see SessionSnapshot.root. */
   root?: string;
+  /** Set by the registry when a run is not This checkout. */
+  checkout?: SessionCheckout;
 
   #logs: LogLine[] = [];
   #capabilities: Set<Capability>;
@@ -102,6 +106,12 @@ export abstract class BaseSession extends EventEmitter implements Session {
       exitCode: this.exitCode,
       startedAt: this.startedAt,
       ...this.extraSnapshot(),
+      // Applied after extraSnapshot so a subclass cannot drop the pid by
+      // forgetting to spread super.
+      ...(this.pid != null ? { pid: this.pid } : {}),
+      ...(this.checkout && this.checkout.kind !== 'inplace'
+        ? { checkout: this.checkout }
+        : {}),
     };
   }
 }

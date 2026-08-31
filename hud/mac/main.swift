@@ -1,11 +1,11 @@
-// Baton HUD — a menu-bar item and a floating panel over the local daemon.
+// Baton HUD — a menu-bar extra and a floating panel over the local daemon.
 //
 // The panel is an NSPanel at `.floating` level with `.canJoinAllSpaces`, so it
 // stays above a full-screen terminal on every desktop, and `becomesKeyOnlyIfNeeded`
 // so clicking Run never steals focus from whatever you were typing in.
 //
-// It hosts the same HTML the daemon serves to a browser: one control surface,
-// two ways to open it.
+// It is a regular app (Dock + Cmd-Tab) that still hosts the same HTML the
+// daemon serves to a browser: one control surface, two ways to open it.
 
 import AppKit
 import WebKit
@@ -23,7 +23,7 @@ func handshakeURL() -> URL {
     return URL(fileURLWithPath: base).appendingPathComponent("daemon.json")
 }
 
-final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScriptMessageHandler {
+final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WKUIDelegate, WKScriptMessageHandler {
     private var statusItem: NSStatusItem!
     private var panel: NSPanel!
     private var web: WKWebView!
@@ -45,6 +45,8 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
+        NSApp.applicationIconImage = HUDController.dockIcon()
+
         buildPanel()
         refresh()
         // Cheap: one loopback request against a process that is already awake.
@@ -62,30 +64,47 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
     /// The baton, drawn rather than shipped as a bitmap.
     ///
     /// Same geometry as `assets/baton-glyph.svg`, in a 64pt box flipped to
-    /// AppKit's bottom-left origin. A template image lets the system tint it,
-    /// so it is correct in a light menu bar, a dark one, and while highlighted.
-    static func batonGlyph(size: CGFloat = 17) -> NSImage {
+    /// AppKit's bottom-left origin. Not a template image: the fill is the run
+    /// status (green / amber / red / muted), which is the thing people look for
+    /// in a crowded menu bar.
+    static func batonGlyph(size: CGFloat = 17, color: NSColor = .labelColor) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
-            let scale = size / 64
-            let point = { (x: CGFloat, y: CGFloat) in
-                NSPoint(x: x * scale, y: (64 - y) * scale)
-            }
-
-            let shaft = NSBezierPath()
-            shaft.move(to: point(16.86, 52.8))
-            shaft.line(to: point(54, 10))
-            shaft.line(to: point(12.14, 48.2))
-            shaft.close()
-            shaft.fill()
-
-            let grip = point(14.5, 50.5)
-            let radius = 4.6 * scale
-            NSBezierPath(ovalIn: NSRect(x: grip.x - radius, y: grip.y - radius,
-                                        width: radius * 2, height: radius * 2)).fill()
+            color.setFill()
+            HUDController.fillBaton(size: size)
             return true
         }
-        image.isTemplate = true
+        image.isTemplate = false
         return image
+    }
+
+    /// Dock / Cmd-Tab tile: the full mark on a rounded field, matching `assets/baton.svg`.
+    static func dockIcon(size: CGFloat = 128) -> NSImage {
+        NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+            NSColor(calibratedRed: 79 / 255, green: 125 / 255, blue: 1, alpha: 1).setFill()
+            NSBezierPath(roundedRect: rect, xRadius: size * 15 / 64, yRadius: size * 15 / 64).fill()
+            NSColor.white.setFill()
+            HUDController.fillBaton(size: size)
+            return true
+        }
+    }
+
+    private static func fillBaton(size: CGFloat) {
+        let scale = size / 64
+        let point = { (x: CGFloat, y: CGFloat) in
+            NSPoint(x: x * scale, y: (64 - y) * scale)
+        }
+
+        let shaft = NSBezierPath()
+        shaft.move(to: point(16.86, 52.8))
+        shaft.line(to: point(54, 10))
+        shaft.line(to: point(12.14, 48.2))
+        shaft.close()
+        shaft.fill()
+
+        let grip = point(14.5, 50.5)
+        let radius = 4.6 * scale
+        NSBezierPath(ovalIn: NSRect(x: grip.x - radius, y: grip.y - radius,
+                                    width: radius * 2, height: radius * 2)).fill()
     }
 
     // MARK: panel
@@ -100,7 +119,8 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
 
         panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 64, height: 76),
-            styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable,
+                        .fullSizeContentView, .utilityWindow, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -116,7 +136,9 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
         panel.becomesKeyOnlyIfNeeded = true
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
+        panel.delegate = self
         panel.contentView = web
+        applyChrome("chip")
         // v2: chip-sized default. The previous autosave restored a 430pt HUD
         // and would fight the density-driven resize.
         panel.setFrameAutosaveName("BatonHUD.v2")
@@ -163,16 +185,60 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
               let body = message.body as? [String: Any],
               let type = body["type"] as? String else { return }
         DispatchQueue.main.async { [weak self] in
-            if type == "resize" { self?.pinTrailing(body) }
+            if type == "resize" {
+                self?.pinTrailing(body)
+                if let density = body["density"] as? String {
+                    self?.applyChrome(density)
+                }
+            }
         }
     }
 
+    /// Chip/peek stay chrome-less; inspector gets traffic lights and a title.
+    private func applyChrome(_ density: String) {
+        let compact = density != "inspector"
+        if compact {
+            panel.styleMask.insert(.fullSizeContentView)
+            panel.titleVisibility = .hidden
+        } else {
+            panel.styleMask.remove(.fullSizeContentView)
+            panel.titleVisibility = .visible
+        }
+        panel.standardWindowButton(.closeButton)?.isHidden = compact
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = compact
+        panel.standardWindowButton(.zoomButton)?.isHidden = compact
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        // Red traffic light hides; Quit HUD in the menu is how the process ends.
+        panel.orderOut(nil)
+        return false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication,
+                                       hasVisibleWindows flag: Bool) -> Bool {
+        // Dock click restores; it does not toggle a HUD that is already up.
+        showPanel()
+        return false
+    }
+
+    private var panelShown: Bool {
+        panel.isVisible && !panel.isMiniaturized
+    }
+
     private func showPanel() {
+        if panel.isMiniaturized { panel.deminiaturize(nil) }
         panel.orderFrontRegardless()
     }
 
     private func togglePanel() {
-        if panel.isVisible { panel.orderOut(nil) } else { showPanel() }
+        if panel.isMiniaturized {
+            showPanel()
+        } else if panel.isVisible {
+            panel.orderOut(nil)
+        } else {
+            showPanel()
+        }
     }
 
     /// Links marked `target="_blank"` (DevTools, a dev server URL) belong in a
@@ -236,8 +302,7 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
     }
 
     private func setTitle(_ text: String, color: NSColor, tooltip: String) {
-        // The glyph is a template image the system tints; only the count is
-        // coloured, which is the part that actually carries information.
+        statusItem.button?.image = HUDController.batonGlyph(color: color)
         statusItem.button?.attributedTitle = NSAttributedString(
             string: text,
             attributes: [.foregroundColor: color,
@@ -284,7 +349,7 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item(panel.isVisible ? "Hide HUD" : "Show HUD", #selector(menuToggle)))
+        menu.addItem(item(panelShown ? "Hide HUD" : "Show HUD", #selector(menuToggle)))
         menu.addItem(.separator())
         menu.addItem(item("Hot reload all", #selector(menuReload), key: "r"))
         menu.addItem(item("Hot restart all", #selector(menuRestart), key: "R"))
@@ -318,6 +383,7 @@ final class HUDController: NSObject, NSApplicationDelegate, WKUIDelegate, WKScri
 let application = NSApplication.shared
 let controller = HUDController()
 application.delegate = controller
-// Accessory: menu-bar only, no Dock icon, never activates over your terminal.
-application.setActivationPolicy(.accessory)
+// Regular: Dock tile and Cmd-Tab. The panel is still nonactivating, so Run
+// does not steal the terminal's keyboard focus.
+application.setActivationPolicy(.regular)
 application.run()

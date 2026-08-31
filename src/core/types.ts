@@ -40,6 +40,26 @@ export type SessionSnapshot = {
   vmServiceUri?: string;
   exitCode?: number;
   startedAt: number;
+  /** OS pid of the spawned child, once it exists. */
+  pid?: number;
+  /** Resident set size of `pid`, bytes. Absent when unsampled or unknown. */
+  rssBytes?: number;
+  /** CPU percent of `pid` from `ps`. Absent when unsampled or unknown. */
+  cpuPct?: number;
+  /**
+   * Where the process is actually running, when that is not `root`.
+   *
+   * Omitted for This checkout so existing clients stay quiet. `root` is still
+   * the project the HUD grouped this under.
+   */
+  checkout?: SessionCheckout;
+};
+
+/** A session's git checkout: in-place, an attached worktree, or a Baton-owned copy. */
+export type SessionCheckout = {
+  kind: 'inplace' | 'attached' | 'owned';
+  ref?: string;
+  cwd: string;
 };
 
 /**
@@ -98,6 +118,10 @@ export interface Session {
   readonly name: string;
   readonly capabilities: ReadonlySet<Capability>;
   readonly status: SessionStatus;
+  /** Project this session was started from; see SessionSnapshot.root. */
+  root?: string;
+  /** Set by the registry when a run is not This checkout. */
+  checkout?: SessionCheckout;
 
   start(): void;
   hotReload(reason?: string): Promise<OperationResult>;

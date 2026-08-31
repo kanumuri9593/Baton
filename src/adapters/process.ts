@@ -8,6 +8,10 @@ export type ProcessSessionOptions = {
   args: string[];
   cwd: string;
   env?: Record<string, string>;
+  /** Folder whose basename prefixes the session id (the HUD project). */
+  idRoot?: string;
+  /** Extra id fragment when this run is not This checkout. */
+  checkoutSlug?: string;
   /** Injected in tests. */
   spawnFn?: typeof spawn;
 };
@@ -39,7 +43,11 @@ export class ProcessSession extends BaseSession {
   }
 
   static forCommand(name: string, options: ProcessSessionOptions): ProcessSession {
-    return new ProcessSession(sessionId(options.cwd, name), name, options);
+    return new ProcessSession(
+      sessionId(options.idRoot ?? options.cwd, name, options.checkoutSlug),
+      name,
+      options,
+    );
   }
 
   start(): void {
@@ -55,6 +63,7 @@ export class ProcessSession extends BaseSession {
       shell: process.platform === 'win32',
     });
     this.child = child;
+    this.pid = child.pid;
 
     child.stdout?.on('data', (c: Buffer) => this.handleOutput(c.toString(), false));
     child.stderr?.on('data', (c: Buffer) => this.handleOutput(c.toString(), true));
@@ -64,6 +73,7 @@ export class ProcessSession extends BaseSession {
     });
     child.on('exit', (code: number | null) => {
       this.exitCode = code ?? 0;
+      this.pid = undefined;
       // An exit we asked for is a stop; an exit we did not ask for is a failure.
       this.setStatus(this.#stopping || code === 0 ? 'stopped' : 'failed');
       this.emit('exit', this.exitCode);

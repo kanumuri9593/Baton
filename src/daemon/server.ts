@@ -5,6 +5,7 @@ import { writeFileSync, rmSync, readFileSync, existsSync, statSync } from 'node:
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { SessionRegistry } from '../core/registry.ts';
+import { CheckoutStore } from '../core/checkouts.ts';
 import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.ts';
 import { validate, type ValidationIssue } from '../config/validate.ts';
 import { loadConfigs, type LaunchConfig } from '../config/loader.ts';
@@ -25,6 +26,7 @@ import { waitForSession, type WaitableSession } from './waiter.ts';
 import {
   getProof, listProofs, runProof, type ProofHost, type ProofRunParams,
 } from './proof.ts';
+import { overlayResources, samplePids } from '../core/resources.ts';
 import type { Capability, Session, SessionSnapshot } from '../core/types.ts';
 import type {
   LaunchWriteResult, ProjectInfo, PushEvent, RpcMethods, TargetInfo,
@@ -37,8 +39,13 @@ export type LaunchDaemonOptions = {
   createClient?: CreateVmClient;
   /** How often capture polls the app's HTTP profile. Tests use a few milliseconds. */
   networkPollIntervalMs?: number;
-  /** How long capture waits before retrying a failed attach. Tests shorten it. */
+  /** How often capture waits before retrying a failed attach. Tests shorten it. */
   networkRetryBaseMs?: number;
+  /**
+   * How live session pids are sampled for RSS/CPU. Tests inject a map; production
+   * is one `ps -p` for those pids only.
+   */
+  samplePids?: (pids: number[]) => Promise<Map<number, { pid: number; cpuPct: number; rssBytes: number }>>;
 };
 
 export type Handshake = { port: number; token: string; pid: number; version: string };
@@ -55,6 +62,7 @@ export type RpcRequest = { id?: number; method: string; params?: Record<string, 
 export class LaunchDaemon {
   readonly registry = new SessionRegistry();
   readonly projects = new ProjectRegistry();
+  readonly checkouts = new CheckoutStore();
   readonly history: LogHistory;
   readonly network: NetworkService;
   #logSink: LogSink;
@@ -65,6 +73,7 @@ export class LaunchDaemon {
   #clients = new Set<WebSocket>();
   #token = randomBytes(24).toString('hex');
   #version: string;
+  #samplePids: (pids: number[]) => Promise<Map<number, { pid: number; cpuPct: number; rssBytes: number }>>;
 
   constructor(version = '0.1.0', options: LaunchDaemonOptions = {}) {
     this.#version = version;
@@ -76,6 +85,7 @@ export class LaunchDaemon {
       options.createClient,
       { pollIntervalMs: options.networkPollIntervalMs, retryBaseMs: options.networkRetryBaseMs },
     );
+    this.#samplePids = options.samplePids ?? ((pids) => samplePids(pids));
     this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
     this.registry.on('log', (sessionId, text, error) =>
       this.#broadcast({ event: 'log', sessionId, text, error } satisfies PushEvent),
@@ -286,7 +296,14 @@ export class LaunchDaemon {
 
       case 'removeProject': {
         const params = p as RpcMethods['removeProject']['params'];
-        return { removed: this.projects.forget(String(params.root ?? '')) } satisfies RpcMethods['removeProject']['result'];
+        const root = String(params.root ?? '');
+        const used = new Set(
+          this.registry.list()
+            .filter((s) => s.root === root && s.checkout?.kind === 'owned')
+            .map((s) => s.checkout!.cwd),
+        );
+        this.checkouts.releaseIdleOwned(root, used);
+        return { removed: this.projects.forget(root) } satisfies RpcMethods['removeProject']['result'];
       }
 
       case 'browseDirs': {
@@ -425,8 +442,12 @@ export class LaunchDaemon {
         return { root } satisfies RpcMethods['useProject']['result'];
       }
 
-      case 'sessions':
-        return this.registry.snapshots() satisfies RpcMethods['sessions']['result'];
+      case 'sessions': {
+        const snapshots = this.registry.snapshots();
+        const pids = snapshots.flatMap((s) => (s.pid != null ? [s.pid] : []));
+        const samples = await this.#samplePids(pids);
+        return overlayResources(snapshots, samples) satisfies RpcMethods['sessions']['result'];
+      }
 
       case 'devices': {
         const params = p as RpcMethods['devices']['params'];
@@ -435,11 +456,20 @@ export class LaunchDaemon {
         return devices.list() satisfies RpcMethods['devices']['result'];
       }
 
+      case 'checkouts': {
+        const params = p as RpcMethods['checkouts']['params'];
+        const root = this.#resolveRoot(params.cwd);
+        return this.checkouts.list(root, { fetch: params.fetch === true }) satisfies RpcMethods['checkouts']['result'];
+      }
+
       case 'run': {
         const params = p as RpcMethods['run']['params'];
         const root = this.#resolveRoot(params.cwd);
         this.projects.remember(root);
-        const targets = detectTargets(root);
+        const checkout = this.checkouts.resolve(root, {
+          branch: params.branch, checkout: params.checkout,
+        });
+        const targets = detectTargets(checkout.cwd);
         const target = matchTarget(targets, params.target);
         if (!target) {
           const candidates = matchCandidates(targets, params.target);
@@ -449,7 +479,7 @@ export class LaunchDaemon {
             );
           }
           throw new Error(
-            `no target matching "${params.target}" in ${root}. Run \`baton list\` to see what is available.`,
+            `no target matching "${params.target}" in ${checkout.cwd}. Run \`baton list\` to see what is available.`,
           );
         }
         // Fail before spawning: a missing dart-define file surfaces deep inside
@@ -462,7 +492,11 @@ export class LaunchDaemon {
           );
         }
 
-        const session = await this.registry.run(target, { deviceId: params.deviceId });
+        const session = await this.registry.run(target, {
+          deviceId: params.deviceId,
+          projectRoot: root,
+          checkout,
+        });
         return session.snapshot() satisfies RpcMethods['run']['result'];
       }
 
@@ -609,20 +643,12 @@ export class LaunchDaemon {
           const removed: string[] = [];
           for (const session of this.registry.list()) {
             if (session.status === 'running' || session.status === 'starting') continue;
-            if (this.registry.forget(session.id)) {
-              removed.push(session.id);
-              this.network.forget(session.id);
-              this.#lastOperation.delete(session.id);
-            }
+            if (this.#forgetSession(session)) removed.push(session.id);
           }
           return { forgotten: removed.length > 0, removed } satisfies RpcMethods['forget']['result'];
         }
         const session = this.registry.get(String(params.session ?? ''));
-        const forgotten = this.registry.forget(String(params.session ?? ''));
-        if (forgotten && session) {
-          this.network.forget(session.id);
-          this.#lastOperation.delete(session.id);
-        }
+        const forgotten = session ? this.#forgetSession(session) : false;
         return {
           forgotten,
           removed: forgotten && session ? [session.id] : [],
@@ -695,6 +721,29 @@ export class LaunchDaemon {
       default:
         throw new Error(`unknown method: ${request.method}`);
     }
+  }
+
+  /**
+   * Drop a stopped session from the list and, if it owned a worktree that
+   * nothing else still uses, delete that copy.
+   */
+  #forgetSession(session: Session): boolean {
+    if (!this.registry.forget(session.id)) return false;
+    this.network.forget(session.id);
+    this.#lastOperation.delete(session.id);
+    if (session.checkout) {
+      const cwd = session.checkout.cwd;
+      const stillUsed = this.registry.list().some((s) => s.checkout?.cwd === cwd);
+      this.checkouts.release({
+        kind: session.checkout.kind,
+        sourceRoot: session.root ?? session.checkout.cwd,
+        cwd: session.checkout.cwd,
+        ref: session.checkout.ref,
+        label: session.checkout.ref ?? session.checkout.cwd,
+      }, stillUsed);
+    }
+    this.#broadcast({ event: 'forgotten', sessionId: session.id } satisfies PushEvent);
+    return true;
   }
 
   /**
@@ -850,9 +899,7 @@ export class LaunchDaemon {
       },
       stop: (session) => session.stop(),
       forget: (session) => {
-        this.registry.forget(session.id);
-        this.network.forget(session.id);
-        this.#lastOperation.delete(session.id);
+        this.#forgetSession(session);
       },
       onProgress: (event) => this.#broadcast({ event: 'proof', ...event } satisfies PushEvent),
     };

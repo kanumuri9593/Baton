@@ -83,3 +83,21 @@ test('a fully qualified name still resolves directly', () => {
   assert.equal(registry.get('demo-web/npm-dev')?.id, 'demo-web/npm-dev');
   assert.equal(registry.get('demo-api/')?.id, 'demo-api/npm-dev', 'a unique prefix is enough');
 });
+
+test('the same target from two checkouts of one project both run', async () => {
+  const project = tmpProject('storefront');
+  const copy = tmpProject('origin-main');
+  const here = await registry.run(namedTarget(project), { projectRoot: project });
+  const other = await registry.run(namedTarget(copy), {
+    projectRoot: project,
+    checkout: { kind: 'owned', cwd: copy, ref: 'origin/main' },
+  });
+
+  assert.equal(here.id, 'storefront/npm-dev');
+  assert.equal(other.id, 'storefront/npm-dev@origin-main');
+  assert.equal(here.snapshot().root, project);
+  assert.equal(other.snapshot().root, project);
+  assert.equal(other.snapshot().checkout?.cwd, copy);
+  assert.equal(other.snapshot().checkout?.ref, 'origin/main');
+  assert.equal(here.snapshot().checkout, undefined);
+});

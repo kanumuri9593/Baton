@@ -15,12 +15,14 @@ const HELP = `baton — run and control dev sessions from any terminal
 
 Usage
   baton list                     what can be run here
-  baton run <target> [-d <dev>]  start a target (--force to skip pre-flight)
+  baton run <target> [-d <dev>] [--branch <ref>|--checkout <path>]
+                                 start a target (--force to skip pre-flight)
   baton ps                       what is running
   baton reload [target|--all]    hot reload (keeps state)
   baton restart [target|--all]   hot restart
   baton stop [target|--all]      stop
   baton forget [session|--all]   remove stopped sessions from the list
+  baton checkouts                This checkout, worktrees, local and remote refs
   baton logs <target> [-n 200] [-f]   -- also works after the run has ended
   baton history [-n 20]          past runs, on disk, across daemon restarts
   baton network <session> [-n 50] [--filter re] [-f]
@@ -49,6 +51,8 @@ Usage
 
 Examples
   baton run "iOS Simulator (DEV / dev flavor)"
+  baton run "iOS Simulator (DEV)" --branch origin/main
+  baton run dev --checkout ~/wt/agent-a
   baton run dev                  # matches "npm run dev"
   baton reload --all
   baton boot "iPhone 17 Pro Max" # boot it, then run on it
@@ -115,6 +119,19 @@ function parseUntil(raw: string): 'running' | 'stopped' | 'url' | { log: string 
   throw new Error(`--until must be running, stopped, url, or log:<regex> (got "${raw}")`);
 }
 
+function checkoutGroupHeading(group: 'this' | 'worktrees' | 'local' | 'remote'): string {
+  switch (group) {
+    case 'this': return 'this checkout';
+    case 'worktrees': return 'worktrees';
+    case 'local': return 'local';
+    case 'remote': return 'remote';
+    default: {
+      const _exhaustive: never = group;
+      return _exhaustive;
+    }
+  }
+}
+
 /** live / exit 0 / exit 1 / ? -- matches how `ps` shows status, at a glance. */
 function runStatus(run: { live: boolean; exitCode?: number | null }): string {
   if (run.live) return 'live';
@@ -130,6 +147,8 @@ function parseArgs(argv: string[]) {
     if (arg === '--all') flags.all = true;
     else if (arg === '-f' || arg === '--follow') flags.follow = true;
     else if (arg === '-d' || arg === '--device') flags.device = argv[++i];
+    else if (arg === '--branch') flags.branch = argv[++i];
+    else if (arg === '--checkout') flags.checkout = argv[++i];
     else if (arg === '-n' || arg === '--tail') flags.tail = argv[++i];
     else if (arg === '--filter') flags.filter = argv[++i];
     else if (arg === '--detail') flags.detail = argv[++i];
@@ -229,8 +248,11 @@ async function main() {
         if (!target) throw new Error('which target? try `baton list`');
         const snapshot = await client.call('run', {
           target, cwd, deviceId: flags.device, force: flags.force === true,
+          branch: typeof flags.branch === 'string' ? flags.branch : undefined,
+          checkout: typeof flags.checkout === 'string' ? flags.checkout : undefined,
         });
         console.log(`${green('▸')} ${bold(snapshot.name)} ${dim('→ ' + snapshot.id)}`);
+        if (snapshot.checkout?.ref) console.log(dim('  checkout ' + snapshot.checkout.ref));
         console.log(dim('  follow with: baton logs ' + snapshot.id + ' -f'));
         break;
       }
@@ -275,6 +297,21 @@ async function main() {
           throw new Error(`could not clear "${session}" — not found or still running`);
         }
         console.log(`${dim('○')} ${removed[0]}`);
+        break;
+      }
+
+      case 'checkouts': {
+        const listed = await client.call('checkouts', { cwd, fetch: true });
+        if (!listed.length) { console.log('no checkouts'); break; }
+        let group = '';
+        for (const entry of listed) {
+          if (entry.group !== group) {
+            group = entry.group;
+            console.log(dim(checkoutGroupHeading(entry.group)));
+          }
+          const extra = entry.cwd && entry.kind !== 'inplace' ? dim('  ' + entry.cwd) : '';
+          console.log(`  ${entry.label}${extra}`);
+        }
         break;
       }
 

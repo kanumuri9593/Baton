@@ -37,3 +37,18 @@ export function proofsDir(): string {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+/**
+ * Git worktrees Baton created so a session can run a ref without moving the
+ * user's current checkout. Created on demand; never a substitute for `stateDir`.
+ */
+export function worktreesDir(): string {
+  const dir = join(stateDir(), 'worktrees');
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/** Owned-checkout records, so a daemon restart can reuse or delete copies. */
+export function checkoutsStorePath(): string {
+  return join(stateDir(), 'checkouts.json');
+}

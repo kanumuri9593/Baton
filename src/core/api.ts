@@ -19,6 +19,7 @@ import type { Bootable } from '../daemon/simulators.ts';
 import type { Device } from '../daemon/devices.ts';
 import type { WaitUntil } from '../daemon/waiter.ts';
 import type { RunInfo } from './log-store.ts';
+import type { CheckoutListEntry } from './checkouts.ts';
 import type {
   ProofCheckName, ProofListEntry, ProofProgressEvent, ProofRunParams, ProofRunSummary,
 } from '../daemon/proof.ts';
@@ -28,6 +29,7 @@ import type {
 export type { BrowseEntry, BrowseResult, BrowseShortcut } from '../daemon/browse.ts';
 export type { LaunchEdit, LaunchParseError } from '../config/writer.ts';
 export type { ProofCheckName, ProofListEntry, ProofRunSummary } from '../daemon/proof.ts';
+export type { CheckoutListEntry } from './checkouts.ts';
 
 /** A detected target plus its pre-flight state, as sent to clients. */
 export type TargetInfo = Target & { issues: ValidationIssue[] };
@@ -200,8 +202,16 @@ export type RpcMethods = {
     params: { cwd?: string };
     result: Device[];
   };
+  /**
+   * Git checkouts this project can run from: This checkout, linked worktrees,
+   * local branches, remotes. `fetch` refreshes remotes and is best-effort.
+   */
+  checkouts: {
+    params: { cwd?: string; fetch?: boolean };
+    result: CheckoutListEntry[];
+  };
   run: {
-    params: { cwd?: string; target: string; deviceId?: string; force?: boolean };
+    params: { cwd?: string; target: string; deviceId?: string; force?: boolean; branch?: string; checkout?: string };
     result: SessionSnapshot;
   };
   reload: {
@@ -308,6 +318,7 @@ export type RpcMethods = {
 export type PushEvent =
   | { event: 'hello'; sessions: SessionSnapshot[] }
   | { event: 'session'; snapshot: SessionSnapshot }
+  | { event: 'forgotten'; sessionId: string }
   | { event: 'log'; sessionId: string; text: string; error: boolean }
   /** One captured HTTP request, pushed as it starts and again as it finishes. */
   | { event: 'network'; sessionId: string; request: NetworkRequestSnapshot }

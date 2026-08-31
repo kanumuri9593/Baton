@@ -37,8 +37,6 @@ const INFO_PLIST = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
-  <!-- Menu-bar only: no Dock icon, and it never activates over your terminal. -->
-  <key>LSUIElement</key><true/>
   <key>CFBundleIconFile</key><string>baton</string>
   <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
   <key>NSAppTransportSecurity</key>
@@ -77,7 +75,10 @@ export function buildPanelApp(onBuild?: () => void): string {
   const app = appPath();
   const binary = join(app, 'Contents', 'MacOS', 'BatonHUD');
   const stamp = join(app, 'Contents', 'Resources', 'source.sha');
-  const hash = createHash('sha256').update(readFileSync(source)).digest('hex');
+  const hash = createHash('sha256')
+    .update(readFileSync(source))
+    .update(INFO_PLIST)
+    .digest('hex');
 
   const current = existsSync(stamp) ? readFileSync(stamp, 'utf8').trim() : '';
   if (existsSync(binary) && current === hash) return app;
@@ -87,9 +88,8 @@ export function buildPanelApp(onBuild?: () => void): string {
   mkdirSync(dirname(stamp), { recursive: true });
   writeFileSync(join(app, 'Contents', 'Info.plist'), INFO_PLIST);
 
-  // The icon is generated from assets/baton.svg by `npm run icons`, so it is
-  // often absent. The panel lives in the menu bar and has no Dock tile, so a
-  // missing icon costs nothing but a generic look in Finder.
+  // The icon is generated from assets/baton.svg by `npm run icons`. A missing
+  // icns still gets a drawn Dock tile from the Swift host.
   const icns = join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
   if (existsSync(icns)) copyFileSync(icns, join(dirname(stamp), 'baton.icns'));
   execFileSync('xcrun', ['swiftc', '-O', '-o', binary, source], { stdio: 'inherit' });

@@ -18,13 +18,17 @@ test('renderHud injects the token and leaves no placeholder behind', () => {
   const html = renderHud('tok123');
   assert.ok(html.includes('tok123'), 'the token must reach the page');
   assert.ok(!html.includes('%%TOKEN%%'), 'the placeholder must be fully replaced');
+  assert.ok(!html.includes('%%MARK%%') && !html.includes('%%CHIP_MARK%%') && !html.includes('%%FAVICON%%'),
+    'brand placeholders must be fully replaced');
+  assert.match(html, /id="chip-sweep"/);
 });
 
-test('renderHud references every allowlisted asset by name', () => {
+test('the HUD launcher includes a checkout picker next to device', () => {
   const html = renderHud('tok123');
-  for (const name of HUD_ASSETS.keys()) {
-    assert.ok(html.includes(name), `index.html must reference ${name}`);
-  }
+  assert.match(html, /id="checkout"/);
+  const core = readFileSync(HUD_ASSETS.get('core.js')!.path, 'utf8');
+  assert.match(core, /'checkouts'/);
+  assert.match(core, /forgotten/);
 });
 
 // --- the asset files themselves ---------------------------------------------
@@ -94,9 +98,11 @@ test('session actions are named SVG icons, not unicode glyphs', () => {
 test('the page has a chip, a peek strip, and an inspector pane', () => {
   const html = renderHud('tok123');
   assert.match(html, /id="chip"/);
+  assert.match(html, /id="chipMark"/);
   assert.match(html, /id="peek"/);
   assert.match(html, /id="inspector"/);
   assert.match(html, /data-density/);
+  assert.ok(!html.includes('id="chipDot"'), 'the chip shows the Baton mark, not a status LED');
 });
 
 test('the macOS panel pins resize to the trailing edge', () => {
@@ -104,6 +110,25 @@ test('the macOS panel pins resize to the trailing edge', () => {
   assert.match(source, /batonHud/);
   assert.match(source, /pinTrailing/);
   assert.match(source, /WKScriptMessageHandler/);
+  assert.match(source, /miniaturizable/);
+  assert.match(source, /applicationShouldHandleReopen/);
+  assert.match(source, /setActivationPolicy\(\.regular\)/);
+  assert.match(source, /isTemplate = false/);
+  assert.match(source, /dockIcon/);
+});
+
+test('the generated HUD app is a regular Mac app with a Dock icon', () => {
+  const source = readFileSync(join(import.meta.dirname, '../src/hud/panel.ts'), 'utf8');
+  assert.ok(!source.includes('LSUIElement'), 'LSUIElement would hide the Dock tile');
+  assert.match(source, /CFBundleIconFile/);
+});
+
+test('the HUD posts density with resize so native chrome can follow', () => {
+  const core = readFileSync(HUD_ASSETS.get('core.js')!.path, 'utf8');
+  assert.match(core, /density: name/);
+  assert.match(core, /rssBytes/);
+  assert.match(core, /heaviestId/);
+  assert.match(core, /chipMark/);
 });
 
 // --- the daemon's asset route ------------------------------------------------

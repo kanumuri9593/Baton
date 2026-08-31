@@ -17,6 +17,10 @@ function asset(name: string): string {
 
 const TILE = asset('baton.svg');
 const MARK = asset('baton-mark.svg');
+/** Second copy of the mark for the chip — SVG ids must be unique on the page. */
+const CHIP_MARK = MARK
+  .replaceAll('id="sweep"', 'id="chip-sweep"')
+  .replaceAll('url(#sweep)', 'url(#chip-sweep)');
 const FAVICON = TILE
   ? `data:image/svg+xml;base64,${Buffer.from(TILE).toString('base64')}`
   : '';
@@ -62,5 +66,6 @@ export function renderHud(token: string): string {
   return template
     .replaceAll('%%TOKEN%%', token)
     .replaceAll('%%FAVICON%%', FAVICON)
+    .replaceAll('%%CHIP_MARK%%', CHIP_MARK)
     .replaceAll('%%MARK%%', MARK);
 }
