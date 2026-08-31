@@ -25,6 +25,11 @@ Usage
       --clear                    forget what has been captured
   baton devices [--all]          connected devices; --all adds bootable ones
   baton boot <device>            start a simulator or emulator
+  baton screenshot <session> [-o path]  capture the screen (iOS sim / Android)
+  baton wait <session> [--until running|stopped|url|log:<regex>] [--timeout ms]
+                                 block until a session reaches a state
+  baton status <session>         cheap structured overview: status, uptime,
+                                 last reload, recent errors, network counts
   baton projects                 projects the HUD knows about
   baton add <path>               track another project
   baton init [--force|--replace] [--claude]
@@ -41,6 +46,8 @@ Examples
   baton network mclane360 --filter 'POST|4\\d\\d'
   baton add ~/code/storefront    # watch three projects in one HUD
   baton init                     # .vscode/launch.json you can then edit anywhere
+  baton wait mclane360 --until running --timeout 30000
+  baton wait webapp --until log:"ready in"
 `;
 
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -84,6 +91,21 @@ function humanSize(bytes: number): string {
   return `${value.toFixed(1)} ${unit}`;
 }
 
+/** "4m 12s", "37s" -- coarse-grained, the way an uptime is usually read. */
+function humanDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+/** `--until running|stopped|url|log:<regex>` -- the one bit of parsing `wait` needs. */
+function parseUntil(raw: string): 'running' | 'stopped' | 'url' | { log: string } {
+  if (raw.startsWith('log:')) return { log: raw.slice(4) };
+  if (raw === 'running' || raw === 'stopped' || raw === 'url') return raw;
+  throw new Error(`--until must be running, stopped, url, or log:<regex> (got "${raw}")`);
+}
+
 /** live / exit 0 / exit 1 / ? -- matches how `ps` shows status, at a glance. */
 function runStatus(run: { live: boolean; exitCode?: number | null }): string {
   if (run.live) return 'live';
@@ -102,6 +124,9 @@ function parseArgs(argv: string[]) {
     else if (arg === '-n' || arg === '--tail') flags.tail = argv[++i];
     else if (arg === '--filter') flags.filter = argv[++i];
     else if (arg === '--detail') flags.detail = argv[++i];
+    else if (arg === '-o' || arg === '--out') flags.out = argv[++i];
+    else if (arg === '--until') flags.until = argv[++i];
+    else if (arg === '--timeout') flags.timeout = argv[++i];
     else if (arg.startsWith('-')) flags[arg.replace(/^-+/, '')] = true;
     else positional.push(arg);
   }
@@ -342,6 +367,40 @@ async function main() {
         break;
       }
 
+      case 'screenshot': {
+        const session = positional.join(' ');
+        if (!session) throw new Error('which session? try `baton ps`');
+        const result = await client.call('screenshot', {
+          session, out: typeof flags.out === 'string' ? flags.out : undefined,
+        });
+        console.log(`${green('✓')} ${result.path}`);
+        break;
+      }
+
+      case 'wait': {
+        const session = positional.join(' ');
+        if (!session) throw new Error('which session? try `baton ps`');
+        const until = parseUntil(typeof flags.until === 'string' ? flags.until : 'running');
+        const timeoutMs = flags.timeout !== undefined ? Number(flags.timeout) : undefined;
+        try {
+          const result = await client.call('wait', { session, until, timeoutMs });
+          const extra = result.url ? `  ${dim(result.url)}` : result.matchedLine ? `  ${dim(result.matchedLine)}` : '';
+          console.log(`${green('✓')} ${result.status}${dim(` in ${result.elapsedMs}ms`)}${extra}`);
+        } catch (err) {
+          console.log(`${red('✗')} ${(err as Error).message}`);
+          process.exitCode = 1;
+        }
+        break;
+      }
+
+      case 'status': {
+        const session = positional.join(' ');
+        if (!session) throw new Error('which session? try `baton ps`');
+        const summary = await client.call('summary', { session });
+        printSummary(summary);
+        break;
+      }
+
       case 'projects': {
         const { projects, active } = await client.call('projects', { cwd });
         for (const project of projects) {
@@ -552,6 +611,34 @@ function printBody(label: string, body: { text?: string; size: number; truncated
     } catch { /* a truncated or non-conforming body prints as it arrived */ }
   }
   for (const line of text.split('\n')) console.log('  ' + line);
+}
+
+/** `baton status <session>`: status, uptime, device/url, last reload, errors, network. */
+function printSummary(summary: RpcMethods['summary']['result']): void {
+  const s = summary.session;
+  const paint = STATUS_COLOR[s.status] ?? dim;
+  console.log(`${paint('●')} ${bold(s.id)}  ${paint(s.status)}  ${dim('up ' + humanDuration(summary.uptimeMs))}`);
+
+  const where = s.url ?? s.target;
+  if (where) console.log(dim(`  ${where}`));
+
+  if (summary.lastOperation) {
+    const op = summary.lastOperation;
+    const mark = op.ok ? green('✓') : red('✗');
+    console.log(`  last ${op.kind}: ${mark} ${dim(relativeTime(op.at))}${op.message ? '  ' + dim(op.message) : ''}`);
+  }
+
+  if (summary.recentErrors.length) {
+    console.log(`  ${red(`${summary.recentErrors.length} error(s)`)} ${dim(`(of ${summary.logLines} log lines)`)}`);
+    for (const line of summary.recentErrors.slice(-3)) console.log(`    ${red(line)}`);
+  } else {
+    console.log(dim(`  no recent errors (${summary.logLines} log lines)`));
+  }
+
+  if (summary.network) {
+    const n = summary.network;
+    console.log(dim(`  network: ${n.total} total, ${n.failed} failed, ${n.inFlight} in flight`));
+  }
 }
 
 function printRequestDetail(

@@ -3,13 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { DaemonClient } from '../core/client.ts';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { readFileSync, writeFileSync } from 'node:fs';
-
-const run = promisify(execFile);
+import { readFileSync } from 'node:fs';
 
 /**
  * MCP surface over the daemon.
@@ -283,27 +277,15 @@ server.tool(
 
 server.tool(
   'screenshot',
-  'Capture the screen of a running session so the visual result of a change can be checked. Supports iOS simulators and Android devices.',
-  { session: z.string() },
-  async ({ session }) => {
+  'Capture the screen of a running session so the visual result of a change can be checked. ' +
+    'Works for iOS simulators and Android devices.',
+  {
+    session: z.string(),
+    out: z.string().optional().describe('Where to save the PNG. Defaults to a path under the daemon\'s state directory.'),
+  },
+  async ({ session, out }) => {
     try {
-      const sessions = await (await daemon()).call('sessions');
-      const found = sessions.find((s) => s.id === session || s.id.startsWith(session));
-      if (!found) return fail(`no session matching "${session}"`);
-      if (!found.target) return fail(`session ${found.id} has no capturable device`);
-
-      const path = join(tmpdir(), `baton-${found.id.replace(/[^a-z0-9]/gi, '_')}.png`);
-
-      if (/^[0-9A-F-]{36}$/i.test(found.target)) {
-        await run('xcrun', ['simctl', 'io', found.target, 'screenshot', path]);
-      } else if (found.target.startsWith('emulator-') || /^[A-Z0-9]{6,}$/i.test(found.target)) {
-        await run('adb', ['-s', found.target, 'exec-out', 'screencap', '-p'], {
-          encoding: 'buffer', maxBuffer: 64 * 1024 * 1024,
-        }).then((r: any) => writeFileSync(path, r.stdout));
-      } else {
-        return fail(`screenshots are not supported for target "${found.target}"`);
-      }
-
+      const { path } = await (await daemon()).call('screenshot', { session, out });
       return {
         content: [
           { type: 'image' as const, data: readFileSync(path).toString('base64'), mimeType: 'image/png' },
@@ -313,6 +295,30 @@ server.tool(
       return fail(`screenshot failed: ${(err as Error).message}`);
     }
   },
+);
+
+server.tool(
+  'wait_for',
+  'Block until a session reaches a state. Use after run_target or hot_restart instead of polling read_logs.',
+  {
+    session: z.string(),
+    until: z
+      .union([
+        z.enum(['running', 'stopped', 'url']),
+        z.object({ log: z.string().describe('Case-insensitive regular expression matched against new log lines.') }),
+      ])
+      .default('running'),
+    timeoutMs: z.number().optional().describe('Default 60000, capped at 300000.'),
+  },
+  async ({ session, until, timeoutMs }) =>
+    guarded(async () => (await daemon()).call('wait', { session, until, timeoutMs })),
+);
+
+server.tool(
+  'session_summary',
+  'Cheap structured overview -- call this before deciding what to do next.',
+  { session: z.string() },
+  async ({ session }) => guarded(async () => (await daemon()).call('summary', { session })),
 );
 
 await server.connect(new StdioServerTransport());
