@@ -292,6 +292,22 @@ test('every captured request is pushed over the socket as it happens', async () 
   socket.close();
 });
 
+test('networkDetail on a session that never captured refuses like the rest', async () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-network-detail-'));
+  const session = await daemon.registry.run({
+    name: 'plain-detail', kind: 'process', source: 'auto', cwd: scratch,
+    command: process.execPath, args: ['-e', 'setTimeout(() => {}, 3000)'],
+  } as any);
+  try {
+    await assert.rejects(
+      daemon.handle({ method: 'networkDetail', params: { session: session.id, id: 'isolates/1#1' } }),
+      /network capture/i,
+    );
+  } finally {
+    await session.stop();
+  }
+});
+
 test('a session with no capture refuses the network RPCs with a reason, rather than an empty list', async () => {
   const scratch = mkdtempSync(join(tmpdir(), 'baton-network-plain-'));
   const target: any = {
@@ -366,6 +382,16 @@ test('an attach that fails leaves the daemon running and the capability unclaime
     );
     const sessions: any = await daemon.handle({ method: 'sessions' });
     assert.ok(sessions.length > 0, 'the daemon is still answering');
+
+    // The monitor retries a -32601 once after a second before giving up, so the
+    // complaint lands a beat after the attach was started.
+    await until(
+      () => session.recentLogs().some((l) => l.text.includes('network capture unavailable')),
+      'the reason to reach the session log, where someone will see it',
+    );
+    const complaint = session.recentLogs().find((l) => l.text.includes('network capture unavailable'))!;
+    assert.ok(complaint.error, 'it is a warning, not ordinary output');
+    assert.match(complaint.text, /dart:io extension never registered/);
   } finally {
     breakNextApp = false;
   }

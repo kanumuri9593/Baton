@@ -443,10 +443,10 @@ export class LaunchDaemon {
 
       case 'networkDetail': {
         const params = p as RpcMethods['networkDetail']['params'];
-        // Deliberately not gated on the capability: a session that has stopped
-        // capturing gets the specific "no longer capturing" message from the
-        // service, which is more useful than the generic refusal.
-        const session = this.#require(params.session);
+        // A session that captured and has since stopped keeps the capability, so
+        // it passes this gate and gets the more specific "no longer capturing"
+        // from the service. Only a session that never captured is refused here.
+        const session = this.#requireCapture(params.session);
         return this.network.detail(session.id, params.id, params.maxBody) satisfies Promise<RpcMethods['networkDetail']['result']>;
       }
 
