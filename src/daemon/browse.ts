@@ -48,7 +48,13 @@ const MAX_ENTRIES = 500;
 const HOME_SHORTCUTS = ['Desktop', 'Documents', 'code', 'dev', 'Projects'];
 
 export function browseDirs(path?: string): BrowseResult {
-  const target = path ? expand(path) : homedir();
+  // Reached straight off the wire, so what arrives is checked rather than
+  // trusted: `{path: 123}` must answer like everything else, not throw a
+  // TypeError out of a function whose whole contract is that it never throws.
+  // A blank path means home, not `resolve('')` -- that is the daemon's own
+  // working directory, an accident of wherever it happened to be started.
+  const asked = path === undefined || path === null ? '' : String(path).trim();
+  const target = asked ? expand(asked) : homedir();
   const parent = dirname(target);
   const base: BrowseResult = {
     path: target,
@@ -97,8 +103,7 @@ export function browseDirs(path?: string): BrowseResult {
 }
 
 /** `~/code` from a manual-path box means the same thing it does in a shell. */
-function expand(path: string): string {
-  const trimmed = path.trim();
+function expand(trimmed: string): string {
   const home = trimmed === '~' || trimmed.startsWith('~/') || trimmed.startsWith('~\\')
     ? join(homedir(), trimmed.slice(1))
     : trimmed;

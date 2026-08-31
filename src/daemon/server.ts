@@ -370,6 +370,12 @@ export class LaunchDaemon {
         if (list.some((edit) => !edit || !Array.isArray(edit.path))) {
           throw new Error('each edit needs a `path` array, e.g. ["configurations", 0, "program"]');
         }
+        // A path element is a key or an index, nothing else. jsonc-parser walks
+        // whatever it is handed and fails somewhere inside itself, which tells
+        // the caller nothing about what it got wrong.
+        if (list.some((edit) => edit.path.some((part) => typeof part !== 'string' && typeof part !== 'number'))) {
+          throw new Error('path elements must be a string key or a number index');
+        }
         const edited = applyLaunchEdits(readFileSync(file, 'utf8'), list);
         const { mtimeMs } = writeLaunchFile(file, edited, params.expectedMtimeMs);
         this.projects.remember(root);
@@ -626,8 +632,10 @@ export class LaunchDaemon {
     try {
       configs = loadConfigs(file, root);
     } catch {
-      // Valid JSONC that is not a launch config (no `configurations` array).
-      // The write itself succeeded, so this is "nothing runnable", not an error.
+      // Unreachable through a write we performed: `writeLaunchFile` refuses
+      // anything `loadConfigs` would reject. It stays as a guard against the
+      // narrow race where someone replaced the file between the rename and this
+      // read -- their file, not ours to report on, and the write did happen.
     }
     return { file, mtimeMs, configs, issues: issuesFor(configs) };
   }

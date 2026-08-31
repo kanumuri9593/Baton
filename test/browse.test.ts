@@ -141,3 +141,22 @@ test('shortcuts always start with Home and never point at a directory that is mi
     seen.add(shortcut.path);
   }
 });
+
+test('a path that is not a string is coerced rather than thrown over', () => {
+  // browseDirs is reached straight off the wire, where `{path: 123}` is as
+  // possible as `{path: "/tmp"}`. "Never throws" has to hold for both.
+  for (const wrong of [123, {}, [], true] as unknown[]) {
+    const result = browseDirs(wrong as string);
+    assert.equal(typeof result.path, 'string');
+    assert.ok(Array.isArray(result.entries));
+    assert.ok(result.shortcuts.length > 0);
+  }
+});
+
+test('a blank or whitespace-only path means home, not the daemon working directory', () => {
+  // resolve('') is the process cwd, which for a long-lived detached daemon is an
+  // accident of wherever it was started -- a meaningless place to land.
+  for (const blank of ['', '   ', '\t\n']) {
+    assert.equal(browseDirs(blank).path, homedir(), `${JSON.stringify(blank)} must land at home`);
+  }
+});

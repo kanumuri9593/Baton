@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   generateLaunchJson, applyLaunchEdits, writeLaunchFile, parseLaunchText, launchFileFor,
-  configsFromText,
+  configsFromText, regenerationLoss,
 } from '../src/config/writer.ts';
 import { loadConfigs } from '../src/config/loader.ts';
 
@@ -121,7 +121,9 @@ test('an edit with an undefined value deletes the key and keeps the rest intact'
   const edited = applyLaunchEdits(FIXTURE, [
     { path: ['configurations', 0, 'program'], value: undefined },
   ]);
-  assert.ok(!edited.includes('"program"'), 'the key must be gone');
+  const configs = configsFromText(edited, '/proj');
+  assert.equal(configs[0].program, undefined, 'the key must be gone from the config it named');
+  assert.equal(configs[1].program, 'docs/serve.js', 'and only from that one');
   assert.ok(edited.includes('// line comment VS Code allows'));
   assert.ok(edited.includes('"name": "Sim DEV"'));
 });
@@ -177,6 +179,38 @@ test('invalid JSONC is refused before anything is written, naming line and colum
   rmSync(root, { recursive: true, force: true });
 });
 
+test('text that parses but is not a launch.json is refused, leaving the file untouched', () => {
+  // Syntactically valid JSON is not the bar: `[]` and `"hi"` parse cleanly and
+  // would have replaced a working file, with the write reporting success and
+  // the project reporting zero configurations -- indistinguishable from a
+  // project that legitimately has none.
+  const root = scratch();
+  const file = join(root, '.vscode', 'launch.json');
+  const good = '{ "configurations": [{ "name": "keep me", "type": "dart" }] }\n';
+  writeLaunchFile(file, good);
+
+  for (const bad of ['[]', '"hi"', 'null', '42', '{ "version": "0.2.0" }',
+    '{ "configurations": {} }', '{ "configurations": "nope" }']) {
+    assert.throws(
+      () => writeLaunchFile(file, bad),
+      /not a launch\.json/,
+      `${bad} must not be accepted as a launch.json`,
+    );
+    assert.equal(readFileSync(file, 'utf8'), good, `${bad} must not have replaced the file`);
+  }
+  assert.deepEqual(readdirSync(join(root, '.vscode')), ['launch.json'], 'and no temp file survives');
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('an empty configurations array is a legitimate launch.json', () => {
+  // The skeleton `baton init` writes for a project with nothing detected yet.
+  const root = scratch();
+  const file = join(root, 'launch.json');
+  writeLaunchFile(file, '{ "version": "0.2.0", "configurations": [] }\n');
+  assert.ok(readFileSync(file, 'utf8').includes('configurations'));
+  rmSync(root, { recursive: true, force: true });
+});
+
 test('an unexpected mtime is a conflict, and the file on disk is left alone', () => {
   const root = scratch();
   const file = join(root, 'launch.json');
@@ -220,17 +254,73 @@ test('parseLaunchText accepts comments and trailing commas the way VS Code does'
   assert.equal((doc as any).configurations.length, 2);
 });
 
+// --- regenerationLoss: what `baton init` would destroy -----------------------
+
+test('regenerationLoss names every key a regenerated file would not carry back', () => {
+  // The reason `baton init --force` must not run over a hand-tuned file:
+  // generateLaunchJson emits only what detectTargets can see, which is a small
+  // subset of what the loader reads. Everything else is silently dropped.
+  const loss = regenerationLoss(configsFromText(FIXTURE, '/proj'), FIXTURE);
+
+  const sim = loss.configs.find((c) => c.name === 'Sim DEV')!;
+  assert.deepEqual(sim.keys, ['deviceId', 'toolArgs', 'args', 'env'],
+    'a flutter config keeps only its name and program');
+  assert.equal(sim.dropped, false);
+
+  const docs = loss.configs.find((c) => c.name === 'docs server')!;
+  assert.deepEqual(docs.keys, ['program', 'args', 'port'],
+    'a process config keeps only its name, executable and runtimeArgs');
+
+  assert.equal(loss.commentLines, 3, 'every comment in the file is lost too');
+  assert.equal(loss.any, true);
+});
+
+test('regenerationLoss flags a configuration that would vanish entirely', () => {
+  // detectTargets skips a non-dart config with no runtimeExecutable, so
+  // regeneration does not merely strip its keys -- the whole entry disappears.
+  const text = '{ "configurations": [ { "name": "orphan", "port": 3000 } ] }';
+  const loss = regenerationLoss(configsFromText(text, '/proj'), text);
+  assert.equal(loss.configs[0].dropped, true);
+  assert.equal(loss.any, true);
+});
+
+test('regenerationLoss reports nothing for a file regeneration reproduces exactly', () => {
+  const root = mixedProject();
+  const text = generateLaunchJson(root);
+  const loss = regenerationLoss(configsFromText(text, root), text);
+  assert.deepEqual(loss.configs, [], 'a generated file round-trips, so nothing is at risk');
+  assert.equal(loss.commentLines, 2, 'except the header Baton itself writes');
+  assert.equal(loss.any, false, 'and its own header is not a reason to refuse');
+  rmSync(root, { recursive: true, force: true });
+});
+
 // --- configsFromText: must not drift from loader.ts's normalise() ------------
 
 test('configsFromText produces exactly what loadConfigs produces for the same bytes', () => {
   const root = scratch();
   const file = join(root, 'launch.json');
   writeFileSync(file, FIXTURE);
+  const fromText = configsFromText(FIXTURE, root);
+
   assert.deepEqual(
-    configsFromText(FIXTURE, root),
+    fromText,
     loadConfigs(file, root),
     'the editor must agree with what actually runs, key for key',
   );
+
+  // A deepEqual over two configs that both leave a key undefined proves nothing
+  // about that key. Pin that the fixture actually carries every field
+  // `normalise()` reads, so the comparison above has something to compare.
+  const carried = new Set<string>();
+  for (const config of fromText) {
+    for (const [key, value] of Object.entries(config)) {
+      if (value !== undefined && !(Array.isArray(value) && value.length === 0)) carried.add(key);
+    }
+  }
+  for (const key of ['name', 'kind', 'cwd', 'program', 'deviceId', 'toolArgs', 'args',
+    'runtimeExecutable', 'runtimeArgs', 'port', 'env']) {
+    assert.ok(carried.has(key), `the fixture must exercise ${key}, or the drift pin does not cover it`);
+  }
   rmSync(root, { recursive: true, force: true });
 });
 

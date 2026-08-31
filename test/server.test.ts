@@ -821,3 +821,47 @@ test('editLaunchConfig rejects a malformed edit with something the caller can ac
     /each edit needs a `path` array/,
   );
 });
+
+test('writeLaunchConfig refuses text that is not a launch.json, and does not remember the project', async () => {
+  // The MCP `write_launch_config` tool takes free text from an agent. Before the
+  // shape check, `[]` replaced a working file, reported success, and the daemon
+  // remembered the project -- a destroyed config that looks like a clean write.
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  const file = join(root, '.vscode', 'launch.json');
+  const good = '{ "configurations": [{ "name": "keep me", "type": "dart" }] }\n';
+  writeFileSync(file, good);
+
+  for (const bad of ['[]', '"hi"', 'null', '{ "version": "0.2.0" }']) {
+    await assert.rejects(
+      daemon.handle({ method: 'writeLaunchConfig', params: { root, text: bad } }),
+      /not a launch\.json/,
+      `${bad} must be refused`,
+    );
+  }
+  assert.equal(readFileSync(file, 'utf8'), good, 'the working file must be untouched');
+  const listed: any = await daemon.handle({ method: 'projects', params: {} });
+  assert.ok(
+    !listed.projects.some((p: any) => p.root === root),
+    'a refused write must not remember the project as configured',
+  );
+});
+
+test('browseDirs answers a non-string path instead of failing the call', async () => {
+  const result: any = await daemon.handle({ method: 'browseDirs', params: { path: 123 } });
+  assert.equal(typeof result.path, 'string');
+  assert.ok(Array.isArray(result.entries), 'never throws means never throws, whatever arrives');
+});
+
+test('editLaunchConfig rejects a path element that cannot address a node', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), '{ "configurations": [] }\n');
+  await assert.rejects(
+    daemon.handle({
+      method: 'editLaunchConfig',
+      params: { root, edits: [{ path: ['configurations', {}], value: 1 }] },
+    }),
+    /path elements must be/,
+  );
+});

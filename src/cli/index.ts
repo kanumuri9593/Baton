@@ -2,8 +2,11 @@
 import { DaemonClient, startDaemon } from '../core/client.ts';
 import { readHandshake } from '../daemon/server.ts';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { copyFileSync, existsSync } from 'node:fs';
+import { basename, dirname } from 'node:path';
 import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
+import { regenerationLoss } from '../config/writer.ts';
+import type { RpcMethods } from '../core/api.ts';
 
 const HELP = `baton — run and control dev sessions from any terminal
 
@@ -24,8 +27,9 @@ Usage
   baton boot <device>            start a simulator or emulator
   baton projects                 projects the HUD knows about
   baton add <path>               track another project
-  baton init [--force] [--claude]
+  baton init [--force|--replace] [--claude]
                                  write a launch.json from what is detected here
+                                 (--replace to overwrite one that has work in it)
   baton hud [--browser|--tab]    open the floating control panel
   baton daemon start|stop|status
 
@@ -369,13 +373,35 @@ async function main() {
         // The point of the whole command: get a first launch.json without
         // anyone having to learn the schema or open an IDE to write it.
         const current = await client.call('readLaunchConfig', { root: cwd });
-        if (current.file && flags.force !== true) {
+        const replace = flags.replace === true;
+
+        // A .claude file written while .vscode/launch.json exists is dead on
+        // arrival: detection reads .vscode first, so the new file would be
+        // reported as created and then never used again.
+        if (flags.claude === true && current.file && basename(dirname(current.file)) === '.vscode') {
+          throw new Error(
+            `${current.file} already exists, and is read before .claude/launch.json.\n` +
+              '  A .claude file written now would never be used. Edit the .vscode one instead,\n' +
+              '  or delete it first if .claude is where this project should keep its config.',
+          );
+        }
+
+        if (current.file && !replace && flags.force !== true) {
           throw new Error(`${current.file} already exists — pass --force to replace it`);
         }
+        // --force is not enough to destroy work. Regeneration writes only what
+        // detection can see, which is a fraction of what a launch.json can say,
+        // so an existing file with anything in it has to be named before it can
+        // be thrown away -- and even then it is copied aside first.
+        if (current.file && !replace) refuseToRegenerate(current);
 
         const { text, targets } = await client.call('generateLaunchConfig', { root: cwd });
         if (!targets.length) {
           console.log(yellow('nothing detected here — writing an empty launch.json to fill in'));
+        }
+        if (current.file && replace) {
+          const backup = backUp(current.file);
+          console.log(`${dim('saved the previous file as')} ${backup}`);
         }
         const written = await client.call('writeLaunchConfig', {
           root: cwd,
@@ -558,6 +584,68 @@ function printRequestDetail(
   }
   printBody('request body', detail.requestBody, headerValue(detail.requestHeaders, 'content-type'));
   printBody('response body', detail.responseBody, detail.contentType);
+}
+
+// --- `baton init` guard rails -----------------------------------------------
+
+/**
+ * Refuse to regenerate over a launch.json that has something in it.
+ *
+ * `generateLaunchJson` writes only what `detectTargets` can see. A hand-tuned
+ * file carries far more -- the flavour, the device, the dart-define files, the
+ * env -- and none of it survives a regeneration, comments included. The old
+ * `--force` did exactly that, printed the same configuration names afterwards,
+ * and left no backup: the loss was invisible from the output.
+ *
+ * So the file is read first and everything at risk is named, item by item,
+ * before anything is written. `--replace` is the way through, and it takes a
+ * copy on the way past.
+ */
+function refuseToRegenerate(current: RpcMethods['readLaunchConfig']['result']): void {
+  const ways =
+    `\n\n  Edit it instead:     baton hud   ${dim('(⚙ on the project tab)')}, or open it in any editor` +
+    `\n  Replace it anyway:   baton init --replace   ${dim('(copies the current file aside first)')}`;
+
+  // A file that does not parse cannot be assessed at all, which is the strongest
+  // possible reason not to overwrite it: there is no telling what is in there.
+  if (current.parseErrors.length > 0) {
+    throw new Error(
+      `${current.file} does not parse, so there is no telling what regenerating would throw away:\n` +
+        current.parseErrors.slice(0, 5)
+          .map((e) => `    ${e.line}:${e.col}  ${e.message}`).join('\n') +
+        ways,
+    );
+  }
+
+  const loss = regenerationLoss(current.configs, current.text);
+  if (!loss.any) return; // nothing in it worth keeping; --force is enough
+
+  const width = Math.max(...loss.configs.map((c) => c.name.length));
+  const lines = loss.configs.map((c) =>
+    `    ${yellow(c.name.padEnd(width))}  ` +
+    (c.dropped
+      ? red('would disappear entirely') + dim(' — nothing detectable to run')
+      : c.keys.join(', ')));
+
+  throw new Error(
+    `${current.file} holds ${loss.configs.length} configuration` +
+      `${loss.configs.length === 1 ? '' : 's'} that regenerating cannot write back:\n` +
+      lines.join('\n') +
+      (loss.commentLines ? `\n  ${dim(`and ${loss.commentLines} comment line${loss.commentLines === 1 ? '' : 's'}`)}` : '') +
+      `\n\n  ${dim('init writes only what Baton can detect — a name, a program or a command. Everything above would be lost.')}` +
+      ways,
+  );
+}
+
+/** Copy a file aside before it is replaced, without ever overwriting an older copy. */
+function backUp(file: string): string {
+  let backup = `${file}.bak`;
+  if (existsSync(backup)) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    backup = `${file}.${stamp}.bak`;
+  }
+  copyFileSync(file, backup);
+  return backup;
 }
 
 /** Exact name, then case-insensitive substring -- the same rule as targets. */

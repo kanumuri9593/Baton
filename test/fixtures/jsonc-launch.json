@@ -7,14 +7,18 @@
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
+      "deviceId": "chrome",
       /* block comment */
       "toolArgs": ["--flavor", "dev"], // trailing comma next
+      "args": ["--entry-flag", "42"],
       "env": { "FOO": "bar", "PORT": 8080, "NOPE": null },
     },
     {
       "name": "docs server",
+      "program": "docs/serve.js",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "docs", "-l", "7654"],
+      "args": ["--quiet"],
       "port": 7654
     },
   ],

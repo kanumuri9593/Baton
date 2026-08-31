@@ -2,11 +2,11 @@ import { existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } fr
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
-  applyEdits, modify, parse as parseJsonc, printParseErrorCode,
+  applyEdits, modify, parse as parseJsonc, printParseErrorCode, visit,
   type JSONPath, type ParseError,
 } from 'jsonc-parser';
 import { detectPackageManager, detectTargets, type Target } from './detect.ts';
-import type { LaunchConfig } from './loader.ts';
+import type { ConfigKind, LaunchConfig } from './loader.ts';
 
 /**
  * Writing launch.json, without destroying what the human wrote.
@@ -182,6 +182,81 @@ function configurationFor(target: Target, root: string): Record<string, unknown>
 }
 
 /**
+ * What regenerating a launch.json would destroy.
+ *
+ * `generateLaunchJson` writes only what `detectTargets` can see, which is a
+ * strict subset of what `loader.ts` reads: a flutter configuration keeps its
+ * name and program, a script configuration its name, executable and arguments.
+ * `deviceId`, `toolArgs`, `args`, `port` and `env` are not detectable and do not
+ * come back -- and a non-dart configuration with no `runtimeExecutable` is not
+ * detected at all, so it vanishes outright.
+ *
+ * None of that is safe to do to a file somebody tuned by hand, which is why
+ * `baton init` asks this before it offers to overwrite anything. Reported as
+ * data rather than printed here so the decision can be tested without a
+ * terminal.
+ */
+export type RegenerationLoss = {
+  /** One entry per configuration that would come back diminished, or not at all. */
+  configs: Array<{ name: string; keys: string[]; dropped: boolean }>;
+  /** Lines carrying a comment. Regeneration cannot reproduce a single one. */
+  commentLines: number;
+  /** Whether there is any reason to refuse. */
+  any: boolean;
+};
+
+/** Keys `generateLaunchJson` writes back, per kind. Anything else is lost. */
+const REGENERATED: Record<ConfigKind, readonly string[]> = {
+  flutter: ['name', 'program'],
+  process: ['name', 'runtimeExecutable', 'runtimeArgs'],
+};
+
+/** Keys the loader reads that can carry data worth losing, in a readable order. */
+const CARRIED = [
+  'program', 'deviceId', 'toolArgs', 'args', 'runtimeExecutable', 'runtimeArgs', 'port', 'env',
+] as const;
+
+export function regenerationLoss(configs: LaunchConfig[], text?: string | null): RegenerationLoss {
+  const lost: RegenerationLoss['configs'] = [];
+
+  for (const config of configs) {
+    const kept = REGENERATED[config.kind];
+    // `detectTargets` skips a non-dart configuration with nothing to execute,
+    // so regeneration does not merely strip this one's keys -- it deletes it.
+    const dropped = config.kind === 'process' && !config.runtimeExecutable;
+    const keys = CARRIED.filter((key) => !kept.includes(key) && hasData(config[key]));
+    if (dropped || keys.length > 0) lost.push({ name: config.name, keys: [...keys], dropped });
+  }
+
+  return { configs: lost, commentLines: countCommentLines(text ?? ''), any: lost.length > 0 };
+}
+
+const hasData = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === '') return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+};
+
+/**
+ * Lines carrying a comment, counted by the scanner rather than by looking for
+ * `//` -- a URL in a value would otherwise read as a comment and inflate the
+ * warning that talks someone out of overwriting their file.
+ */
+function countCommentLines(text: string): number {
+  const lines = new Set<number>();
+  try {
+    visit(text, {
+      onComment: (_offset, _length, startLine) => { lines.add(startLine); },
+    }, { allowTrailingComma: true, disallowComments: false });
+  } catch {
+    // A file too broken to scan is a file with everything to lose; the caller
+    // already refuses on parse errors, so zero here is not a green light.
+  }
+  return lines.size;
+}
+
+/**
  * Apply edits to launch.json text, preserving comments, spacing and key order.
  *
  * `value: undefined` removes the key (or the array element the path ends at).
@@ -208,10 +283,21 @@ export function applyLaunchEdits(text: string, edits: LaunchEdit[]): string {
  * target, so a concurrent reader never sees a partial file.
  */
 export function writeLaunchFile(file: string, text: string, expectedMtimeMs?: number): { mtimeMs: number } {
-  const { errors } = parseLaunchText(text);
+  const { doc, errors } = parseLaunchText(text);
   if (errors.length > 0) {
     const first = errors[0];
     throw new Error(`invalid JSONC: ${first.line}:${first.col} ${first.message}`);
+  }
+
+  // Syntax is not the bar. `[]`, `"hi"`, `null` and `{"version": "0.2.0"}` all
+  // parse cleanly, and every one of them would replace a working file with
+  // something nothing can run -- reported as a successful write, and afterwards
+  // indistinguishable from a project that legitimately has no configurations.
+  // `readLaunchConfig` already treats a file in that shape as an error; a write
+  // that disagrees with the read is how a good file gets destroyed quietly.
+  const configurations = (doc as { configurations?: unknown } | null | undefined)?.configurations;
+  if (typeof doc !== 'object' || doc === null || Array.isArray(doc) || !Array.isArray(configurations)) {
+    throw new Error('not a launch.json: needs a top-level object with a "configurations" array');
   }
 
   if (expectedMtimeMs !== undefined && existsSync(file) && statSync(file).mtimeMs !== expectedMtimeMs) {

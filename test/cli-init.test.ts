@@ -1,0 +1,153 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+
+// Keep the daemon's state out of the real ~/.baton. Set before the daemon is
+// imported, so its handshake lands here and the spawned CLI finds it.
+process.env.BATON_HOME = mkdtempSync(join(tmpdir(), 'baton-cli-'));
+
+const { LaunchDaemon } = await import('../src/daemon/server.ts');
+
+const execFileAsync = promisify(execFile);
+const CLI = fileURLToPath(new URL('../src/cli/index.ts', import.meta.url));
+
+let daemon: InstanceType<typeof LaunchDaemon>;
+
+// An in-process daemon rather than one the CLI auto-starts: the handshake is
+// what the CLI actually connects to either way, and this one is guaranteed to
+// be shut down when the file finishes instead of outliving the test run.
+before(async () => {
+  daemon = new LaunchDaemon('test');
+  await daemon.listen(0);
+});
+after(async () => { await daemon.close(); });
+
+/** Run the real CLI as a subprocess, the way a person would. */
+async function baton(cwd: string, ...args: string[]): Promise<{ code: number; out: string }> {
+  try {
+    const { stdout, stderr } = await execFileAsync(process.execPath, [CLI, ...args], {
+      cwd, env: { ...process.env, NO_COLOR: '1' },
+    });
+    return { code: 0, out: stdout + stderr };
+  } catch (err) {
+    const e = err as { code?: number; stdout?: string; stderr?: string };
+    return { code: e.code ?? 1, out: (e.stdout ?? '') + (e.stderr ?? '') };
+  }
+}
+
+/** A launch.json nobody could regenerate: tuned by hand, and commented. */
+const HAND_TUNED = `{
+  // the flavour matters, and so does this comment
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Sim DEV",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": ["--flavor", "dev", "--dart-define-from-file=env/dev.json"],
+      "args": ["--verbose"],
+      "env": { "API": "https://dev.example" }
+    }
+  ]
+}
+`;
+
+function project(launchJson?: string): string {
+  const root = mkdtempSync(join(tmpdir(), 'baton-cli-project-'));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({
+    scripts: { dev: 'vite' }, devDependencies: { vite: '5.0.0' },
+  }));
+  if (launchJson !== undefined) {
+    mkdirSync(join(root, '.vscode'));
+    writeFileSync(join(root, '.vscode', 'launch.json'), launchJson);
+  }
+  return root;
+}
+
+test('init writes a launch.json for a project that has none', async () => {
+  const root = project();
+  const result = await baton(root, 'init');
+  assert.equal(result.code, 0, result.out);
+  assert.match(result.out, /launch\.json/);
+  assert.ok(existsSync(join(root, '.vscode', 'launch.json')));
+});
+
+test('init refuses an existing file without a flag', async () => {
+  const root = project(HAND_TUNED);
+  const result = await baton(root, 'init');
+  assert.equal(result.code, 1);
+  assert.match(result.out, /already exists/);
+  assert.equal(readFileSync(join(root, '.vscode', 'launch.json'), 'utf8'), HAND_TUNED);
+});
+
+test('init --force does NOT clobber a hand-tuned file, and names everything it would destroy', async () => {
+  // The bug this guards: --force regenerated from detectTargets, which sees only
+  // name/type/program/runtimeExecutable/runtimeArgs. deviceId, toolArgs, args,
+  // env and every comment were silently dropped, while the CLI printed the same
+  // configuration name -- nothing signalled the loss, and there was no backup.
+  const root = project(HAND_TUNED);
+  const file = join(root, '.vscode', 'launch.json');
+  const result = await baton(root, 'init', '--force');
+
+  assert.equal(result.code, 1, 'must refuse rather than regenerate');
+  assert.equal(readFileSync(file, 'utf8'), HAND_TUNED, 'the file must be byte-identical');
+  assert.deepEqual(readdirSync(join(root, '.vscode')), ['launch.json'], 'and nothing else written');
+
+  assert.match(result.out, /Sim DEV/, 'the configuration at risk is named');
+  for (const key of ['deviceId', 'toolArgs', 'args', 'env']) {
+    assert.match(result.out, new RegExp(key), `${key} must be named as something that would be lost`);
+  }
+  assert.match(result.out, /comment/, 'and the comments too');
+  assert.match(result.out, /--replace/, 'with the way through spelled out');
+});
+
+test('init --replace overwrites, but only after backing the original up', async () => {
+  const root = project(HAND_TUNED);
+  const file = join(root, '.vscode', 'launch.json');
+  const result = await baton(root, 'init', '--replace');
+
+  assert.equal(result.code, 0, result.out);
+  const now = readFileSync(file, 'utf8');
+  assert.notEqual(now, HAND_TUNED, 'the file was replaced');
+  assert.match(now, /Generated by Baton/);
+
+  const backup = readdirSync(join(root, '.vscode')).find((f) => f.endsWith('.bak'))!;
+  assert.ok(backup, 'a backup must exist');
+  assert.equal(
+    readFileSync(join(root, '.vscode', backup), 'utf8'), HAND_TUNED,
+    'and hold the original byte for byte',
+  );
+  assert.match(result.out, new RegExp(backup.replace('.', '\\.')), 'the CLI says where it went');
+});
+
+test('init --force is allowed when the existing file has nothing to lose', async () => {
+  const root = project('{ "version": "0.2.0", "configurations": [] }\n');
+  const result = await baton(root, 'init', '--force');
+  assert.equal(result.code, 0, result.out);
+  assert.match(readFileSync(join(root, '.vscode', 'launch.json'), 'utf8'), /Generated by Baton/);
+});
+
+test('init --force refuses a file it cannot parse, rather than replacing what it cannot read', async () => {
+  const broken = '{ "configurations": [ { "name": }\n';
+  const root = project(broken);
+  const result = await baton(root, 'init', '--force');
+  assert.equal(result.code, 1);
+  assert.match(result.out, /does not parse/);
+  assert.equal(readFileSync(join(root, '.vscode', 'launch.json'), 'utf8'), broken);
+});
+
+test('init --claude refuses while a .vscode file would shadow what it writes', async () => {
+  // detectTargets reads .vscode first, so a new .claude file would be written,
+  // reported as created, and then never used.
+  const root = project('{ "version": "0.2.0", "configurations": [] }\n');
+  const result = await baton(root, 'init', '--claude', '--force');
+  assert.equal(result.code, 1);
+  assert.match(result.out, /\.vscode/);
+  assert.ok(!existsSync(join(root, '.claude')), 'nothing may be written');
+});

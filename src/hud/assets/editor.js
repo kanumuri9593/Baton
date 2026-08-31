@@ -351,9 +351,7 @@
       t.onclick = () => {
         // Switching away from a form with unsaved edits would silently drop
         // them, so say so rather than losing someone's work.
-        if (tab === 'form' && name === 'raw' && edits.size) {
-          return toast('save or discard the form changes first', true);
-        }
+        if (tab === 'form' && name === 'raw' && queuedBlocks('leaving the form')) return;
         tab = name;
         paintEditor();
       };
@@ -407,6 +405,13 @@
     const save = button('Save', 'Write these changes, keeping the file\'s comments and layout', saveForm, 'go ed-save');
     save.disabled = edits.size === 0;
     foot.appendChild(save);
+    // Always present, enabled alongside Save. Rendering it only when there are
+    // edits would mean it never appeared for a plain text change, which does not
+    // repaint -- leaving "save or discard" as advice with nothing to click.
+    const discard = button('Discard', 'Throw these changes away and show the file as it is',
+      discardEdits, 'ed-discard');
+    discard.disabled = edits.size === 0;
+    foot.appendChild(discard);
     foot.appendChild(el('span', 'ed-key',
       edits.size ? edits.size + ' unsaved change' + (edits.size === 1 ? '' : 's') : 'no changes'));
     body.appendChild(foot);
@@ -429,10 +434,38 @@
     const path = ['configurations', index, key];
     edits.set(JSON.stringify(path), { path, value });
     if (structural) return repaint();
-    const save = panel.querySelector('.ed-save');
-    if (save) save.disabled = false;
+    for (const selector of ['.ed-save', '.ed-discard']) {
+      const b = panel.querySelector(selector);
+      if (b) b.disabled = false;
+    }
     const count = panel.querySelector('.ed-foot .ed-key');
     if (count) count.textContent = edits.size + ' unsaved change' + (edits.size === 1 ? '' : 's');
+  }
+
+  /**
+   * Refuse an action that would throw queued form edits away.
+   *
+   * Remove and Add both apply an edit of their own and then land in
+   * `afterSave`, which clears the queue -- so a rename typed into card 0 used to
+   * vanish the moment Remove was pressed on card 2, with a success toast on top.
+   * Both re-address indices too, which is why flushing first is not enough to
+   * make it safe. The tab switch already refused for this reason; now they all
+   * refuse the same way, and the form offers a Discard so refusing is not a
+   * dead end.
+   */
+  function queuedBlocks(what) {
+    if (!edits.size) return false;
+    toast(
+      'save or discard the ' + edits.size + ' unsaved change' +
+        (edits.size === 1 ? '' : 's') + ' before ' + what,
+      true,
+    );
+    return true;
+  }
+
+  function discardEdits() {
+    edits.clear();
+    repaint();
   }
 
   /** What a field should show: the queued edit if there is one, else the file. */
@@ -449,6 +482,7 @@
     head.appendChild(el('span', 'name', config.name));
     head.appendChild(el('span', 'spacer'));
     head.appendChild(button('Remove', 'Delete this configuration from the file', () => {
+      if (queuedBlocks('removing a configuration')) return;
       if (!confirm('Remove "' + config.name + '" from launch.json?')) return;
       // Applied on its own rather than queued: removing shifts every later
       // index, and a queued edit addressed by the old index would then land on
@@ -475,6 +509,17 @@
       card.appendChild(field('command', value('runtimeExecutable'),
         (v) => set(index, 'runtimeExecutable', v || undefined), 'npm'));
       card.appendChild(chipsField('runtimeArgs', value('runtimeArgs') ?? [], index, 'runtimeArgs', config));
+      // `args` is read by the loader for both kinds but only ever *used* by a
+      // Flutter run, so offering an empty one here would invite someone to fill
+      // in a key that does nothing. Shown only when the file already has one, so
+      // a stray copy is visible and removable rather than invisible and inert.
+      const inert = value('args') ?? [];
+      if (inert.length) {
+        const row = chipsField('args', inert, index, 'args', config);
+        row.title = 'Only a Flutter configuration passes these to the app; here they are ignored';
+        row.querySelector('.ed-key').textContent = 'args (unused)';
+        card.appendChild(row);
+      }
       const port = value('port');
       card.appendChild(field('port', port === undefined ? '' : String(port), (v) => {
         const n = Number(v);
@@ -617,6 +662,7 @@
   }
 
   async function addConfiguration(target) {
+    if (queuedBlocks('adding a configuration')) return;
     // Take the shape from the generator rather than rebuilding it here: it is
     // the one place that knows what `loader.ts` reads back.
     let body;
