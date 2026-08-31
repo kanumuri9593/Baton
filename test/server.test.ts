@@ -347,6 +347,28 @@ test('logHistory shows a real run, logRead returns its lines, and logs falls bac
   assert.ok(lines.some((l: any) => l.text.includes('hello from run')));
 });
 
+test('forget with all=true clears every stopped session', async () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-forget-'));
+  const mk = (name: string) => ({
+    name,
+    kind: 'process' as const,
+    source: 'auto' as const,
+    cwd: scratch,
+    command: process.execPath,
+    args: ['-e', 'process.exit(0)'],
+  });
+
+  const a = await daemon.registry.run(mk('forget-a'));
+  const b = await daemon.registry.run(mk('forget-b'));
+  await waitForExit(a);
+  await waitForExit(b);
+  assert.equal(daemon.registry.list().length, 2);
+
+  const result: any = await daemon.handle({ method: 'forget', params: { all: true } });
+  assert.equal(result.removed.length, 2);
+  assert.equal(daemon.registry.list().length, 0);
+});
+
 test('an ordinary exit writes exactly one header and one exit record, not a duplicate pair', async () => {
   // The registry fires `change` twice for the same terminal status on every
   // exit (once from the session's own setStatus, once re-derived from its

@@ -254,8 +254,8 @@ export type RpcMethods = {
     result: { cleared: boolean };
   };
   forget: {
-    params: { session: string };
-    result: { forgotten: boolean };
+    params: { session?: string; all?: boolean };
+    result: { forgotten: boolean; removed: string[] };
   };
   /** Capture the screen of a running session. iOS simulators and Android devices only. */
   screenshot: {

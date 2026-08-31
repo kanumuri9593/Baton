@@ -148,6 +148,16 @@ export class SessionRegistry extends EventEmitter {
     return this.#sessions.delete(session.id);
   }
 
+  /** Drop every stopped or failed session from the registry. */
+  forgetStopped(): string[] {
+    const removed: string[] = [];
+    for (const session of this.list()) {
+      if (session.status === 'running' || session.status === 'starting') continue;
+      if (this.#sessions.delete(session.id)) removed.push(session.id);
+    }
+    return removed;
+  }
+
   async stopAll(): Promise<void> {
     await Promise.allSettled(this.list().map((s) => s.stop()));
     for (const registry of this.#devicesByRoot.values()) registry.dispose();

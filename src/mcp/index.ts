@@ -98,6 +98,18 @@ server.tool(
 );
 
 server.tool(
+  'forget_session',
+  'Remove stopped sessions from the list. Running sessions must be stopped first. Use all=true to clear every stopped session.',
+  { session: z.string().optional(), all: z.boolean().optional() },
+  async ({ session, all }) =>
+    guarded(async () => {
+      const result = await (await daemon()).call('forget', { session, all });
+      if (!result.removed.length) return all ? '(no stopped sessions)' : 'not found or still running';
+      return result.removed.join('\n');
+    }),
+);
+
+server.tool(
   'read_logs',
   'Read recent output from a session, newest last. Use filter to grep for an error. ' +
     'Works for a currently running session id, and for a past run (its own session id, or the ' +

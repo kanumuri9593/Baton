@@ -20,6 +20,7 @@ Usage
   baton reload [target|--all]    hot reload (keeps state)
   baton restart [target|--all]   hot restart
   baton stop [target|--all]      stop
+  baton forget [session|--all]   remove stopped sessions from the list
   baton logs <target> [-n 200] [-f]   -- also works after the run has ended
   baton history [-n 20]          past runs, on disk, across daemon restarts
   baton network <session> [-n 50] [--filter re] [-f]
@@ -211,12 +212,15 @@ async function main() {
       case 'ps': {
         const sessions = await client.call('sessions');
         if (!sessions.length) { console.log('nothing running'); break; }
+        let stopped = 0;
         for (const s of sessions) {
           const paint = STATUS_COLOR[s.status] ?? dim;
           const extra = s.url ?? s.target ?? '';
           console.log(`  ${paint('●')} ${bold(s.id.padEnd(28))} ${paint(s.status.padEnd(9))} ${dim(extra)}`);
           if (s.progress) console.log(`    ${dim(s.progress)}`);
+          if (s.status === 'stopped' || s.status === 'failed') stopped++;
         }
+        if (stopped) console.log(dim(`\n  baton forget --all  clear ${stopped} stopped`));
         break;
       }
 
@@ -253,6 +257,24 @@ async function main() {
           : { session: positional.join(' ') || required('which session? try `baton ps`') };
         const stopped = await client.call('stop', params);
         for (const s of stopped) console.log(`  ${dim('■')} ${s.id}`);
+        break;
+      }
+
+      case 'forget': {
+        if (flags.all) {
+          const { removed } = await client.call('forget', { all: true });
+          if (!removed.length) { console.log('no stopped sessions'); break; }
+          for (const id of removed) console.log(`  ${dim('○')} ${id}`);
+          console.log(dim(`  cleared ${removed.length}`));
+          break;
+        }
+        const session = positional.join(' ');
+        if (!session) throw new Error('which session? try `baton forget --all`');
+        const { removed } = await client.call('forget', { session });
+        if (!removed.length) {
+          throw new Error(`could not clear "${session}" — not found or still running`);
+        }
+        console.log(`${dim('○')} ${removed[0]}`);
         break;
       }
 

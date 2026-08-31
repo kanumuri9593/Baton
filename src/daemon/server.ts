@@ -605,15 +605,28 @@ export class LaunchDaemon {
 
       case 'forget': {
         const params = p as RpcMethods['forget']['params'];
-        // Resolve before forgetting: `params.session` may be a prefix, and the
-        // network store is keyed by the full id.
-        const session = this.registry.get(params.session);
-        const forgotten = this.registry.forget(params.session);
+        if (params.all) {
+          const removed: string[] = [];
+          for (const session of this.registry.list()) {
+            if (session.status === 'running' || session.status === 'starting') continue;
+            if (this.registry.forget(session.id)) {
+              removed.push(session.id);
+              this.network.forget(session.id);
+              this.#lastOperation.delete(session.id);
+            }
+          }
+          return { forgotten: removed.length > 0, removed } satisfies RpcMethods['forget']['result'];
+        }
+        const session = this.registry.get(String(params.session ?? ''));
+        const forgotten = this.registry.forget(String(params.session ?? ''));
         if (forgotten && session) {
           this.network.forget(session.id);
           this.#lastOperation.delete(session.id);
         }
-        return { forgotten } satisfies RpcMethods['forget']['result'];
+        return {
+          forgotten,
+          removed: forgotten && session ? [session.id] : [],
+        } satisfies RpcMethods['forget']['result'];
       }
 
       case 'screenshot': {
