@@ -9,7 +9,8 @@ import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.
 import { validate, type ValidationIssue } from '../config/validate.ts';
 import { loadConfigs, type LaunchConfig } from '../config/loader.ts';
 import {
-  applyLaunchEdits, configsFromText, generateLaunchJson, launchFileFor, parseLaunchText, writeLaunchFile,
+  applyLaunchEdits, configEntries, configsFromText, generateLaunchJson, launchFileFor,
+  parseLaunchText, writeLaunchFile,
 } from '../config/writer.ts';
 import { browseDirs } from './browse.ts';
 import { ProjectRegistry } from '../core/projects.ts';
@@ -287,28 +288,32 @@ export class LaunchDaemon {
         const file = launchFileFor(root);
         if (!file) {
           return {
-            file: null, text: null, configs: [], issues: {}, parseErrors: [],
+            file: null, text: null, configs: [], configIndexes: [], issues: {}, parseErrors: [],
           } satisfies RpcMethods['readLaunchConfig']['result'];
         }
 
         const text = readFileSync(file, 'utf8');
         const mtimeMs = statSync(file).mtimeMs;
-        const { errors } = parseLaunchText(text);
-        // A file that is unreadable to us is exactly the file the editor exists
-        // to repair, so the raw text always comes back -- refusing the call
-        // would leave the user with no way to see, let alone fix, the problem.
-        let configs: LaunchConfig[] = [];
+        const { doc, errors } = parseLaunchText(text);
+        // A file we cannot understand is exactly the file the editor exists to
+        // repair, so the raw text always comes back -- refusing the call would
+        // leave the user with no way to see, let alone fix, the problem.
         const parseErrors = [...errors];
+        let entries: Array<{ index: number; config: LaunchConfig }> = [];
         if (parseErrors.length === 0) {
-          try {
-            configs = loadConfigs(file, root);
-          } catch (err) {
-            // Parseable JSON that is not a launch.json (no `configurations`).
-            parseErrors.push({ line: 1, col: 1, message: (err as Error).message });
+          if (!Array.isArray((doc as { configurations?: unknown } | undefined)?.configurations)) {
+            // Valid JSON that is not a launch.json. Said in the same words
+            // `loader.ts` uses, so the two never read as different problems.
+            parseErrors.push({ line: 1, col: 1, message: `${file}: no "configurations" array` });
+          } else {
+            entries = configEntries(text, root);
           }
         }
+        const configs = entries.map((entry) => entry.config);
         return {
-          file, text, mtimeMs, configs, issues: issuesFor(configs), parseErrors,
+          file, text, mtimeMs, configs,
+          configIndexes: entries.map((entry) => entry.index),
+          issues: issuesFor(configs), parseErrors,
         } satisfies RpcMethods['readLaunchConfig']['result'];
       }
 

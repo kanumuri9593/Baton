@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, statSync, readFileSync } from 'node:fs';
 import http from 'node:http';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -33,6 +33,44 @@ test('every allowlisted asset file exists on disk and is non-empty', () => {
   for (const [name, { path }] of HUD_ASSETS) {
     assert.ok(existsSync(path), `${name} must exist at ${path}`);
     assert.ok(statSync(path).size > 0, `${name} must not be empty`);
+  }
+});
+
+/**
+ * The contract between core.js and its add-ons.
+ *
+ * These files only meet in a browser, which no test here runs, so the one thing
+ * worth pinning is that they still agree: an add-on that reaches for a hook
+ * core.js stopped offering fails silently in the page, and nothing else would
+ * catch it.
+ */
+test('the add-ons hook into core.js rather than being wired into it', () => {
+  const read = (name: string) => readFileSync(HUD_ASSETS.get(name)!.path, 'utf8');
+  const core = read('core.js');
+  const editor = read('editor.js');
+
+  for (const name of ['network.js', 'editor.js']) {
+    assert.match(read(name), /window\.baton/, `${name} must go through the hook registry`);
+  }
+  // core.js knows nothing about the launch.json feature: every one of those
+  // calls belongs to editor.js, and the day one migrates back into core.js is
+  // the day this file starts growing every feature again.
+  for (const method of ['browseDirs', 'readLaunchConfig', 'writeLaunchConfig', 'editLaunchConfig',
+    'generateLaunchConfig', 'validateLaunchConfig']) {
+    assert.ok(!core.includes(`'${method}'`), `core.js must not call ${method} itself`);
+    assert.ok(editor.includes(`'${method}'`), `editor.js must be the one calling ${method}`);
+  }
+
+  // Everything editor.js destructures out of window.baton must be there.
+  const provided = core.slice(core.indexOf('window.baton = {'));
+  const taken = /const \{([^}]+)\} = window\.baton;/.exec(editor)![1];
+  for (const name of taken.split(',').map((s) => s.trim()).filter(Boolean)) {
+    assert.match(provided, new RegExp('\\b' + name + '\\b'), `core.js must still expose ${name}`);
+  }
+
+  // And the hooks editor.js registers must still be dispatched.
+  for (const hook of ['openProject', 'chip']) {
+    assert.ok(core.includes(hook), `core.js must still call the "${hook}" hook`);
   }
 });
 

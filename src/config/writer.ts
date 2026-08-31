@@ -81,14 +81,29 @@ function lineCol(text: string, offset: number): { line: number; col: number } {
  * than quietly making the editor disagree with what actually runs.
  */
 export function configsFromText(text: string, cwd: string): LaunchConfig[] {
+  return configEntries(text, cwd).map((entry) => entry.config);
+}
+
+/**
+ * The same configurations, each with its index in the raw `configurations` array.
+ *
+ * The editor addresses edits by jsonc path -- `['configurations', 3, 'program']`
+ * -- so it needs the index in the *file*, which is not the index in the list it
+ * renders: an entry with no `name` is skipped here exactly as `loader.ts` skips
+ * it, and every later index would otherwise be off by one and edit the wrong
+ * configuration.
+ */
+export function configEntries(text: string, cwd: string): Array<{ index: number; config: LaunchConfig }> {
   const { doc } = parseLaunchText(text);
   const configurations = (doc as { configurations?: unknown } | undefined)?.configurations;
   if (!Array.isArray(configurations)) return [];
 
   return configurations
-    .filter((raw): raw is Record<string, unknown> =>
-      Boolean(raw) && typeof raw === 'object' && typeof (raw as Record<string, unknown>).name === 'string')
-    .map((raw) => ({
+    .map((raw, index) => ({ raw, index }))
+    .filter((entry): entry is { raw: Record<string, unknown>; index: number } =>
+      Boolean(entry.raw) && typeof entry.raw === 'object' &&
+      typeof (entry.raw as Record<string, unknown>).name === 'string')
+    .map(({ raw, index }) => ({ index, config: {
       name: raw.name as string,
       kind: raw.type === 'dart' ? 'flutter' : 'process',
       cwd,
@@ -100,7 +115,7 @@ export function configsFromText(text: string, cwd: string): LaunchConfig[] {
       runtimeArgs: asStringArray(raw.runtimeArgs),
       port: typeof raw.port === 'number' ? raw.port : undefined,
       env: asEnv(raw.env),
-    }));
+    } }));
 }
 
 const asStringArray = (v: unknown): string[] =>

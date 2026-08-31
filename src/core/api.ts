@@ -53,6 +53,15 @@ export type LaunchConfigView = {
   /** For optimistic locking on the way back in; absent when there is no file. */
   mtimeMs?: number;
   configs: LaunchConfig[];
+  /**
+   * Where each of `configs` sits in the file's raw `configurations` array.
+   *
+   * Parallel to `configs`. An editor addresses a change by jsonc path --
+   * `['configurations', 3, 'program']` -- and an entry the loader skipped (one
+   * with no `name`) would otherwise put every later index off by one, so an edit
+   * would land on the wrong configuration.
+   */
+  configIndexes: number[];
   /** Pre-flight issues, keyed by configuration name. */
   issues: Record<string, ValidationIssue[]>;
   /** Non-empty when the file could not be understood; `configs` is then empty. */

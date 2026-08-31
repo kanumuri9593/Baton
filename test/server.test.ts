@@ -744,3 +744,42 @@ test('a written launch.json is what the project then runs', async () => {
     'the generated config must absorb the package.json target it came from, not double it',
   );
 });
+
+test('readLaunchConfig indexes each config by its place in the raw file, skipping nameless entries', async () => {
+  // A nameless entry is dropped from `configs` (as the loader drops it), so the
+  // list index and the file index diverge -- an edit addressed by list index
+  // would land on the wrong configuration.
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), JSON.stringify({
+    configurations: [
+      { type: 'dart' },
+      { name: 'first', type: 'dart' },
+      { name: 'second', runtimeExecutable: 'true' },
+    ],
+  }));
+  const result: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  assert.deepEqual(result.configs.map((c: any) => c.name), ['first', 'second']);
+  assert.deepEqual(result.configIndexes, [1, 2]);
+});
+
+test('an edit addressed by the reported index changes that configuration and no other', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), JSON.stringify({
+    configurations: [
+      { type: 'dart' },
+      { name: 'first', type: 'dart' },
+      { name: 'second', type: 'dart' },
+    ],
+  }, null, 2) + '\n');
+
+  const view: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  const index = view.configIndexes[view.configs.findIndex((c: any) => c.name === 'second')];
+  const edited: any = await daemon.handle({
+    method: 'editLaunchConfig',
+    params: { root, edits: [{ path: ['configurations', index, 'program'], value: 'lib/two.dart' }] },
+  });
+  assert.equal(edited.configs.find((c: any) => c.name === 'second').program, 'lib/two.dart');
+  assert.equal(edited.configs.find((c: any) => c.name === 'first').program, undefined);
+});

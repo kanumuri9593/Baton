@@ -56,9 +56,7 @@ function connect() {
     if (msg.event === 'session') { sessions.set(msg.snapshot.id, msg.snapshot); render(); }
     if (msg.event === 'devices') loadDevices(true);
     if (msg.event === 'log') appendLog(msg);
-    for (const addon of addons) {
-      try { addon.event && addon.event(msg); } catch (err) { console.error(err); }
-    }
+    hook('event', msg);
   };
 }
 
@@ -69,13 +67,34 @@ function connect() {
  *
  * The network inspector and the launch.json editor are separate scripts so each
  * owns its file rather than growing this one. They hook in here: `row` decorates
- * a session row as it is built, `event` sees every pushed message.
+ * a session row as it is built, `chip` decorates a project tab, `event` sees
+ * every pushed message, and `openProject` (if any addon offers one) takes over
+ * the "+" tab with something better than a bare path box.
  */
 const addons = [];
 window.baton = {
   call, toast, esc, humanSize,
   extend(addon) { addons.push(addon); render(); },
+
+  // --- project-level state, for addons that work on projects rather than
+  // sessions. Read-only accessors rather than the arrays themselves, so an
+  // addon cannot mutate what this file re-renders from.
+  projects: () => projects.slice(),
+  activeRoot: () => selectedRoot,
+  /** Show this project and reload the list -- what adding one does. */
+  async focusProject(root) {
+    selectedRoot = root;
+    await loadProjects();
+  },
+  refresh: () => loadProjects(),
 };
+
+/** Let every addon see one hook, without one throwing addon breaking the render. */
+function hook(name, ...args) {
+  for (const addon of addons) {
+    try { addon[name] && addon[name](...args); } catch (err) { console.error(err); }
+  }
+}
 
 // --- projects -------------------------------------------------------------
 
@@ -119,15 +138,21 @@ function renderTabs() {
       };
       el.appendChild(x);
     }
+    hook('chip', project, el);
     tabs.appendChild(el);
   }
 
   const add = chip('+', false, 0, () => {
+    // A browser cannot open a native folder picker, so editor.js offers one
+    // built out of the daemon's own directory listing. The inline path box
+    // stays as the fallback for when that script is not loaded.
+    const opener = addons.find((a) => a.openProject);
+    if (opener) return opener.openProject();
     const row = $('addRow');
     row.hidden = !row.hidden;
     if (!row.hidden) $('addPath').focus();
   });
-  add.title = 'Add another project';
+  add.title = 'Open another project';
   tabs.appendChild(add);
 }
 
@@ -254,6 +279,12 @@ $('addGo').onclick = async () => {
     const project = await call('addProject', { path });
     $('addPath').value = '';
     $('addRow').hidden = true;
+    // A project with nothing runnable is not remembered by the daemon, so
+    // saying "0 targets" and showing no tab would look like the add failed.
+    if (project.needsConfig) {
+      toast(project.name + ' has no launch config yet — run `baton init` in it', true);
+      return;
+    }
     selectedRoot = project.root;
     await loadProjects();
     toast(project.name + ' — ' + project.targets.length + ' targets');
@@ -543,9 +574,7 @@ function renderRow(s) {
   row.appendChild(logs);
   if (openLogs.has(s.id)) queueMicrotask(() => (logs.scrollTop = logs.scrollHeight));
 
-  for (const addon of addons) {
-    try { addon.row && addon.row(s, { row, top, button }); } catch (err) { console.error(err); }
-  }
+  hook('row', s, { row, top, button });
   return row;
 }
 
