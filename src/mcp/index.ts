@@ -323,8 +323,7 @@ server.tool(
 
 server.tool(
   'run_proof',
-  'Run the proof engine across a device/appearance matrix and return summary.md plus the bundle path. ' +
-    'Use this as the evidence gate before claiming a UI change works.',
+  'Run proof verification and return a zip with screenshots, network call counts, response times and logs.',
   {
     target: z.string().describe('Target name or unambiguous substring.'),
     cwd: z.string().optional(),
@@ -365,7 +364,8 @@ server.tool(
       });
       const summaryPath = `${result.bundlePath}/summary.md`;
       const summaryText = existsSync(summaryPath) ? readFileSync(summaryPath, 'utf8') : JSON.stringify(result, null, 2);
-      return `${summaryText}\n\nbundle: ${result.bundlePath}`;
+      const zipLine = result.zipPath ? `\nzip: ${result.zipPath}` : `\nbundle: ${result.bundlePath}`;
+      return `${summaryText}${zipLine}`;
     }),
 );
 
@@ -378,7 +378,10 @@ server.tool(
       const proofs = await (await daemon()).call('proofList', { limit: limit ?? 20 });
       if (!proofs.length) return '(no proofs yet)';
       return proofs
-        .map((p) => `${p.passed ? 'PASS' : 'FAIL'}  ${p.id}  ${p.target}  ${p.cellCount} cells  ${p.bundlePath}`)
+        .map((p) => {
+          const where = p.zipPath ?? p.bundlePath;
+          return `${p.passed ? 'PASS' : 'FAIL'}  ${p.id}  ${p.target}  ${p.cellCount} cells  ${where}`;
+        })
         .join('\n');
     }),
 );

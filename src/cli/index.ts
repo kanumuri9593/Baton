@@ -8,7 +8,7 @@ import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 import { regenerationLoss } from '../config/writer.ts';
 import type { RpcMethods } from '../core/api.ts';
 import {
-  parseAppearanceList, parseAxisList, parseTextScaleList, type ProofCheckName,
+  parseAppearanceList, parseAxisList, parseTextScaleList, formatCellLabel, type ProofCheckName,
 } from '../daemon/proof.ts';
 
 const HELP = `baton — run and control dev sessions from any terminal
@@ -33,12 +33,9 @@ Usage
                                  block until a session reaches a state
   baton status <session>         cheap structured overview: status, uptime,
                                  last reload, recent errors, network counts
-  baton proof <target> [--devices "iPhone SE,iPhone 16 Pro Max"]
-                                 [--appearance light,dark] [--text-scale 1.0,1.5]
-                                 [--checks running,noErrors,noFailedRequests,screenshot]
-                                 [--route /screen] [--keep] [--out dir]
-                                 run the proof engine across a matrix; exit
-                                 non-zero when any cell fails
+  baton proof <target> [--devices "iPhone SE"] [--appearance light,dark]
+                                 verify across devices; outputs a zip with
+                                 screenshots, network stats and logs
   baton proofs [list] [-n 20]    list past proof bundles
   baton proofs open <id>         print summary.md for one bundle
   baton projects                 projects the HUD knows about
@@ -434,14 +431,24 @@ async function main() {
         const settleMs = flags.settle ? Number(flags.settle) : undefined;
         const timeoutMs = flags.timeout ? Number(flags.timeout) : undefined;
 
-        let lastCell = '';
+        console.log(dim(`proof: ${target}`));
+
         client.onEvent((msg) => {
           if (msg.event !== 'proof') return;
-          if (msg.cell === lastCell && msg.status === 'running') return;
-          lastCell = msg.cell;
-          const label = msg.cell === '*' ? 'proof' : msg.cell;
-          const detail = msg.message ? ` — ${msg.message}` : '';
-          console.log(dim(`  [${label}] ${msg.status}${detail}`));
+          if (msg.phase === 'packaging') {
+            console.log(dim('  packaging…'));
+            return;
+          }
+          if (msg.phase === 'boot') {
+            console.log(dim(`  booting ${msg.label ?? msg.message ?? 'device'}…`));
+            return;
+          }
+          if (msg.phase !== 'cell' || !msg.current || !msg.total) return;
+          const mark = msg.status === 'passed' ? green('✓')
+            : msg.status === 'failed' || msg.status === 'error' ? red('✗')
+              : dim('…');
+          const detail = msg.message ? dim(` — ${msg.message}`) : '';
+          console.log(`  [${msg.current}/${msg.total}] ${msg.label ?? msg.cell} ${mark}${detail}`);
         });
 
         const result = await client.call('proofRun', {
@@ -462,18 +469,21 @@ async function main() {
 
         console.log('');
         if (result.passed) {
-          console.log(`${green('✓')} proof passed — ${result.cells.length} cell(s)`);
+          console.log(`${green('✓')} passed — ${result.cells.length} cell(s), ${Math.round((result.finishedAt - result.startedAt) / 1000)}s`);
         } else {
           const failed = result.cells.filter((c) => c.status !== 'passed');
-          console.log(`${red('✗')} proof failed — ${failed.length}/${result.cells.length} cell(s)`);
+          console.log(`${red('✗')} failed — ${failed.length}/${result.cells.length} cell(s)`);
           for (const cell of failed) {
             const bad = Object.entries(cell.checks).filter(([, v]) => v && !v.pass).map(([k]) => k);
-            console.log(`    ${red('✗')} ${cell.spec.id}${bad.length ? ` (${bad.join(', ')})` : ''}`);
+            console.log(`    ${red('✗')} ${formatCellLabel(cell.spec)}${bad.length ? ` (${bad.join(', ')})` : ''}`);
             if (cell.error) console.log(dim(`      ${cell.error}`));
           }
         }
-        console.log(dim(`  bundle: ${result.bundlePath}`));
-        console.log(dim(`  report: ${result.bundlePath}/report.html`));
+        if (result.zipPath) {
+          console.log(`  ${bold(result.zipPath)}`);
+        } else {
+          console.log(dim(`  bundle: ${result.bundlePath}`));
+        }
         if (!result.passed) process.exitCode = 1;
         break;
       }
@@ -500,8 +510,10 @@ async function main() {
         }
         for (const p of proofs) {
           const mark = p.passed ? green('✓') : red('✗');
+          const zip = p.zipPath ? dim(`  ${p.zipPath}`) : '';
           console.log(`${mark} ${p.id}  ${p.target}  ${p.cellCount} cell(s)  ${relativeTime(p.startedAt)}`);
-          console.log(dim(`    ${p.bundlePath}`));
+          if (zip) console.log(zip);
+          else console.log(dim(`    ${p.bundlePath}`));
         }
         break;
       }

@@ -117,7 +117,91 @@ export type ProofProgressEvent = {
   message?: string;
 };
 
-/** How cell-setting shell-outs are run — injectable so tests never touch simctl/adb. */
+/** Human-readable label for progress output. */
+export function formatCellLabel(spec: ProofCellSpec): string {
+  const parts = [spec.deviceName];
+  if (spec.appearance) parts.push(spec.appearance);
+  if (spec.textScale !== undefined && spec.textScale !== 1) parts.push(`${spec.textScale}x`);
+  if (spec.locale) parts.push(spec.locale);
+  return parts.join(' · ');
+}
+
+/** Normalize a request URI to a path for grouping (query strings stripped). */
+export function requestPath(uri: string): string {
+  try {
+    return new URL(uri).pathname;
+  } catch {
+    return uri.split('?')[0] ?? uri;
+  }
+}
+
+/** Roll up captured traffic: call counts, response times, status codes per endpoint. */
+export function summarizeNetwork(requests: NetworkRequestSnapshot[]): NetworkEndpointStat[] {
+  const groups = new Map<string, { method: string; path: string; rows: NetworkRequestSnapshot[] }>();
+  for (const row of requests) {
+    if (row.inProgress) continue;
+    const path = requestPath(row.uri);
+    const key = `${row.method} ${path}`;
+    const group = groups.get(key) ?? { method: row.method, path, rows: [] };
+    group.rows.push(row);
+    groups.set(key, group);
+  }
+
+  const stats: NetworkEndpointStat[] = [];
+  for (const [endpoint, { method, path, rows }] of groups) {
+    const durations = rows.map((r) => r.durationMs).filter((d): d is number => d !== undefined);
+    const statusCodes: Record<string, number> = {};
+    let failed = 0;
+    for (const row of rows) {
+      if (row.error || (row.statusCode !== undefined && row.statusCode >= 400)) failed++;
+      if (row.statusCode !== undefined) {
+        const code = String(row.statusCode);
+        statusCodes[code] = (statusCodes[code] ?? 0) + 1;
+      }
+    }
+    stats.push({
+      endpoint,
+      method,
+      path,
+      count: rows.length,
+      failed,
+      avgMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null,
+      minMs: durations.length ? Math.min(...durations) : null,
+      maxMs: durations.length ? Math.max(...durations) : null,
+      statusCodes,
+    });
+  }
+  return stats.sort((a, b) => b.count - a.count);
+}
+
+function networkSummaryText(stats: NetworkEndpointStat[]): string[] {
+  if (!stats.length) return ['(no HTTP traffic captured)'];
+  const lines = ['| Endpoint | Calls | Failed | Avg ms | Min | Max |', '| --- | ---: | ---: | ---: | ---: | ---: |'];
+  for (const row of stats) {
+    lines.push(
+      `| \`${row.endpoint}\` | ${row.count} | ${row.failed} | ${row.avgMs ?? '—'} | ${row.minMs ?? '—'} | ${row.maxMs ?? '—'} |`,
+    );
+  }
+  return lines;
+}
+
+/** Injectable zip seam — tests skip shelling out to `zip`. */
+export type ZipFn = (bundlePath: string, zipPath: string) => Promise<void>;
+
+export const defaultZip: ZipFn = (bundlePath, zipPath) =>
+  new Promise((resolve, reject) => {
+    execFile('zip', ['-rq', zipPath, basename(bundlePath)], { cwd: dirname(bundlePath) }, (err) => {
+      if (err) reject(new Error(`zip failed: ${err.message}`));
+      else resolve();
+    });
+  });
+
+/** Package a proof directory into a single `.zip` next to it. */
+export async function zipProofBundle(bundlePath: string, zipFn: ZipFn = defaultZip): Promise<string> {
+  const zipPath = `${bundlePath}.zip`;
+  await zipFn(bundlePath, zipPath);
+  return zipPath;
+}
 export type CellExecFn = (cmd: string, args: string[]) => Promise<{ code: number; stderr: string }>;
 
 export const defaultCellExec: CellExecFn = (cmd, args) =>
@@ -418,30 +502,49 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/** Write proof.json, per-cell evidence, summary.md and a self-contained report.html. */
+/** Write proof.json, per-cell evidence, network rollups, flat images/, summary.md. */
 export function writeProofBundle(summary: ProofRunSummary, cellArtifacts: Map<string, {
   logs: LogLine[];
   network: NetworkRequestSnapshot[];
   screenshotSrc?: string;
-}>): void {
+}>): CellNetworkSummary[] {
   const bundlePath = summary.bundlePath;
   mkdirSync(bundlePath, { recursive: true });
   const cellsDir = join(bundlePath, 'cells');
+  const imagesDir = join(bundlePath, 'images');
   mkdirSync(cellsDir, { recursive: true });
+  mkdirSync(imagesDir, { recursive: true });
+
+  const allSummaries: CellNetworkSummary[] = [];
 
   for (const cell of summary.cells) {
     const dir = join(cellsDir, cell.spec.id);
     mkdirSync(dir, { recursive: true });
     const artifacts = cellArtifacts.get(cell.spec.id);
+    const label = formatCellLabel(cell.spec);
     if (artifacts) {
       writeFileSync(join(dir, 'logs.json'), JSON.stringify(artifacts.logs, null, 2));
       writeFileSync(join(dir, 'network.json'), JSON.stringify(artifacts.network, null, 2));
+      const endpoints = summarizeNetwork(artifacts.network);
+      const cellSummary: CellNetworkSummary = {
+        cell: cell.spec.id,
+        label,
+        totalRequests: artifacts.network.filter((r) => !r.inProgress).length,
+        failedRequests: countFailedRequests(artifacts.network),
+        endpoints,
+      };
+      allSummaries.push(cellSummary);
+      writeFileSync(join(dir, 'network-summary.json'), JSON.stringify(cellSummary, null, 2));
       if (artifacts.screenshotSrc && existsSync(artifacts.screenshotSrc)) {
+        const shotName = `${cell.spec.id}.png`;
         copyFileSync(artifacts.screenshotSrc, join(dir, 'screenshot.png'));
+        copyFileSync(artifacts.screenshotSrc, join(imagesDir, shotName));
         cell.screenshotPath = join(dir, 'screenshot.png');
       }
     }
   }
+
+  writeFileSync(join(bundlePath, 'network-summary.json'), JSON.stringify(allSummaries, null, 2));
 
   writeFileSync(join(bundlePath, 'proof.json'), JSON.stringify(summary, null, 2));
 
@@ -450,18 +553,30 @@ export function writeProofBundle(summary: ProofRunSummary, cellArtifacts: Map<st
     '',
     `**Result:** ${summary.passed ? 'PASSED' : 'FAILED'}`,
     `**When:** ${new Date(summary.startedAt).toISOString()}`,
+    `**Duration:** ${Math.round((summary.finishedAt - summary.startedAt) / 1000)}s`,
     `**Project:** ${summary.root}`,
   ];
   if (summary.git?.sha) {
     lines.push(`**Git:** \`${summary.git.sha.slice(0, 12)}\`${summary.git.dirty ? ' (dirty)' : ''}`);
   }
-  lines.push('', '## Cells', '');
+  lines.push('', '## Screenshots', '');
+  for (const cell of summary.cells) {
+    const mark = cell.status === 'passed' ? '✓' : '✗';
+    lines.push(`- ${mark} **${formatCellLabel(cell.spec)}** — \`images/${cell.spec.id}.png\``);
+  }
+  lines.push('', '## Network', '');
+  for (const ns of allSummaries) {
+    lines.push(`### ${ns.label}`, '');
+    lines.push(`**${ns.totalRequests}** requests, **${ns.failedRequests}** failed`, '');
+    lines.push(...networkSummaryText(ns.endpoints), '');
+  }
+  lines.push('## Cells', '');
   for (const cell of summary.cells) {
     const mark = cell.status === 'passed' ? '✓' : '✗';
     const failedChecks = Object.entries(cell.checks)
       .filter(([, c]) => c && !c.pass)
       .map(([name, c]) => `${name}: ${c!.message ?? 'failed'}`);
-    lines.push(`- ${mark} **${cell.spec.id}** (${cell.spec.deviceName}) — ${cell.status}${failedChecks.length ? ` — ${failedChecks.join('; ')}` : ''}`);
+    lines.push(`- ${mark} **${formatCellLabel(cell.spec)}** — ${cell.status}${failedChecks.length ? ` — ${failedChecks.join('; ')}` : ''}`);
     if (cell.error) lines.push(`  - error: ${cell.error}`);
   }
   writeFileSync(join(bundlePath, 'summary.md'), lines.join('\n') + '\n');
@@ -501,6 +616,7 @@ export function writeProofBundle(summary: ProofRunSummary, cellArtifacts: Map<st
 <div class="grid">${grid}</div>
 </body></html>`;
   writeFileSync(join(bundlePath, 'report.html'), html);
+  return allSummaries;
 }
 
 /** List proof bundles newest-first. */
@@ -522,6 +638,7 @@ export function listProofs(limit = 50): ProofListEntry[] {
         passed: summary.passed,
         cellCount: summary.cells.length,
         bundlePath,
+        zipPath: summary.zipPath,
       });
     } catch { /* skip corrupt bundles */ }
   }
@@ -602,10 +719,14 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
   const proofId = `${stamp}-${slugPart(target.name)}`;
   const bundlePath = params.out ?? join(proofsDir(), proofId);
 
+  const emit = (event: Omit<ProofProgressEvent, 'proofId'>) => {
+    host.onProgress?.({ proofId, ...event });
+  };
+
   const booted = new Set<string>();
   for (const pick of boots) {
     if (booted.has(pick.deviceId)) continue;
-    host.onProgress?.({ proofId, cell: '*', status: 'starting', message: `booting ${pick.deviceName}` });
+    emit({ cell: '*', label: pick.deviceName, phase: 'boot', status: 'starting', message: `booting ${pick.deviceName}` });
     await host.boot(pick.deviceId);
     booted.add(pick.deviceId);
   }
@@ -614,12 +735,17 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
     spec, status: 'pending', checks: {},
   }));
   const artifacts = new Map<string, { logs: LogLine[]; network: NetworkRequestSnapshot[]; screenshotSrc?: string }>();
+  const total = cellResults.length;
+  let completed = 0;
 
   const runCell = async (cell: ProofCellResult): Promise<void> => {
     const { spec } = cell;
+    const label = formatCellLabel(spec);
     cell.status = 'running';
     cell.startedAt = Date.now();
-    host.onProgress?.({ proofId, cell: spec.id, status: 'running' });
+    emit({
+      cell: spec.id, label, current: completed + 1, total, phase: 'cell', status: 'running',
+    });
 
     let session: Session | undefined;
     let reachedRunning = false;
@@ -657,8 +783,9 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
         allowPatterns,
       });
       cell.status = cellPassed(cell.checks) ? 'passed' : 'failed';
-      host.onProgress?.({
-        proofId, cell: spec.id, status: cell.status,
+      completed++;
+      emit({
+        cell: spec.id, label, current: completed, total, phase: 'cell', status: cell.status,
         message: cell.status === 'failed'
           ? Object.entries(cell.checks).filter(([, c]) => !c?.pass).map(([n]) => n).join(', ')
           : undefined,
@@ -666,7 +793,10 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
     } catch (err) {
       cell.status = 'error';
       cell.error = (err as Error).message;
-      host.onProgress?.({ proofId, cell: spec.id, status: 'error', message: cell.error });
+      completed++;
+      emit({
+        cell: spec.id, label, current: completed, total, phase: 'cell', status: 'error', message: cell.error,
+      });
       if (session) {
         artifacts.set(spec.id, {
           logs: host.logs(session),
@@ -714,5 +844,15 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
   };
 
   writeProofBundle(summary, artifacts);
+
+  emit({ cell: '*', phase: 'packaging', status: 'running', message: 'packaging zip' });
+  try {
+    summary.zipPath = await zipProofBundle(bundlePath);
+    writeFileSync(join(bundlePath, 'proof.json'), JSON.stringify(summary, null, 2));
+  } catch {
+    // zip is best-effort — the directory bundle is still complete
+  }
+  emit({ cell: '*', phase: 'done', status: summary.passed ? 'passed' : 'failed' });
+
   return summary;
 }

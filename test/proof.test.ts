@@ -9,6 +9,7 @@ process.env.BATON_HOME = mkdtempSync(join(tmpdir(), 'baton-proof-'));
 const {
   expandProofMatrix, runCellChecks, countFailedRequests, cellId, textScaleToIosContentSize,
   writeProofBundle, runProof, parseAppearanceList, resolveDeviceQuery,
+  summarizeNetwork, formatCellLabel, requestPath,
 } = await import('../src/daemon/proof.ts');
 import type { ProofCellSpec, ProofHost, ProofRunSummary } from '../src/daemon/proof.ts';
 import type { Device } from '../src/daemon/devices.ts';
@@ -117,7 +118,34 @@ test('runCellChecks enforces running, noErrors, noFailedRequests and screenshot'
   assert.equal(allowed.noErrors?.pass, true);
 });
 
-test('writeProofBundle produces proof.json, summary.md and report.html', () => {
+test('formatCellLabel reads naturally in progress output', () => {
+  assert.equal(
+    formatCellLabel({ id: 'x', deviceId: '1', deviceName: 'iPhone 17 Pro', platformType: 'ios', appearance: 'dark' }),
+    'iPhone 17 Pro · dark',
+  );
+});
+
+test('summarizeNetwork groups by method+path with call counts and response times', () => {
+  const stats = summarizeNetwork([
+    { id: '1', sessionId: 's', method: 'GET', uri: 'https://api.test/v1/foo?a=1', startTime: 0, endTime: 100, durationMs: 120, statusCode: 200, inProgress: false },
+    { id: '2', sessionId: 's', method: 'GET', uri: 'https://api.test/v1/foo?b=2', startTime: 0, endTime: 200, durationMs: 80, statusCode: 200, inProgress: false },
+    { id: '3', sessionId: 's', method: 'POST', uri: 'https://api.test/v1/login', startTime: 0, endTime: 300, durationMs: 200, statusCode: 500, inProgress: false },
+    { id: '4', sessionId: 's', method: 'GET', uri: 'https://api.test/v1/pending', startTime: 0, inProgress: true },
+  ]);
+  assert.equal(stats.length, 2);
+  const getFoo = stats.find((s) => s.path === '/v1/foo')!;
+  assert.equal(getFoo.count, 2);
+  assert.equal(getFoo.avgMs, 100);
+  assert.equal(getFoo.minMs, 80);
+  assert.equal(getFoo.maxMs, 120);
+  assert.equal(getFoo.failed, 0);
+  const login = stats.find((s) => s.path === '/v1/login')!;
+  assert.equal(login.count, 1);
+  assert.equal(login.failed, 1);
+  assert.equal(requestPath('https://x/y?z=1'), '/y');
+});
+
+test('writeProofBundle produces proof.json, summary.md, images/ and network-summary.json', () => {
   const bundlePath = mkdtempSync(join(tmpdir(), 'baton-proof-bundle-'));
   const spec: ProofCellSpec = {
     id: 'iphone-se-light-1-default',
@@ -148,17 +176,20 @@ test('writeProofBundle produces proof.json, summary.md and report.html', () => {
   const artifacts = new Map([
     [spec.id, {
       logs: [{ at: 1, text: 'err', error: true }],
-      network: [],
+      network: [
+        { id: '1', sessionId: 's', method: 'GET', uri: 'https://api.test/health', startTime: 0, durationMs: 50, statusCode: 200, inProgress: false },
+      ],
     }],
   ]);
   writeProofBundle(summary, artifacts);
 
   assert.ok(existsSync(join(bundlePath, 'proof.json')));
   assert.ok(existsSync(join(bundlePath, 'summary.md')));
+  assert.ok(existsSync(join(bundlePath, 'network-summary.json')));
   const html = readFileSync(join(bundlePath, 'report.html'), 'utf8');
   assert.match(html, /iphone-se-light-1-default/);
-  assert.match(html, /noErrors/);
   assert.ok(existsSync(join(bundlePath, 'cells', spec.id, 'logs.json')));
+  assert.ok(existsSync(join(bundlePath, 'cells', spec.id, 'network-summary.json')));
 });
 
 test('runProof orchestrates cells in parallel and writes a bundle', async () => {
