@@ -210,12 +210,14 @@ test('runProof orchestrates cells in parallel and writes a bundle', async () => 
       return session as unknown as Session;
     },
     waitRunning: async () => true,
+    waitStopped: async () => {},
     screenshot: async (_session, path) => {
       writeFileSync(path, Buffer.alloc(4096));
     },
     logs: (session) => session.recentLogs(),
     network: () => [],
     stop: async () => {},
+    forget: () => {},
     exec: async () => ({ code: 0, stderr: '' }),
     onProgress: () => {},
   };

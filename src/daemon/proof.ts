@@ -2,7 +2,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import {
   mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, statSync, copyFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import type { Bootable } from './simulators.ts';
 import type { Device } from './devices.ts';
 import type { Target } from '../config/detect.ts';
@@ -68,6 +68,29 @@ export type ProofRunSummary = {
   git?: { sha?: string; dirty?: boolean };
   cells: ProofCellResult[];
   bundlePath: string;
+  /** Populated after packaging — the shareable deliverable. */
+  zipPath?: string;
+};
+
+/** Per-endpoint rollup for one cell or the whole proof run. */
+export type NetworkEndpointStat = {
+  endpoint: string;
+  method: string;
+  path: string;
+  count: number;
+  failed: number;
+  avgMs: number | null;
+  minMs: number | null;
+  maxMs: number | null;
+  statusCodes: Record<string, number>;
+};
+
+export type CellNetworkSummary = {
+  cell: string;
+  label: string;
+  totalRequests: number;
+  failedRequests: number;
+  endpoints: NetworkEndpointStat[];
 };
 
 export type ProofListEntry = {
@@ -79,11 +102,17 @@ export type ProofListEntry = {
   passed: boolean;
   cellCount: number;
   bundlePath: string;
+  zipPath?: string;
 };
 
 export type ProofProgressEvent = {
   proofId: string;
   cell: string;
+  /** Human label, e.g. "iPhone 17 Pro · light". */
+  label?: string;
+  current?: number;
+  total?: number;
+  phase?: 'boot' | 'cell' | 'packaging' | 'done';
   status: 'starting' | 'running' | 'passed' | 'failed' | 'error';
   message?: string;
 };
@@ -308,7 +337,8 @@ export function countFailedRequests(requests: NetworkRequestSnapshot[]): number 
   return failed;
 }
 
-const DIAGNOSTIC = /(^|\s)(\S+\.\w+:\d+:\d+:|error(\s+\w+\d+)?:|Error:|Failed to compile)/i;
+/** Compile/diagnostic lines — deliberately stricter than `recentErrors()`; bare `Error:` banners are not failures. */
+const DIAGNOSTIC = /(^|\s)(\S+\.\w+:\d+:\d+:|error\s+\w+\d+:|Failed to compile)/i;
 
 function isDiagnostic(text: string): boolean {
   return DIAGNOSTIC.test(text);
@@ -523,10 +553,12 @@ export type ProofHost = {
   boot(deviceId: string): Promise<Device>;
   run(target: Target, deviceId: string): Promise<Session>;
   waitRunning(session: Session, timeoutMs: number): Promise<boolean>;
+  waitStopped(session: Session, timeoutMs: number): Promise<void>;
   screenshot(session: Session, path: string): Promise<void>;
   logs(session: Session): LogLine[];
   network(session: Session): NetworkRequestSnapshot[];
   stop(session: Session): Promise<void>;
+  forget(session: Session): void;
   exec?: CellExecFn;
   onProgress?: (event: ProofProgressEvent) => void;
 };
@@ -647,11 +679,26 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
       cell.durationMs = cell.finishedAt - (cell.startedAt ?? cell.finishedAt);
       if (session && !params.keep) {
         await host.stop(session).catch(() => {});
+        await host.waitStopped(session, 60_000).catch(() => {});
+        host.forget(session);
       }
     }
   };
 
-  await Promise.all(cellResults.map((cell) => runCell(cell)));
+  // One target per device at a time — appearance/scale variants on the same
+  // simulator run serially; different devices still run in parallel.
+  const byDevice = new Map<string, ProofCellResult[]>();
+  for (const cell of cellResults) {
+    const group = byDevice.get(cell.spec.deviceId) ?? [];
+    group.push(cell);
+    byDevice.set(cell.spec.deviceId, group);
+  }
+
+  await Promise.all(
+    [...byDevice.values()].map(async (group) => {
+      for (const cell of group) await runCell(cell);
+    }),
+  );
 
   const finishedAt = Date.now();
   const summary: ProofRunSummary = {

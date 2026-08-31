@@ -815,6 +815,15 @@ export class LaunchDaemon {
           return false;
         }
       },
+      waitStopped: async (session, timeoutMs) => {
+        if (session.status === 'stopped' || session.status === 'failed') return;
+        await waitForSession(
+          session as unknown as WaitableSession,
+          'stopped',
+          timeoutMs,
+          recentErrors,
+        );
+      },
       screenshot: async (session, path) => {
         const snapshot = session.snapshot();
         await screenshotSession(
@@ -827,6 +836,11 @@ export class LaunchDaemon {
         return this.network.store.list(session.id);
       },
       stop: (session) => session.stop(),
+      forget: (session) => {
+        this.registry.forget(session.id);
+        this.network.forget(session.id);
+        this.#lastOperation.delete(session.id);
+      },
       onProgress: (event) => this.#broadcast({ event: 'proof', ...event } satisfies PushEvent),
     };
   }
