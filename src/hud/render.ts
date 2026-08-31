@@ -43,7 +43,6 @@ export const HUD_ASSETS: ReadonlyMap<string, { path: string; contentType: string
   ['network.js', { path: join(HUD_ASSET_DIR, 'network.js'), contentType: 'text/javascript' }],
   ['editor.js', { path: join(HUD_ASSET_DIR, 'editor.js'), contentType: 'text/javascript' }],
   ['inspector.js', { path: join(HUD_ASSET_DIR, 'inspector.js'), contentType: 'text/javascript' }],
-  ['splits.js', { path: join(HUD_ASSET_DIR, 'splits.js'), contentType: 'text/javascript' }],
 ]);
 
 const TEMPLATE_PATH = join(HUD_ASSET_DIR, 'index.html');

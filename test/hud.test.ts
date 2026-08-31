@@ -81,7 +81,9 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
   assert.ok(inspector.includes('extend('), 'inspector.js must register as an add-on');
   assert.match(inspector, /matchLog/, 'inspector.js must use the shared log filter');
   assert.match(inspector, /matchNetwork/, 'inspector.js must use the shared network filter');
-  assert.match(inspector, /splits\.js/, 'inspector.js must own the column splitters');
+  assert.match(inspector, /wireGutter/, 'inspector.js must own the column splitters');
+  assert.match(core, /baton\.hud\.splits/);
+  assert.match(core, /function wireGutter/);
 });
 
 test('session actions are named SVG icons, not unicode glyphs', () => {
@@ -107,6 +109,25 @@ test('the page has a chip, a peek strip, and an inspector pane', () => {
   assert.ok(!html.includes('id="chipDot"'), 'the chip shows the Baton mark, not a status LED');
 });
 
+test('the compact HUD is a floating logo that clicks to open and drags to move', () => {
+  const html = renderHud('tok123');
+  const core = readFileSync(HUD_ASSETS.get('core.js')!.path, 'utf8');
+  const css = readFileSync(HUD_ASSETS.get('hud.css')!.path, 'utf8');
+  const swift = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  assert.match(html, /id="chipFace" role="button" tabindex="0"/);
+  assert.match(core, /face\.onclick = toggle/);
+  assert.ok(!core.includes("chip.addEventListener('mouseenter'"), 'opening must not depend on hover timing');
+  assert.match(css, /body\[data-density="chip"\] #chipExpand \{ display: none; \}/,
+    'the old side button must not be clipped inside the compact chip');
+  assert.match(core, /chip: \{ width: 58, height: 58 \}/);
+  assert.match(core, /live\.length \? String\(live\.length\) : ''/,
+    'an idle floating logo must not carry a meaningless zero');
+  assert.match(swift, /class CompactChipSurface/);
+  assert.match(swift, /override func mouseDragged/);
+  assert.match(swift, /if hypot\(dx, dy\) >= 3 \{ dragged = true \}/);
+  assert.match(swift, /if !dragged/);
+});
+
 test('the macOS panel pins resize to the trailing edge', () => {
   const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
   assert.match(source, /batonHud/);
@@ -117,6 +138,41 @@ test('the macOS panel pins resize to the trailing edge', () => {
   assert.match(source, /setActivationPolicy\(\.regular\)/);
   assert.match(source, /isTemplate = false/);
   assert.match(source, /dockIcon/);
+});
+
+test('the macOS menu-bar item separates adaptive chrome, count, and run status', () => {
+  const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  assert.match(source, /menuBarIcon/);
+  assert.match(source, /NSColor\.labelColor\.setFill\(\)/,
+    'the Baton mark must follow the current light or dark menu-bar appearance');
+  assert.match(source, /foregroundColor: NSColor\.labelColor/,
+    'the session count must remain neutral rather than inheriting status color');
+  for (const state of ['running', 'starting', 'failed', 'offline']) {
+    assert.match(source, new RegExp(`case \\.${state}`), `the badge must represent ${state}`);
+  }
+  assert.match(source, /string: count > 0 \? "\\\(count\)" : ""/,
+    'zero should stay visually quiet while active sessions show their count');
+});
+
+test('quitting the macOS app confirms and shuts down every run', () => {
+  const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  assert.match(source, /applicationShouldTerminate\(/, 'Cmd-Q and app-menu Quit must use the guarded quit path');
+  assert.match(source, /Quit Baton and stop all runs\?/);
+  assert.match(source, /rpc\("shutdown"\)/, 'confirmed Quit must shut down the daemon, which owns all sessions');
+  assert.match(source, /reply\(toApplicationShouldTerminate: true\)/, 'Quit must wait for daemon acknowledgement');
+  assert.match(source, /Quit Baton…/, 'the status menu must describe the full-app quit semantics');
+});
+
+test('reopening the macOS app starts the daemon and never shows a blank panel', () => {
+  const swift = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  const builder = readFileSync(join(import.meta.dirname, '../src/hud/panel.ts'), 'utf8');
+  assert.match(swift, /Starting Baton…/);
+  assert.match(swift, /startDaemonIfNeeded/);
+  assert.match(swift, /launcher.*json/i, 'the app must use the launcher bundled at build time');
+  assert.match(swift, /\/health/, 'a stale handshake must be verified before WebKit loads it');
+  assert.match(swift, /retryDaemon/, 'a failed start must offer a recovery action');
+  assert.match(builder, /process\.execPath/);
+  assert.match(builder, /launcher\.json/);
 });
 
 test('the generated HUD app is a regular Mac app with a Dock icon', () => {

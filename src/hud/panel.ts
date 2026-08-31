@@ -1,8 +1,10 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import {
+  closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
-import { stateDir } from '../core/paths.ts';
+import { logDir, stateDir } from '../core/paths.ts';
 
 /**
  * The native macOS shell around the HUD.
@@ -77,7 +79,13 @@ export function buildPanelApp(onBuild?: () => void): string {
   const binary = join(app, 'Contents', 'MacOS', 'BatonHUD');
   const stamp = join(app, 'Contents', 'Resources', 'source.sha');
   const icns = join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
-  const hash = createHash('sha256').update(readFileSync(source)).update(INFO_PLIST);
+  // A GUI app does not inherit the terminal's npm PATH reliably. Bundle the
+  // exact Node + daemon entry paths that built it so reopening from the Dock can
+  // bring Baton back after an intentional Quit shut the daemon down.
+  const daemon = join(dirname(import.meta.dirname), 'daemon', 'main.ts');
+  const daemonLog = join(logDir(), 'daemon.log');
+  const launcher = JSON.stringify({ node: process.execPath, daemon, log: daemonLog }, null, 2);
+  const hash = createHash('sha256').update(readFileSync(source)).update(INFO_PLIST).update(launcher);
   if (existsSync(icns)) hash.update(readFileSync(icns));
   const digest = hash.digest('hex');
 
@@ -88,6 +96,9 @@ export function buildPanelApp(onBuild?: () => void): string {
   mkdirSync(dirname(binary), { recursive: true });
   mkdirSync(dirname(stamp), { recursive: true });
   writeFileSync(join(app, 'Contents', 'Info.plist'), INFO_PLIST);
+  writeFileSync(join(dirname(stamp), 'launcher.json'), launcher);
+  // Swift opens this for append. Ensure a first-ever launch has a file to open.
+  closeSync(openSync(daemonLog, 'a'));
 
   // The icon is generated from assets/baton.svg by `npm run icons`. A missing
   // icns still gets a drawn Dock tile from the Swift host.

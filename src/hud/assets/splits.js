@@ -8,7 +8,7 @@
 
 export const SPLIT_KEY = 'baton.hud.splits';
 export const CHIP_COL = 52;
-export const GUTTER = 6;
+export const GUTTER = 8;
 export const MIN_MAIN = 240;
 export const MIN_INSPECTOR = 280;
 export const MIN_PANE = 180;

@@ -7,16 +7,12 @@
  * in filters.js so the tests and this page cannot drift apart.
  */
 import { matchLog, matchNetwork } from '/assets/filters.js';
-import {
-  clampDetailWidth,
-  clampInspectorWidth,
-  loadSplits,
-  saveSplits,
-  wireGutter,
-} from '/assets/splits.js';
 
 (function () {
-  const { call, toast, esc, humanSize, iconButton, extend, hydrateLogs, logBuffer, setDensity } = window.baton;
+  const {
+    call, toast, esc, humanSize, iconButton, extend, hydrateLogs, logBuffer, setDensity,
+    loadSplits, saveSplits, clampInspectorWidth, clampDetailWidth, wireGutter,
+  } = window.baton;
 
   const insp = document.getElementById('inspector');
   if (!insp) return;

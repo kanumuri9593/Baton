@@ -15,8 +15,7 @@
     font: 13px/1.45 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased; overflow-x: hidden;
   }
-  /* Reserved for the host window's drag strip; see hud/mac/BatonHUD.swift. */
-  body.panel { padding-top: var(--drag-strip, 0px); }
+  body.panel { padding-top: 0; }
   header {
     display: flex; align-items: center; gap: 6px; padding: 7px 9px;
     background: var(--panel); border-bottom: 1px solid var(--line);
@@ -314,16 +313,13 @@
   }
   body.splitting { cursor: col-resize; user-select: none; }
   .gutter {
-    position: relative; z-index: 5; cursor: col-resize; touch-action: none;
-    background: transparent;
+    position: relative; z-index: 8; cursor: col-resize; touch-action: none;
+    background: var(--line); flex: none;
   }
-  .gutter::before {
-    content: ""; position: absolute; inset: 0 2px; background: var(--line);
+  .gutter:hover, body.splitting .gutter {
+    background: var(--accent);
   }
-  .gutter:hover::before, body.splitting .gutter:hover::before {
-    inset: 0 1px; background: var(--accent);
-  }
-  #splitOuter { grid-column: 3; grid-row: 1; width: 6px; }
+  #splitOuter { grid-column: 3; grid-row: 1; width: 8px; }
   #chip {
     grid-column: 1; grid-row: 1;
     display: flex; align-items: center; gap: 8px;
@@ -332,8 +328,10 @@
   }
   .chip-face {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 4px; min-width: 36px; flex: none;
+    gap: 4px; min-width: 36px; flex: none; cursor: pointer; border-radius: 10px;
+    padding: 5px; outline: none;
   }
+  .chip-face:hover, .chip-face:focus-visible { background: var(--panel-2); }
   .chip-mark {
     display: flex; width: 22px; height: 22px; color: var(--idle);
   }
@@ -359,7 +357,7 @@
     border-left: 1px solid var(--line); background: var(--panel);
   }
   body[data-density="inspector"] {
-    grid-template-columns: 52px minmax(0, 1fr) 6px var(--insp-w, 42%);
+    grid-template-columns: 52px minmax(0, 1fr) 8px var(--insp-w, 42%);
   }
   body[data-density="inspector"] #inspector {
     grid-column: 4; border-left: none;
@@ -380,7 +378,23 @@
   body[data-density="peek"] #chip {
     border-right: none; width: 100%; height: 100%;
   }
+  body.panel[data-density="chip"] { background: transparent; }
+  body.panel[data-density="chip"] #chip {
+    justify-content: center; padding: 0; border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+    border-radius: 18px; background: color-mix(in srgb, var(--panel) 94%, transparent);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .32);
+  }
+  body.panel[data-density="chip"] .chip-face { padding: 0; }
+  body.panel[data-density="chip"] .chip-face:hover { background: transparent; }
+  body.panel[data-density="chip"] .chip-mark,
+  body.panel[data-density="chip"] .chip-mark svg { width: 28px; height: 28px; }
+  body.panel[data-density="chip"] #chipCount:not(:empty) {
+    position: absolute; top: 7px; right: 7px; min-width: 16px; height: 16px;
+    display: grid; place-items: center; padding: 0 4px; border-radius: 999px;
+    background: var(--accent); color: white; font-size: 9px;
+  }
   body[data-density="peek"] #peek { display: flex; }
+  body[data-density="chip"] #chipExpand { display: none; }
   body[data-density="inspector"] #chip {
     flex-direction: column; justify-content: flex-start; width: 52px; padding: 10px 6px;
   }
@@ -407,9 +421,9 @@
   .insp-bar input[type=text] { padding: 3px 6px; font-size: 11px; min-width: 0; flex: 1; }
   .insp-body { flex: 1; min-height: 0; overflow: auto; }
   .insp-body.insp-net {
-    display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--detail-w, 1fr);
+    display: grid; grid-template-columns: minmax(0, 1fr) 8px var(--detail-w, 1fr);
   }
-  .insp-body.insp-net > .gutter { width: 6px; }
+  .insp-body.insp-net > .gutter { width: 8px; }
   .insp-logs {
     font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     padding: 8px; white-space: pre-wrap; word-break: break-word;

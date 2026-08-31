@@ -101,10 +101,93 @@ function connect() {
  * every pushed message, and `openProject` (if any addon offers one) takes over
  * the "+" tab with something better than a bare path box.
  */
+const SPLIT_KEY = 'baton.hud.splits';
+const SPLIT_CHIP = 52;
+const SPLIT_GUTTER = 8;
+const SPLIT_MIN_MAIN = 240;
+const SPLIT_MIN_INSPECTOR = 280;
+const SPLIT_MIN_PANE = 180;
+const SPLIT_INSPECTOR_RATIO = 1.35 / (1 + 1.35);
+
+function parseSplits(raw) {
+  if (typeof raw !== 'string' || !raw) return { inspector: null, detail: null };
+  try {
+    const data = JSON.parse(raw);
+    const inspector = Number.isFinite(data.inspector) ? data.inspector : null;
+    const detail = Number.isFinite(data.detail) ? data.detail : null;
+    return { inspector, detail };
+  } catch {
+    return { inspector: null, detail: null };
+  }
+}
+
+function loadSplits() {
+  try { return parseSplits(localStorage.getItem(SPLIT_KEY)); }
+  catch { return { inspector: null, detail: null }; }
+}
+
+function saveSplits(splits) {
+  try { localStorage.setItem(SPLIT_KEY, JSON.stringify(splits)); }
+  catch { /* private mode */ }
+}
+
+function clampInspectorWidth(viewport, stored) {
+  const leftover = viewport - SPLIT_CHIP - SPLIT_GUTTER;
+  if (leftover <= 0) return 0;
+  const floor = Math.min(SPLIT_MIN_INSPECTOR, leftover);
+  const ceiling = Math.max(floor, leftover - SPLIT_MIN_MAIN);
+  const fallback = leftover * SPLIT_INSPECTOR_RATIO;
+  const value = stored == null ? fallback : stored;
+  return Math.round(Math.min(ceiling, Math.max(floor, value)));
+}
+
+function clampDetailWidth(inner, stored) {
+  const leftover = inner - SPLIT_GUTTER;
+  if (leftover <= 0) return 0;
+  const floor = Math.min(SPLIT_MIN_PANE, leftover);
+  const ceiling = Math.max(floor, leftover - SPLIT_MIN_PANE);
+  const fallback = leftover / 2;
+  const value = stored == null ? fallback : stored;
+  return Math.round(Math.min(ceiling, Math.max(floor, value)));
+}
+
+/** Drag a vertical gutter. Positive delta = grow the pane on the right. */
+function wireGutter(el, onDelta, onEnd) {
+  const start = (clientX, pointerId) => {
+    let last = clientX;
+    const move = (x) => { onDelta(last - x); last = x; };
+    const done = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      if (onEnd) onEnd();
+    };
+    const onPointerMove = (e) => move(e.clientX);
+    const onPointerUp = () => done();
+    const onMouseMove = (e) => move(e.clientX);
+    const onMouseUp = () => done();
+    if (pointerId !== undefined && el.setPointerCapture) {
+      try { el.setPointerCapture(pointerId); } catch { /* not a pointer event */ }
+    }
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+  el.addEventListener(window.PointerEvent ? 'pointerdown' : 'mousedown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    start(event.clientX, event.pointerId);
+  });
+}
+
 const addons = [];
 window.baton = {
   call, toast, esc, humanSize, iconEl, iconButton,
   extend(addon) { addons.push(addon); render(); },
+  loadSplits, saveSplits, clampInspectorWidth, clampDetailWidth, wireGutter,
 
   // --- project-level state, for addons that work on projects rather than
   // sessions. Read-only accessors rather than the arrays themselves, so an
@@ -758,7 +841,7 @@ function setActiveSession(id) {
 
 const DENSITY_KEY = 'baton.density';
 const DENSITY_SIZE = {
-  chip: { width: 64, height: 76 },
+  chip: { width: 58, height: 58 },
   peek: { width: 348, height: 76 },
   inspector: { width: 980, height: 680 },
 };
@@ -788,7 +871,7 @@ function paintPeek() {
   const starting = live.some((s) => s.status === 'starting');
   const count = $('chipCount');
   const mark = $('chipMark');
-  if (count) count.textContent = String(live.length);
+  if (count) count.textContent = live.length ? String(live.length) : '';
   if (mark) {
     mark.className = 'chip-mark' + (failed ? ' failed' : starting ? ' starting' : live.length ? ' running' : '');
   }
@@ -840,30 +923,31 @@ function paintPeek() {
 
 function wireChip() {
   const chip = $('chip');
+  const face = $('chipFace');
   const expand = $('chipExpand');
-  if (!chip || !expand) return;
+  if (!chip || !face || !expand) return;
   fillIcon(expand, 'expand');
-  expand.onclick = (e) => {
-    e.stopPropagation();
+
+  const toggle = () => {
     const open = document.body.dataset.density === 'inspector';
     setDensity(open ? 'chip' : 'inspector', true);
   };
-
-  let linger;
-  chip.addEventListener('mouseenter', () => {
-    if (document.body.dataset.density === 'inspector') return;
-    clearTimeout(linger);
-    setDensity('peek', false);
-  });
-  chip.addEventListener('mouseleave', () => {
-    if (document.body.dataset.density === 'inspector') return;
-    linger = setTimeout(() => setDensity('chip', false), 180);
-  });
+  expand.onclick = (e) => { e.stopPropagation(); toggle(); };
+  face.onclick = toggle;
+  face.onkeydown = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    toggle();
+  };
 
   $('peekSession').onchange = () => setActiveSession($('peekSession').value);
 }
 
 function restoreDensity() {
+  if (new URLSearchParams(location.search).get('density') === 'inspector') {
+    setDensity('inspector', false);
+    return;
+  }
   let saved = 'chip';
   try { saved = localStorage.getItem(DENSITY_KEY) || 'chip'; } catch { /* private mode */ }
   if (saved !== 'inspector') saved = 'chip';

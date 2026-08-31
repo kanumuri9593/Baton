@@ -8,12 +8,58 @@
 // daemon serves to a browser: one control surface, two ways to open it.
 
 import AppKit
+import Darwin
 import WebKit
 
 struct Handshake: Decodable {
     let port: Int
     let token: String
     let pid: Int
+}
+
+struct DaemonLauncher: Decodable {
+    let node: String
+    let daemon: String
+    let log: String
+}
+
+/// One compact surface does both jobs: a stationary click opens Baton, while a
+/// mouse movement drags it. Keeping this native avoids WebKit stealing the drag
+/// and lets the visible UI be only the logo.
+final class CompactChipSurface: NSView {
+    weak var webView: WKWebView?
+    private var mouseStart: NSPoint?
+    private var windowStart: NSPoint?
+    private var dragged = false
+
+    override func mouseDown(with event: NSEvent) {
+        mouseStart = NSEvent.mouseLocation
+        windowStart = window?.frame.origin
+        dragged = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let window, let mouseStart, let windowStart else { return }
+        let current = NSEvent.mouseLocation
+        let dx = current.x - mouseStart.x
+        let dy = current.y - mouseStart.y
+        if hypot(dx, dy) >= 3 { dragged = true }
+        guard dragged else { return }
+        window.setFrameOrigin(NSPoint(x: windowStart.x + dx, y: windowStart.y + dy))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if !dragged {
+            webView?.evaluateJavaScript("document.getElementById('chipFace')?.click()")
+        }
+        mouseStart = nil
+        windowStart = nil
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .openHand)
+    }
+
 }
 
 /// Where the daemon leaves its port and token.
@@ -24,21 +70,47 @@ func handshakeURL() -> URL {
 }
 
 final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WKUIDelegate, WKScriptMessageHandler {
+    private enum MenuBarState {
+        case offline
+        case idle
+        case running
+        case starting
+        case failed
+
+        var badgeColor: NSColor? {
+            switch self {
+            case .offline: return .tertiaryLabelColor
+            case .idle: return nil
+            case .running: return .systemGreen
+            case .starting: return .systemOrange
+            case .failed: return .systemRed
+            }
+        }
+    }
+
     private var statusItem: NSStatusItem!
     private var panel: NSPanel!
     private var web: WKWebView!
+    private var compactSurface: CompactChipSurface!
     private var handshake: Handshake?
     private var loadedPort = 0
     private var timer: Timer?
+    private var daemonProcess: Process?
+    private var attemptedDaemonStart = false
+    private var daemonStartError: String?
+    private var statusPage: String?
+    private var terminationConfirmed = false
+    private var terminationInProgress = false
 
     // MARK: lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.image = HUDController.batonGlyph()
+            button.image = HUDController.menuBarIcon(state: .offline)
             button.imagePosition = .imageLeading
-            button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+            button.imageScaling = .scaleProportionallyDown
+            button.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
             button.toolTip = "Baton"
             button.target = self
             button.action = #selector(statusClicked(_:))
@@ -53,6 +125,11 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         }
 
         buildPanel()
+        loadStatusPage(
+            key: "starting",
+            title: "Starting Baton…",
+            detail: "Reconnecting to the local runner."
+        )
         refresh()
         // Cheap: one loopback request against a process that is already awake.
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -66,18 +143,113 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         return false
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if terminationConfirmed { return .terminateNow }
+        if terminationInProgress { return .terminateLater }
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Quit Baton and stop all runs?"
+        alert.informativeText = "Every running or starting session will be stopped, and the Baton daemon will shut down."
+        alert.addButton(withTitle: "Quit and Stop All")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return .terminateCancel
+        }
+
+        // With no daemon there is nothing left to stop. Otherwise wait for its
+        // acknowledgement: the shutdown path owns stopAll(), including its
+        // SIGKILL fallback for a child that ignores a polite stop request.
+        guard handshake != nil else {
+            if daemonProcess?.isRunning == true { daemonProcess?.terminate() }
+            terminationConfirmed = true
+            return .terminateNow
+        }
+
+        terminationInProgress = true
+        timer?.invalidate()
+        rpc("shutdown") { [weak self] _ in
+            guard let self else { return }
+            self.terminationConfirmed = true
+            self.terminationInProgress = false
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     /// The baton, drawn rather than shipped as a bitmap.
     ///
     /// Same geometry as `assets/baton-glyph.svg`, in a 64pt box flipped to
-    /// AppKit's bottom-left origin. Not a template image: the fill is the run
-    /// status (green / amber / red / muted), which is the thing people look for
-    /// in a crowded menu bar.
+    /// AppKit's bottom-left origin.
     static func batonGlyph(size: CGFloat = 17, color: NSColor = .labelColor) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
             color.setFill()
             HUDController.fillBaton(size: size)
             return true
         }
+        image.isTemplate = false
+        return image
+    }
+
+    /// The Baton follows the current appearance while a small Teams-style
+    /// badge carries run status. This cannot be an AppKit template image because
+    /// it mixes adaptive and semantic colors, so the uncached drawing handler
+    /// resolves `labelColor` again whenever the menu bar redraws.
+    private static func menuBarIcon(state: MenuBarState, size: CGFloat = 19) -> NSImage {
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+            NSColor.labelColor.setFill()
+            HUDController.fillBaton(size: size - 2)
+
+            guard let badgeColor = state.badgeColor else { return true }
+            let center = NSPoint(x: size - 4.5, y: 4.5)
+            let radius: CGFloat = 4.25
+
+            // An adaptive keyline keeps the badge distinct on pale desktops and
+            // dark full-screen menu bars.
+            NSColor.windowBackgroundColor.setStroke()
+            badgeColor.setFill()
+            let badge = NSBezierPath(ovalIn: NSRect(
+                x: center.x - radius, y: center.y - radius,
+                width: radius * 2, height: radius * 2
+            ))
+            badge.lineWidth = 1.25
+            badge.fill()
+            badge.stroke()
+
+            NSColor.white.setStroke()
+            let symbol = NSBezierPath()
+            symbol.lineWidth = 1.15
+            symbol.lineCapStyle = .round
+            symbol.lineJoinStyle = .round
+            switch state {
+            case .running:
+                symbol.move(to: NSPoint(x: center.x - 1.8, y: center.y))
+                symbol.line(to: NSPoint(x: center.x - 0.4, y: center.y - 1.35))
+                symbol.line(to: NSPoint(x: center.x + 2.0, y: center.y + 1.65))
+            case .starting:
+                symbol.move(to: center)
+                symbol.line(to: NSPoint(x: center.x, y: center.y + 2.0))
+                symbol.move(to: center)
+                symbol.line(to: NSPoint(x: center.x + 1.55, y: center.y))
+            case .failed:
+                symbol.move(to: NSPoint(x: center.x, y: center.y - 0.7))
+                symbol.line(to: NSPoint(x: center.x, y: center.y + 1.9))
+                symbol.stroke()
+                NSColor.white.setFill()
+                NSBezierPath(ovalIn: NSRect(x: center.x - 0.6, y: center.y - 2.85,
+                                            width: 1.2, height: 1.2)).fill()
+                return true
+            case .offline:
+                symbol.move(to: NSPoint(x: center.x - 1.8, y: center.y))
+                symbol.line(to: NSPoint(x: center.x + 1.8, y: center.y))
+            case .idle:
+                break
+            }
+            symbol.stroke()
+            return true
+        }
+        image.cacheMode = .never
         image.isTemplate = false
         return image
     }
@@ -200,6 +372,8 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.title = "Baton"
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
         panel.isFloatingPanel = true
         panel.level = .floating
         // Follows you between desktops and sits above full-screen apps.
@@ -210,7 +384,25 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.delegate = self
-        panel.contentView = web
+
+        let content = NSView()
+        web.translatesAutoresizingMaskIntoConstraints = false
+        compactSurface = CompactChipSurface()
+        compactSurface.webView = web
+        compactSurface.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(web)
+        content.addSubview(compactSurface)
+        NSLayoutConstraint.activate([
+            web.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            web.topAnchor.constraint(equalTo: content.topAnchor),
+            web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            compactSurface.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            compactSurface.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            compactSurface.topAnchor.constraint(equalTo: content.topAnchor),
+            compactSurface.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+        ])
+        panel.contentView = content
         applyChrome("chip")
         // v2: chip-sized default. The previous autosave restored a 430pt HUD
         // and would fight the density-driven resize.
@@ -263,6 +455,8 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                 if let density = body["density"] as? String {
                     self?.applyChrome(density)
                 }
+            } else if type == "retryDaemon" {
+                self?.retryDaemon()
             }
         }
     }
@@ -280,6 +474,8 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.standardWindowButton(.closeButton)?.isHidden = compact
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = compact
         panel.standardWindowButton(.zoomButton)?.isHidden = compact
+        compactSurface?.isHidden = !compact
+        panel.hasShadow = true
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -326,20 +522,112 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     // MARK: daemon
 
     private func refresh() {
-        let previous = handshake?.port ?? 0
-        handshake = (try? Data(contentsOf: handshakeURL()))
+        guard !terminationInProgress else { return }
+        let candidate = (try? Data(contentsOf: handshakeURL()))
             .flatMap { try? JSONDecoder().decode(Handshake.self, from: $0) }
 
-        guard let current = handshake else {
-            setTitle("", color: .disabledControlTextColor, tooltip: "Baton — daemon not running")
-            if loadedPort != 0 { loadOffline() }
+        guard let candidate else {
+            daemonUnavailable(startIfPossible: true)
             return
         }
+
+        // Shutdown acknowledges just before the daemon finishes stopping. Check
+        // that an old handshake is healthy before giving its dead port to
+        // WebKit, which previously produced an empty black panel on reopen.
+        guard let url = URL(string: "http://127.0.0.1:\(candidate.port)/health") else {
+            daemonUnavailable(startIfPossible: false)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 1
+        URLSession.shared.dataTask(with: request) { [weak self] _, response, _ in
+            let healthy = (response as? HTTPURLResponse)?.statusCode == 200
+            DispatchQueue.main.async {
+                guard let self, !self.terminationInProgress else { return }
+                if healthy {
+                    self.daemonReady(candidate)
+                } else {
+                    // A live pid may still be finishing shutdown. The next poll
+                    // will see its removed handshake and start a clean daemon.
+                    self.daemonUnavailable(startIfPossible: kill(pid_t(candidate.pid), 0) != 0)
+                }
+            }
+        }.resume()
+    }
+
+    private func daemonReady(_ current: Handshake) {
+        let previous = handshake?.port ?? 0
+        handshake = current
+        attemptedDaemonStart = false
+        daemonStartError = nil
+        statusPage = nil
         if current.port != previous || loadedPort != current.port {
             load(port: current.port)
         }
         rpc("sessions") { [weak self] result in
             self?.applySessions(result as? [[String: Any]] ?? [])
+        }
+    }
+
+    private func daemonUnavailable(startIfPossible: Bool) {
+        guard !terminationInProgress else { return }
+        handshake = nil
+        loadedPort = 0
+        setMenuBar(count: 0, state: .starting, tooltip: "Baton — starting daemon")
+
+        if let error = daemonStartError {
+            setMenuBar(count: 0, state: .failed, tooltip: "Baton — daemon failed to start")
+            loadStatusPage(
+                key: "error:\(error)",
+                title: "Baton couldn’t start",
+                detail: error,
+                retry: true
+            )
+            return
+        }
+
+        loadStatusPage(
+            key: "starting",
+            title: "Starting Baton…",
+            detail: "Reconnecting to the local runner."
+        )
+        if startIfPossible { startDaemonIfNeeded() }
+    }
+
+    private func startDaemonIfNeeded() {
+        guard !attemptedDaemonStart, !terminationInProgress else { return }
+        attemptedDaemonStart = true
+
+        guard let url = Bundle.main.url(forResource: "launcher", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let launcher = try? JSONDecoder().decode(DaemonLauncher.self, from: data) else {
+            daemonStartError = "Run `baton hud` once from a terminal to rebuild the app."
+            daemonUnavailable(startIfPossible: false)
+            return
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: launcher.node)
+        process.arguments = [launcher.daemon]
+        if let log = FileHandle(forWritingAtPath: launcher.log) {
+            _ = try? log.seekToEnd()
+            process.standardOutput = log
+            process.standardError = log
+        }
+        process.terminationHandler = { [weak self] process in
+            guard process.terminationStatus != 0 else { return }
+            DispatchQueue.main.async {
+                guard let self, self.handshake == nil, !self.terminationInProgress else { return }
+                self.daemonStartError = "The runner exited early. See ~/.baton/logs/daemon.log."
+                self.daemonUnavailable(startIfPossible: false)
+            }
+        }
+        do {
+            try process.run()
+            daemonProcess = process
+        } catch {
+            daemonStartError = error.localizedDescription
+            daemonUnavailable(startIfPossible: false)
         }
     }
 
@@ -349,14 +637,40 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         web.load(URLRequest(url: url))
     }
 
-    private func loadOffline() {
-        loadedPort = 0
+    private func loadStatusPage(key: String, title: String, detail: String, retry: Bool = false) {
+        guard statusPage != key else { return }
+        statusPage = key
+        pinTrailing(["width": 286, "height": 154])
+        let action = retry
+            ? "<button onclick=\"window.webkit.messageHandlers.batonHud.postMessage({type:'retryDaemon'})\">Try again</button>"
+            : "<div class=\"spinner\"></div>"
         web.loadHTMLString("""
-        <body style="font:13px -apple-system;color:#8b93a7;background:#0f1115;\
-        display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">
-        <div>No daemon running.<br><br>Start one with<br><code>baton daemon start</code></div>
-        </body>
+        <meta name="color-scheme" content="dark">
+        <style>
+        *{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;
+        background:#15171c;color:#f4f5f7;font:13px -apple-system;text-align:center;padding:22px}
+        .mark{font-size:20px;color:#7b7cff;margin-bottom:10px}h1{font-size:15px;margin:0 0 7px}
+        p{color:#9299a8;line-height:1.4;margin:0;max-width:235px}.spinner{width:16px;height:16px;
+        border:2px solid #363a45;border-top-color:#7b7cff;border-radius:50%;margin:15px auto 0;
+        animation:s .8s linear infinite}button{margin-top:15px;border:0;border-radius:7px;padding:7px 13px;
+        color:white;background:#6668e8;font:600 12px -apple-system}@keyframes s{to{transform:rotate(360deg)}}
+        </style><div><div class="mark">●</div><h1>\(htmlEscaped(title))</h1>
+        <p>\(htmlEscaped(detail))</p>\(action)</div>
         """, baseURL: nil)
+    }
+
+    private func htmlEscaped(_ value: String) -> String {
+        value.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+    }
+
+    private func retryDaemon() {
+        attemptedDaemonStart = false
+        daemonStartError = nil
+        statusPage = nil
+        daemonUnavailable(startIfPossible: true)
     }
 
     private func applySessions(_ sessions: [[String: Any]]) {
@@ -366,20 +680,20 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         let failed = statuses.filter { $0 == "failed" }.count
 
         let live = running + starting
-        let color: NSColor = failed > 0 ? .systemRed
-            : starting > 0 ? .systemOrange
-            : running > 0 ? .systemGreen
-            : .secondaryLabelColor
-        setTitle(live > 0 ? " \(live)" : "", color: color,
-                 tooltip: "Baton — \(running) running, \(starting) starting, \(failed) failed")
+        let state: MenuBarState = failed > 0 ? .failed
+            : starting > 0 ? .starting
+            : running > 0 ? .running
+            : .idle
+        setMenuBar(count: live, state: state,
+                   tooltip: "Baton — \(running) running, \(starting) starting, \(failed) failed")
     }
 
-    private func setTitle(_ text: String, color: NSColor, tooltip: String) {
-        statusItem.button?.image = HUDController.batonGlyph(color: color)
+    private func setMenuBar(count: Int, state: MenuBarState, tooltip: String) {
+        statusItem.button?.image = HUDController.menuBarIcon(state: state)
         statusItem.button?.attributedTitle = NSAttributedString(
-            string: text,
-            attributes: [.foregroundColor: color,
-                         .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)]
+            string: count > 0 ? "\(count)" : "",
+            attributes: [.foregroundColor: NSColor.labelColor,
+                         .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)]
         )
         statusItem.button?.toolTip = tooltip
     }
@@ -429,7 +743,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         menu.addItem(item("Stop all", #selector(menuStop)))
         menu.addItem(.separator())
         menu.addItem(item("Open in browser", #selector(menuBrowser)))
-        menu.addItem(item("Quit HUD", #selector(menuQuit), key: "q"))
+        menu.addItem(item("Quit Baton…", #selector(menuQuit), key: "q"))
         return menu
     }
 

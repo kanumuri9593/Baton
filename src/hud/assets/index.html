@@ -7,11 +7,10 @@
 <link rel="icon" href="%%FAVICON%%">
 <link rel="stylesheet" href="/assets/hud.css">
 <link rel="modulepreload" href="/assets/filters.js">
-<link rel="modulepreload" href="/assets/splits.js">
 </head>
 <body data-density="chip">
-<aside id="chip" title="Baton — hover for run controls">
-  <div class="chip-face" id="chipFace">
+<aside id="chip" title="Baton — click to open or drag to move">
+  <div class="chip-face" id="chipFace" role="button" tabindex="0" title="Open Baton">
     <span class="chip-mark" id="chipMark">%%CHIP_MARK%%</span>
     <span id="chipCount">0</span>
   </div>
