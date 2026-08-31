@@ -20,7 +20,9 @@ import { LogHistory, safe } from '../core/log-store.ts';
 import { LogSink } from './log-sink.ts';
 import { NetworkStore } from '../core/network-store.ts';
 import { NetworkService, type CreateVmClient } from './network.ts';
-import type { Capability, Session } from '../core/types.ts';
+import { screenshotSession } from './capture.ts';
+import { waitForSession, type WaitableSession } from './waiter.ts';
+import type { Capability, Session, SessionSnapshot } from '../core/types.ts';
 import type {
   LaunchWriteResult, ProjectInfo, PushEvent, RpcMethods, TargetInfo,
 } from '../core/api.ts';
@@ -53,6 +55,8 @@ export class LaunchDaemon {
   readonly history: LogHistory;
   readonly network: NetworkService;
   #logSink: LogSink;
+  /** The most recent reload/restart outcome per session, for `summary`. */
+  #lastOperation = new Map<string, { kind: 'reload' | 'restart'; ok: boolean; at: number; message?: string }>();
   #wss?: WebSocketServer;
   #http = createServer((req, res) => this.#handleHttp(req, res));
   #clients = new Set<WebSocket>();
@@ -464,12 +468,16 @@ export class LaunchDaemon {
         const params = p as RpcMethods['reload']['params'];
         const full = request.method === 'restart';
         const sessions = this.#select(p);
+        const kind = full ? 'restart' as const : 'reload' as const;
         const results = await Promise.all(
           sessions.map(async (s) => {
             try {
               const result = full
                 ? await s.hotRestart(params.reason)
                 : await s.hotReload(params.reason);
+              // Recorded for `summary` -- the simplest accurate way to answer
+              // "what did the last reload do?" without touching every adapter.
+              this.#lastOperation.set(s.id, { kind, ok: result.code === 0, at: Date.now(), message: result.message });
               // A failed reload reports only a summary ("DevFS synchronization
               // failed"). The actionable part -- file, line, message -- is in the
               // log stream, so attach it: an agent that broke the build needs the
@@ -479,7 +487,9 @@ export class LaunchDaemon {
               }
               return { session: s.id, ...result };
             } catch (err) {
-              return { session: s.id, code: 1, message: (err as Error).message };
+              const message = (err as Error).message;
+              this.#lastOperation.set(s.id, { kind, ok: false, at: Date.now(), message });
+              return { session: s.id, code: 1, message };
             }
           }),
         );
@@ -596,8 +606,51 @@ export class LaunchDaemon {
         // network store is keyed by the full id.
         const session = this.registry.get(params.session);
         const forgotten = this.registry.forget(params.session);
-        if (forgotten && session) this.network.forget(session.id);
+        if (forgotten && session) {
+          this.network.forget(session.id);
+          this.#lastOperation.delete(session.id);
+        }
         return { forgotten } satisfies RpcMethods['forget']['result'];
+      }
+
+      case 'screenshot': {
+        const params = p as RpcMethods['screenshot']['params'];
+        const session = this.#require(params.session);
+        if (!session.capabilities.has('screenshot' as Capability)) {
+          throw new Error(`${session.kind} sessions have no screenshot capability`);
+        }
+        const snapshot = session.snapshot();
+        return screenshotSession(
+          snapshot, params.out, undefined, this.#devicePlatform(snapshot),
+        ) satisfies Promise<RpcMethods['screenshot']['result']>;
+      }
+
+      case 'wait': {
+        const params = p as RpcMethods['wait']['params'];
+        // Every real `Session` is a `BaseSession`, i.e. an `EventEmitter` --
+        // `removeListener` exists at runtime even though the `Session`
+        // interface itself does not promise it.
+        const session = this.#require(params.session) as unknown as WaitableSession;
+        return waitForSession(
+          session, params.until, params.timeoutMs, recentErrors,
+        ) satisfies Promise<RpcMethods['wait']['result']>;
+      }
+
+      case 'summary': {
+        const params = p as RpcMethods['summary']['params'];
+        const session = this.#require(params.session);
+        const snapshot = session.snapshot();
+        const network = session.capabilities.has('network' as Capability)
+          ? this.network.store.counts(session.id)
+          : undefined;
+        return {
+          session: snapshot,
+          uptimeMs: Date.now() - snapshot.startedAt,
+          recentErrors: recentErrors(session),
+          logLines: session.recentLogs().length,
+          network,
+          lastOperation: this.#lastOperation.get(session.id),
+        } satisfies RpcMethods['summary']['result'];
       }
 
       case 'shutdown':
@@ -697,6 +750,19 @@ export class LaunchDaemon {
     return session;
   }
 
+  /**
+   * The authoritative platform for a session's device target, when known.
+   *
+   * `capture.ts` falls back to guessing from the id's shape, but the device
+   * registry -- when the project's Flutter daemon has already reported this
+   * device -- knows for certain. Never blocks: only devices already discovered
+   * are considered, so a screenshot never waits on a fresh device scan.
+   */
+  #devicePlatform(snapshot: SessionSnapshot): string | undefined {
+    if (!snapshot.root || !snapshot.target) return undefined;
+    return this.registry.devices(snapshot.root).list().find((d) => d.id === snapshot.target)?.platformType;
+  }
+
   #require(id: string) {
     const session = this.registry.get(id);
     if (session) return session;
@@ -747,7 +813,7 @@ function issuesFor(configs: LaunchConfig[]): Record<string, ValidationIssue[]> {
  * Matches the shapes the major toolchains print: `path:line:col: Error: ...`
  * (Dart, TypeScript, Rust) and bare `Error:` / `error TS1234:` lines.
  */
-function recentErrors(session: { recentLogs: (n?: number) => { text: string; error: boolean }[] }): string[] {
+export function recentErrors(session: { recentLogs: (n?: number) => { text: string; error: boolean }[] }): string[] {
   const DIAGNOSTIC = /(^|\s)(\S+\.\w+:\d+:\d+:|error(\s+\w+\d+)?:|Error:|Failed to compile)/i;
   return session
     .recentLogs(200)

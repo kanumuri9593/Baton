@@ -11,6 +11,8 @@ process.env.BATON_HOME = mkdtempSync(join(tmpdir(), 'baton-server-'));
 const { LaunchDaemon, matchTarget } = await import('../src/daemon/server.ts');
 const { sessionLogDir } = await import('../src/core/paths.ts');
 const { LogHistory } = await import('../src/core/log-store.ts');
+const { FlutterSession } = await import('../src/adapters/flutter.ts');
+import type { LaunchConfig } from '../src/config/loader.ts';
 
 let daemon: InstanceType<typeof LaunchDaemon>;
 let port: number;
@@ -23,7 +25,16 @@ before(async () => {
   token = handshake.token;
 });
 
-after(async () => { await daemon.close(); });
+after(async () => {
+  // A Flutter session driven by hand (no real child process) never answers
+  // `app.stop`, and `stopAll()` awaits that answer forever. Retire every
+  // still-live one the way a real exit would, exactly as network-service.test.ts
+  // does for the same reason.
+  for (const session of daemon.registry.list()) {
+    (session as { handleExit?: (code: number) => void }).handleExit?.(0);
+  }
+  await daemon.close();
+});
 
 /**
  * Connect and capture frames from the moment the socket exists.
@@ -864,4 +875,101 @@ test('editLaunchConfig rejects a path element that cannot address a node', async
     }),
     /path elements must be/,
   );
+});
+
+// --- T5: screenshot / wait / summary -----------------------------------------
+
+const FLUTTER_CONFIG: LaunchConfig = {
+  name: 'iOS Simulator (DEV)',
+  kind: 'flutter',
+  cwd: '/proj/t5',
+  program: 'lib/main.dart',
+  toolArgs: [],
+  args: [],
+};
+
+/**
+ * A Flutter session driven by hand, the way `daemon-session.test.ts` and
+ * `network-service.test.ts` do: adopted directly (skipping device selection),
+ * fed machine-protocol lines instead of a real `flutter run --machine` child.
+ */
+function flutterSession(name: string) {
+  const written: string[] = [];
+  const session = new FlutterSession({ ...FLUTTER_CONFIG, name }, {
+    deviceId: 'IPHONE-17-PRO',
+    flutter: { command: '/fake/flutter', prefixArgs: [], source: 'fvm-sdk' },
+    spawn: () => ({ write: (line: string) => written.push(line), kill: () => {} }),
+  });
+  // `start()` is what wires up the fake child (`#child`) that `hotReload` and
+  // `hotRestart` write to -- without it their requests silently go nowhere.
+  session.start();
+  daemon.registry.adopt(session, FLUTTER_CONFIG.cwd);
+  session.ingest(
+    `[{"event":"app.start","params":{"appId":"app-t5","deviceId":"IPHONE-17-PRO","supportsRestart":true}}]\n`,
+  );
+  return { session, written };
+}
+
+test('screenshot refuses a session with no screenshot capability, by name', async () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-screenshot-'));
+  const target: any = {
+    name: 'no-screenshot', kind: 'process', source: 'auto', cwd: scratch,
+    command: process.execPath, args: ['-e', 'setTimeout(() => {}, 5000)'],
+  };
+  const session = await daemon.registry.run(target);
+  try {
+    await assert.rejects(
+      daemon.handle({ method: 'screenshot', params: { session: session.id } }),
+      /screenshot/i,
+    );
+  } finally {
+    await session.stop();
+  }
+});
+
+test('wait resolves via the daemon once app.started arrives on a replayed Flutter session', async () => {
+  const { session } = flutterSession('wait-me');
+  assert.equal(session.status, 'starting');
+
+  const pending = daemon.handle({ method: 'wait', params: { session: session.id, until: 'running', timeoutMs: 2000 } });
+  session.ingest('[{"event":"app.started","params":{"appId":"app-t5"}}]\n');
+
+  const result: any = await pending;
+  assert.equal(result.met, true);
+  assert.equal(result.status, 'running');
+});
+
+test('wait throws immediately, with errors attached, when the session fails instead of reaching running', async () => {
+  const { session } = flutterSession('wait-fails');
+  const pending = daemon.handle({ method: 'wait', params: { session: session.id, until: 'running', timeoutMs: 5000 } });
+  session.ingest('[{"event":"app.log","params":{"log":"Error: lib/main.dart:12:3: compile error","error":true}}]\n');
+  session.handleExit(1);
+
+  await assert.rejects(pending, (err: Error) => {
+    assert.match(err.message, /session is failed/);
+    assert.match(err.message, /compile error/);
+    return true;
+  });
+});
+
+test('summary reflects a reload result after a reload driven through the daemon', async () => {
+  const { session, written } = flutterSession('summary-me');
+  session.ingest('[{"event":"app.started","params":{"appId":"app-t5"}}]\n');
+
+  const before: any = await daemon.handle({ method: 'summary', params: { session: session.id } });
+  assert.equal(before.session.id, session.id);
+  assert.equal(before.lastOperation, undefined, 'no reload has happened yet');
+  assert.ok(before.uptimeMs >= 0);
+  assert.equal(before.recentErrors.length, 0);
+
+  const pending = daemon.handle({ method: 'reload', params: { session: session.id } });
+  const sent = JSON.parse(written.at(-1)!)[0];
+  session.ingest(`[{"id":${sent.id},"result":{"code":0,"message":"Reloaded 1 of 500 libraries"}}]\n`);
+  await pending;
+
+  const after: any = await daemon.handle({ method: 'summary', params: { session: session.id } });
+  assert.equal(after.lastOperation.kind, 'reload');
+  assert.equal(after.lastOperation.ok, true);
+  assert.match(after.lastOperation.message, /Reloaded/);
+  assert.equal(after.network, undefined, 'this session never attached network capture');
 });

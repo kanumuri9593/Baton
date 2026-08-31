@@ -8,7 +8,7 @@
  * together; changing only one is a bug.
  */
 import type {
-  LogLine, NetworkRequestDetail, NetworkRequestSnapshot, OperationResult, SessionSnapshot,
+  LogLine, NetworkRequestDetail, NetworkRequestSnapshot, OperationResult, SessionSnapshot, SessionStatus,
 } from './types.ts';
 import type { Target, TargetKind } from '../config/detect.ts';
 import type { ValidationIssue } from '../config/validate.ts';
@@ -17,6 +17,7 @@ import type { LaunchEdit, LaunchParseError } from '../config/writer.ts';
 import type { BrowseResult } from '../daemon/browse.ts';
 import type { Bootable } from '../daemon/simulators.ts';
 import type { Device } from '../daemon/devices.ts';
+import type { WaitUntil } from '../daemon/waiter.ts';
 import type { RunInfo } from './log-store.ts';
 
 // Re-exported so a client can name what it receives without reaching into the
@@ -89,6 +90,26 @@ export type ReloadResult = { session: string } & OperationResult & { errors?: st
 
 /** Selects which running sessions a bulk operation (`reload`, `restart`, `stop`) applies to. */
 export type SessionSelector = { session?: string; all?: boolean; ids?: string[] };
+
+/**
+ * A cheap structured overview of one session -- what `summary` returns.
+ *
+ * Meant to be the first thing an agent reaches for after starting or reloading
+ * something, instead of re-deriving the same picture from raw log lines every
+ * time: is it up, what broke last, how much traffic has it made.
+ */
+export type SessionSummary = {
+  session: SessionSnapshot;
+  uptimeMs: number;
+  /** Last 25 compiler/log-level error lines; see `recentErrors()` in server.ts. */
+  recentErrors: string[];
+  /** How many lines are currently in the session's log ring. */
+  logLines: number;
+  /** Only present for a session with the `network` capability. */
+  network?: { total: number; failed: number; inFlight: number };
+  /** The most recent reload/restart this session was asked to do, if any. */
+  lastOperation?: { kind: 'reload' | 'restart'; ok: boolean; at: number; message?: string };
+};
 
 /**
  * One entry per method `LaunchDaemon.handle()` dispatches on, mapping the
@@ -231,6 +252,27 @@ export type RpcMethods = {
   forget: {
     params: { session: string };
     result: { forgotten: boolean };
+  };
+  /** Capture the screen of a running session. iOS simulators and Android devices only. */
+  screenshot: {
+    params: { session: string; out?: string };
+    result: { path: string };
+  };
+  /**
+   * Block until a session reaches a state, instead of polling `logs`.
+   *
+   * Throws (rather than resolving `met: false`) on a timeout, or the moment the
+   * condition becomes impossible -- e.g. `until: 'running'` on a session that
+   * just failed. See `src/daemon/waiter.ts`.
+   */
+  wait: {
+    params: { session: string; until: WaitUntil; timeoutMs?: number };
+    result: { met: true; status: SessionStatus; elapsedMs: number; url?: string; matchedLine?: string };
+  };
+  /** A cheap structured overview of one session -- status, recent errors, network counts. */
+  summary: {
+    params: { session: string };
+    result: SessionSummary;
   };
   shutdown: {
     params: {};

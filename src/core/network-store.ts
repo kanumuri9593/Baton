@@ -78,6 +78,22 @@ export class NetworkStore extends EventEmitter {
     return matches.slice(-(query.tail ?? DEFAULT_TAIL));
   }
 
+  /**
+   * Cheap totals for `summary` -- no tailing, no filtering, just counts over
+   * the whole captured window.
+   */
+  counts(sessionId: string): { total: number; failed: number; inFlight: number } {
+    const rows = this.#bySession.get(sessionId);
+    if (!rows) return { total: 0, failed: 0, inFlight: 0 };
+    let failed = 0;
+    let inFlight = 0;
+    for (const row of rows.values()) {
+      if (row.error) failed++;
+      if (row.inProgress) inFlight++;
+    }
+    return { total: rows.size, failed, inFlight };
+  }
+
   /** Empty a session's rows, keeping the session itself. */
   clear(sessionId: string): void {
     this.#bySession.get(sessionId)?.clear();
