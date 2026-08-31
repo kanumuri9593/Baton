@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { DaemonClient } from '../core/client.ts';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 /**
  * MCP surface over the daemon.
@@ -319,6 +319,68 @@ server.tool(
   'Cheap structured overview -- call this before deciding what to do next.',
   { session: z.string() },
   async ({ session }) => guarded(async () => (await daemon()).call('summary', { session })),
+);
+
+server.tool(
+  'run_proof',
+  'Run the proof engine across a device/appearance matrix and return summary.md plus the bundle path. ' +
+    'Use this as the evidence gate before claiming a UI change works.',
+  {
+    target: z.string().describe('Target name or unambiguous substring.'),
+    cwd: z.string().optional(),
+    devices: z.string().optional().describe('Comma-separated device names, e.g. "iPhone SE,iPhone 16 Pro Max".'),
+    appearance: z.string().optional().describe('Comma-separated: light,dark'),
+    textScale: z.string().optional().describe('Comma-separated scales, e.g. 1.0,1.5'),
+    locale: z.string().optional().describe('Comma-separated locale codes'),
+    route: z.string().optional().describe('Deep link or URL to open on each device before capture.'),
+    checks: z.string().optional().describe('Comma-separated checks: running,noErrors,noFailedRequests,screenshot'),
+    allow: z.string().optional().describe('Comma-separated regexes allowed in noErrors check.'),
+    keep: z.boolean().optional().describe('Leave sessions running after the proof.'),
+    out: z.string().optional().describe('Bundle output directory.'),
+    settleMs: z.number().optional().describe('Milliseconds to wait after navigation before screenshot (default 2000).'),
+    timeoutMs: z.number().optional().describe('Per-cell running timeout (default 120000).'),
+  },
+  async (params) =>
+    guarded(async () => {
+      const checks = params.checks?.split(',').map((c) => c.trim()).filter(Boolean);
+      const allow = params.allow?.split(',').map((c) => c.trim()).filter(Boolean);
+      const devices = params.devices?.split(',').map((c) => c.trim()).filter(Boolean);
+      const appearance = params.appearance?.split(',').map((c) => c.trim()).filter(Boolean) as ('light' | 'dark')[] | undefined;
+      const textScale = params.textScale?.split(',').map((c) => Number(c.trim())).filter((n) => Number.isFinite(n));
+      const locale = params.locale?.split(',').map((c) => c.trim()).filter(Boolean);
+      const result = await (await daemon()).call('proofRun', {
+        target: params.target,
+        cwd: params.cwd,
+        devices: devices?.length ? devices : undefined,
+        appearance: appearance?.length ? appearance : undefined,
+        textScale: textScale?.length ? textScale : undefined,
+        locale: locale?.length ? locale : undefined,
+        route: params.route,
+        checks: checks?.length ? checks as any : undefined,
+        allow: allow?.length ? allow : undefined,
+        keep: params.keep,
+        out: params.out,
+        settleMs: params.settleMs,
+        timeoutMs: params.timeoutMs,
+      });
+      const summaryPath = `${result.bundlePath}/summary.md`;
+      const summaryText = existsSync(summaryPath) ? readFileSync(summaryPath, 'utf8') : JSON.stringify(result, null, 2);
+      return `${summaryText}\n\nbundle: ${result.bundlePath}`;
+    }),
+);
+
+server.tool(
+  'list_proofs',
+  'List past proof bundles, newest first.',
+  { limit: z.number().optional().describe('Maximum entries (default 20).') },
+  async ({ limit }) =>
+    guarded(async () => {
+      const proofs = await (await daemon()).call('proofList', { limit: limit ?? 20 });
+      if (!proofs.length) return '(no proofs yet)';
+      return proofs
+        .map((p) => `${p.passed ? 'PASS' : 'FAIL'}  ${p.id}  ${p.target}  ${p.cellCount} cells  ${p.bundlePath}`)
+        .join('\n');
+    }),
 );
 
 await server.connect(new StdioServerTransport());

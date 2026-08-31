@@ -30,3 +30,10 @@ export function sessionLogDir(): string {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+/** Where proof bundles are written — one directory per `baton proof` run. */
+export function proofsDir(): string {
+  const dir = join(stateDir(), 'proofs');
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}

@@ -2,11 +2,14 @@
 import { DaemonClient, startDaemon } from '../core/client.ts';
 import { readHandshake } from '../daemon/server.ts';
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 import { regenerationLoss } from '../config/writer.ts';
 import type { RpcMethods } from '../core/api.ts';
+import {
+  parseAppearanceList, parseAxisList, parseTextScaleList, type ProofCheckName,
+} from '../daemon/proof.ts';
 
 const HELP = `baton — run and control dev sessions from any terminal
 
@@ -30,6 +33,14 @@ Usage
                                  block until a session reaches a state
   baton status <session>         cheap structured overview: status, uptime,
                                  last reload, recent errors, network counts
+  baton proof <target> [--devices "iPhone SE,iPhone 16 Pro Max"]
+                                 [--appearance light,dark] [--text-scale 1.0,1.5]
+                                 [--checks running,noErrors,noFailedRequests,screenshot]
+                                 [--route /screen] [--keep] [--out dir]
+                                 run the proof engine across a matrix; exit
+                                 non-zero when any cell fails
+  baton proofs [list] [-n 20]    list past proof bundles
+  baton proofs open <id>         print summary.md for one bundle
   baton projects                 projects the HUD knows about
   baton add <path>               track another project
   baton init [--force|--replace] [--claude]
@@ -127,6 +138,15 @@ function parseArgs(argv: string[]) {
     else if (arg === '-o' || arg === '--out') flags.out = argv[++i];
     else if (arg === '--until') flags.until = argv[++i];
     else if (arg === '--timeout') flags.timeout = argv[++i];
+    else if (arg === '--devices') flags.devices = argv[++i];
+    else if (arg === '--appearance') flags.appearance = argv[++i];
+    else if (arg === '--text-scale') flags['text-scale'] = argv[++i];
+    else if (arg === '--locale') flags.locale = argv[++i];
+    else if (arg === '--route') flags.route = argv[++i];
+    else if (arg === '--checks') flags.checks = argv[++i];
+    else if (arg === '--allow') flags.allow = argv[++i];
+    else if (arg === '--settle') flags.settle = argv[++i];
+    else if (arg === '--keep') flags.keep = true;
     else if (arg.startsWith('-')) flags[arg.replace(/^-+/, '')] = true;
     else positional.push(arg);
   }
@@ -401,6 +421,91 @@ async function main() {
         break;
       }
 
+      case 'proof': {
+        const target = positional.join(' ');
+        if (!target) throw new Error('which target? try `baton list`');
+        const checksRaw = typeof flags.checks === 'string' ? flags.checks.split(',') : undefined;
+        const checks = checksRaw?.map((c) => c.trim()) as ProofCheckName[] | undefined;
+        const allow = parseAxisList(typeof flags.allow === 'string' ? flags.allow : undefined);
+        const devices = parseAxisList(typeof flags.devices === 'string' ? flags.devices : undefined);
+        const appearance = parseAppearanceList(typeof flags.appearance === 'string' ? flags.appearance : undefined);
+        const textScale = parseTextScaleList(typeof flags['text-scale'] === 'string' ? flags['text-scale'] : undefined);
+        const locale = parseAxisList(typeof flags.locale === 'string' ? flags.locale : undefined);
+        const settleMs = flags.settle ? Number(flags.settle) : undefined;
+        const timeoutMs = flags.timeout ? Number(flags.timeout) : undefined;
+
+        let lastCell = '';
+        client.onEvent((msg) => {
+          if (msg.event !== 'proof') return;
+          if (msg.cell === lastCell && msg.status === 'running') return;
+          lastCell = msg.cell;
+          const label = msg.cell === '*' ? 'proof' : msg.cell;
+          const detail = msg.message ? ` — ${msg.message}` : '';
+          console.log(dim(`  [${label}] ${msg.status}${detail}`));
+        });
+
+        const result = await client.call('proofRun', {
+          target,
+          cwd,
+          devices,
+          appearance,
+          textScale,
+          locale,
+          route: typeof flags.route === 'string' ? flags.route : undefined,
+          checks,
+          allow,
+          keep: flags.keep === true,
+          out: typeof flags.out === 'string' ? flags.out : undefined,
+          settleMs: Number.isFinite(settleMs) ? settleMs : undefined,
+          timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : undefined,
+        });
+
+        console.log('');
+        if (result.passed) {
+          console.log(`${green('✓')} proof passed — ${result.cells.length} cell(s)`);
+        } else {
+          const failed = result.cells.filter((c) => c.status !== 'passed');
+          console.log(`${red('✗')} proof failed — ${failed.length}/${result.cells.length} cell(s)`);
+          for (const cell of failed) {
+            const bad = Object.entries(cell.checks).filter(([, v]) => v && !v.pass).map(([k]) => k);
+            console.log(`    ${red('✗')} ${cell.spec.id}${bad.length ? ` (${bad.join(', ')})` : ''}`);
+            if (cell.error) console.log(dim(`      ${cell.error}`));
+          }
+        }
+        console.log(dim(`  bundle: ${result.bundlePath}`));
+        console.log(dim(`  report: ${result.bundlePath}/report.html`));
+        if (!result.passed) process.exitCode = 1;
+        break;
+      }
+
+      case 'proofs': {
+        const sub = positional[0] ?? 'list';
+        if (sub === 'open') {
+          const id = positional.slice(1).join(' ');
+          if (!id) throw new Error('which proof? try `baton proofs`');
+          const proof = await client.call('proofGet', { id });
+          const summaryPath = `${proof.bundlePath}/summary.md`;
+          if (existsSync(summaryPath)) {
+            process.stdout.write(readFileSync(summaryPath, 'utf8'));
+          } else {
+            printProofSummary(proof);
+          }
+          break;
+        }
+        const limit = flags.tail ? Number(flags.tail) : 20;
+        const proofs = await client.call('proofList', { limit });
+        if (!proofs.length) {
+          console.log('no proofs yet — run `baton proof <target>`');
+          break;
+        }
+        for (const p of proofs) {
+          const mark = p.passed ? green('✓') : red('✗');
+          console.log(`${mark} ${p.id}  ${p.target}  ${p.cellCount} cell(s)  ${relativeTime(p.startedAt)}`);
+          console.log(dim(`    ${p.bundlePath}`));
+        }
+        break;
+      }
+
       case 'projects': {
         const { projects, active } = await client.call('projects', { cwd });
         for (const project of projects) {
@@ -638,6 +743,16 @@ function printSummary(summary: RpcMethods['summary']['result']): void {
   if (summary.network) {
     const n = summary.network;
     console.log(dim(`  network: ${n.total} total, ${n.failed} failed, ${n.inFlight} in flight`));
+  }
+}
+
+function printProofSummary(proof: RpcMethods['proofGet']['result']): void {
+  console.log(`# Proof: ${proof.target}`);
+  console.log(`Result: ${proof.passed ? 'PASSED' : 'FAILED'}`);
+  console.log(`Bundle: ${proof.bundlePath}`);
+  for (const cell of proof.cells) {
+    const mark = cell.status === 'passed' ? green('✓') : red('✗');
+    console.log(`${mark} ${cell.spec.id} — ${cell.status}`);
   }
 }
 

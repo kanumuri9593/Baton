@@ -22,6 +22,9 @@ import { NetworkStore } from '../core/network-store.ts';
 import { NetworkService, type CreateVmClient } from './network.ts';
 import { screenshotSession } from './capture.ts';
 import { waitForSession, type WaitableSession } from './waiter.ts';
+import {
+  getProof, listProofs, runProof, type ProofHost, type ProofRunParams,
+} from './proof.ts';
 import type { Capability, Session, SessionSnapshot } from '../core/types.ts';
 import type {
   LaunchWriteResult, ProjectInfo, PushEvent, RpcMethods, TargetInfo,
@@ -653,6 +656,25 @@ export class LaunchDaemon {
         } satisfies RpcMethods['summary']['result'];
       }
 
+      case 'proofRun': {
+        const params = p as RpcMethods['proofRun']['params'];
+        const host = this.#proofHost();
+        const result = await runProof(host, params as ProofRunParams);
+        return result satisfies RpcMethods['proofRun']['result'];
+      }
+
+      case 'proofList': {
+        const params = p as RpcMethods['proofList']['params'];
+        return listProofs(params.limit ?? 50) satisfies RpcMethods['proofList']['result'];
+      }
+
+      case 'proofGet': {
+        const params = p as RpcMethods['proofGet']['params'];
+        const proof = getProof(params.id);
+        if (!proof) throw new Error(`no proof matching "${params.id}"`);
+        return proof satisfies RpcMethods['proofGet']['result'];
+      }
+
       case 'shutdown':
         setTimeout(() => this.close().then(() => process.exit(0)), 50);
         return { stopping: true } satisfies RpcMethods['shutdown']['result'];
@@ -761,6 +783,52 @@ export class LaunchDaemon {
   #devicePlatform(snapshot: SessionSnapshot): string | undefined {
     if (!snapshot.root || !snapshot.target) return undefined;
     return this.registry.devices(snapshot.root).list().find((d) => d.id === snapshot.target)?.platformType;
+  }
+
+  /** Injectable seam for `runProof` — wires the daemon's real session machinery. */
+  #proofHost(): ProofHost {
+    const root = this.#resolveRoot();
+    return {
+      root,
+      matchTarget: (query) => {
+        const targets = detectTargets(root);
+        return matchTarget(targets, query);
+      },
+      matchTargetCandidates: (query) => matchCandidates(detectTargets(root), query),
+      listDevices: async () => {
+        const devices = this.registry.devices(this.#deviceRoot());
+        await devices.ready(500);
+        return { connected: devices.list(), bootables: await devices.bootables() };
+      },
+      boot: (id) => this.registry.devices(this.#deviceRoot()).boot(id),
+      run: (target, deviceId) => this.registry.run(target, { deviceId }),
+      waitRunning: async (session, timeoutMs) => {
+        try {
+          await waitForSession(
+            session as unknown as WaitableSession,
+            'running',
+            timeoutMs,
+            recentErrors,
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      screenshot: async (session, path) => {
+        const snapshot = session.snapshot();
+        await screenshotSession(
+          snapshot, path, undefined, this.#devicePlatform(snapshot),
+        );
+      },
+      logs: (session) => session.recentLogs(),
+      network: (session) => {
+        if (!session.capabilities.has('network' as Capability)) return [];
+        return this.network.store.list(session.id);
+      },
+      stop: (session) => session.stop(),
+      onProgress: (event) => this.#broadcast({ event: 'proof', ...event } satisfies PushEvent),
+    };
   }
 
   #require(id: string) {

@@ -12,7 +12,12 @@ export type FlutterSessionOptions = {
   flutter: FlutterBinary;
   /** Injected in tests so a session can be driven without a simulator. */
   spawn?: (command: string, args: string[], cwd: string, env?: Record<string, string>) => ChildHandle;
+  /** How long to wait for `app.stop` before SIGTERM-killing the child. Tests shorten this. */
+  stopTimeoutMs?: number;
 };
+
+/** Default grace period for a wedged `app.stop` before the child is killed. */
+export const DEFAULT_STOP_TIMEOUT_MS = 10_000;
 
 const CAPABILITIES: readonly Capability[] = [
   'hotReload', 'hotRestart', 'restartProcess', 'stop', 'screenshot', 'devtools', 'serviceExtension',
@@ -106,12 +111,29 @@ export class FlutterSession extends BaseSession {
   }
 
   async stop(): Promise<void> {
+    if (!this.#child) return;
     if (!this.appId) {
-      this.#child?.kill();
+      this.#child.kill();
       return;
     }
-    // `app.stop` answers with a bare `true`, so the value is ignored.
-    await this.#request('app.stop', { appId: this.appId }).catch(() => this.#child?.kill());
+    // `app.stop` answers with a bare `true`, so the value is ignored. A wedged
+    // Flutter machine connection can hang forever without this cap -- which in
+    // turn blocks daemon shutdown and proof-engine cleanup.
+    const timeoutMs = this.#options.stopTimeoutMs ?? DEFAULT_STOP_TIMEOUT_MS;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      this.#rejectAll('stop timed out');
+      this.#child?.kill();
+    }, timeoutMs);
+    timer.unref?.();
+    try {
+      await this.#request('app.stop', { appId: this.appId }).catch(() => {
+        if (!timedOut) this.#child?.kill();
+      });
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /** Framework toggles: debug paint, performance overlay, platform override... */

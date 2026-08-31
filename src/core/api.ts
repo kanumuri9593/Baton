@@ -19,11 +19,15 @@ import type { Bootable } from '../daemon/simulators.ts';
 import type { Device } from '../daemon/devices.ts';
 import type { WaitUntil } from '../daemon/waiter.ts';
 import type { RunInfo } from './log-store.ts';
+import type {
+  ProofCheckName, ProofListEntry, ProofProgressEvent, ProofRunParams, ProofRunSummary,
+} from '../daemon/proof.ts';
 
 // Re-exported so a client can name what it receives without reaching into the
 // daemon's own modules.
 export type { BrowseEntry, BrowseResult, BrowseShortcut } from '../daemon/browse.ts';
 export type { LaunchEdit, LaunchParseError } from '../config/writer.ts';
+export type { ProofCheckName, ProofListEntry, ProofRunSummary } from '../daemon/proof.ts';
 
 /** A detected target plus its pre-flight state, as sent to clients. */
 export type TargetInfo = Target & { issues: ValidationIssue[] };
@@ -274,6 +278,26 @@ export type RpcMethods = {
     params: { session: string };
     result: SessionSummary;
   };
+  /**
+   * Run the proof engine across a device/appearance matrix and write a bundle.
+   *
+   * Streams `{event:'proof', ...}` push updates while cells execute. Returns the
+   * full summary once every cell has finished.
+   */
+  proofRun: {
+    params: ProofRunParams;
+    result: ProofRunSummary;
+  };
+  /** List past proof bundles, newest first. */
+  proofList: {
+    params: { limit?: number };
+    result: ProofListEntry[];
+  };
+  /** Read one proof bundle by id (directory name or unambiguous prefix). */
+  proofGet: {
+    params: { id: string };
+    result: ProofRunSummary;
+  };
   shutdown: {
     params: {};
     result: { stopping: boolean };
@@ -287,4 +311,6 @@ export type PushEvent =
   | { event: 'log'; sessionId: string; text: string; error: boolean }
   /** One captured HTTP request, pushed as it starts and again as it finishes. */
   | { event: 'network'; sessionId: string; request: NetworkRequestSnapshot }
-  | { event: 'devices' };
+  | { event: 'devices' }
+  /** Live progress while `proofRun` executes its matrix. */
+  | ({ event: 'proof' } & ProofProgressEvent);

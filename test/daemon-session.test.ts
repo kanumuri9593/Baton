@@ -155,6 +155,26 @@ test('stop sends app.stop for the captured appId', () => {
   assert.equal(sent.params.appId, 'app-1');
 });
 
+test('stop kills the child when app.stop does not answer within the timeout', async () => {
+  let killed = false;
+  const written: string[] = [];
+  const short = new FlutterSession(CONFIG, {
+    deviceId: 'IPHONE-17-PRO',
+    flutter: { command: '/fake/flutter', prefixArgs: [], source: 'fvm-sdk' },
+    stopTimeoutMs: 30,
+    spawn: () => ({
+      write: (line: string) => written.push(line),
+      kill: () => { killed = true; },
+    }),
+  });
+  short.start();
+  started(short);
+  await short.stop();
+  assert.equal(killed, true, 'must SIGTERM the child when app.stop hangs');
+  const sent = JSON.parse(written.at(-1)!)[0];
+  assert.equal(sent.method, 'app.stop');
+});
+
 test('service extensions drive the toolbar overflow options', () => {
   const { s, written } = session();
   started(s);

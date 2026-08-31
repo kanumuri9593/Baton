@@ -1,0 +1,671 @@
+import { execFile, execFileSync } from 'node:child_process';
+import {
+  mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, statSync, copyFileSync,
+} from 'node:fs';
+import { join } from 'node:path';
+import type { Bootable } from './simulators.ts';
+import type { Device } from './devices.ts';
+import type { Target } from '../config/detect.ts';
+import type { LogLine, NetworkRequestSnapshot, Session } from '../core/types.ts';
+import { proofsDir } from '../core/paths.ts';
+
+/** Built-in assertions a proof cell can enforce. */
+export const PROOF_CHECK_NAMES = ['running', 'noErrors', 'noFailedRequests', 'screenshot'] as const;
+export type ProofCheckName = (typeof PROOF_CHECK_NAMES)[number];
+
+const DEFAULT_CHECKS: ProofCheckName[] = ['running', 'noErrors', 'noFailedRequests', 'screenshot'];
+const DEFAULT_SETTLE_MS = 2000;
+const DEFAULT_TIMEOUT_MS = 120_000;
+const MIN_SCREENSHOT_BYTES = 1024;
+
+export type ProofCellSpec = {
+  id: string;
+  deviceId: string;
+  deviceName: string;
+  platformType: string;
+  appearance?: 'light' | 'dark';
+  textScale?: number;
+  locale?: string;
+};
+
+export type CheckOutcome = { pass: boolean; message?: string };
+
+export type ProofCellResult = {
+  spec: ProofCellSpec;
+  status: 'pending' | 'running' | 'passed' | 'failed' | 'error';
+  sessionId?: string;
+  startedAt?: number;
+  finishedAt?: number;
+  durationMs?: number;
+  checks: Partial<Record<ProofCheckName, CheckOutcome>>;
+  screenshotPath?: string;
+  error?: string;
+};
+
+export type ProofRunParams = {
+  target: string;
+  cwd?: string;
+  devices?: string[];
+  appearance?: ('light' | 'dark')[];
+  textScale?: number[];
+  locale?: string[];
+  route?: string;
+  checks?: ProofCheckName[];
+  allow?: string[];
+  keep?: boolean;
+  out?: string;
+  settleMs?: number;
+  timeoutMs?: number;
+};
+
+export type ProofRunSummary = {
+  id: string;
+  target: string;
+  root: string;
+  startedAt: number;
+  finishedAt: number;
+  passed: boolean;
+  git?: { sha?: string; dirty?: boolean };
+  cells: ProofCellResult[];
+  bundlePath: string;
+};
+
+export type ProofListEntry = {
+  id: string;
+  target: string;
+  root: string;
+  startedAt: number;
+  finishedAt: number;
+  passed: boolean;
+  cellCount: number;
+  bundlePath: string;
+};
+
+export type ProofProgressEvent = {
+  proofId: string;
+  cell: string;
+  status: 'starting' | 'running' | 'passed' | 'failed' | 'error';
+  message?: string;
+};
+
+/** How cell-setting shell-outs are run — injectable so tests never touch simctl/adb. */
+export type CellExecFn = (cmd: string, args: string[]) => Promise<{ code: number; stderr: string }>;
+
+export const defaultCellExec: CellExecFn = (cmd, args) =>
+  new Promise((resolve) => {
+    execFile(cmd, args, { encoding: 'utf8' }, (err, _stdout, stderr) => {
+      resolve({ code: err ? (typeof (err as NodeJS.ErrnoException).code === 'number' ? (err as any).code : 1) : 0, stderr: stderr || (err?.message ?? '') });
+    });
+  });
+
+/** Split a comma-separated CLI flag into trimmed tokens; undefined/empty → undefined. */
+export function parseAxisList(raw?: string): string[] | undefined {
+  if (!raw) return undefined;
+  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return parts.length ? parts : undefined;
+}
+
+/** Parse appearance axis values, rejecting unknown tokens. */
+export function parseAppearanceList(raw?: string): ('light' | 'dark')[] | undefined {
+  const list = parseAxisList(raw);
+  if (!list) return undefined;
+  for (const item of list) {
+    if (item !== 'light' && item !== 'dark') {
+      throw new Error(`appearance must be light or dark (got "${item}")`);
+    }
+  }
+  return list as ('light' | 'dark')[];
+}
+
+/** Parse numeric text-scale axis. */
+export function parseTextScaleList(raw?: string): number[] | undefined {
+  const list = parseAxisList(raw);
+  if (!list) return undefined;
+  return list.map((s) => {
+    const n = Number(s);
+    if (!Number.isFinite(n) || n <= 0) throw new Error(`invalid text scale "${s}"`);
+    return n;
+  });
+}
+
+function slugPart(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'x';
+}
+
+/** Stable directory name for one matrix cell. */
+export function cellId(spec: Pick<ProofCellSpec, 'deviceName' | 'appearance' | 'textScale' | 'locale'>): string {
+  const parts = [
+    slugPart(spec.deviceName),
+    spec.appearance ?? 'default',
+    spec.textScale !== undefined ? String(spec.textScale) : '1',
+    spec.locale ? slugPart(spec.locale) : 'default',
+  ];
+  return parts.join('-');
+}
+
+/** Exact name/id, then case-insensitive substring — same rule as targets and devices. */
+export function pickNamed<T extends { name: string; id: string }>(items: T[], query: string): T | undefined {
+  const exact = items.find((d) => d.name === query || d.id === query);
+  if (exact) return exact;
+  const lower = query.toLowerCase();
+  const matches = items.filter((d) => d.name.toLowerCase().includes(lower));
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+/** Resolve one device query against connected devices, then bootables. */
+export function resolveDeviceQuery(
+  query: string,
+  connected: Device[],
+  bootables: Bootable[],
+): { deviceId: string; deviceName: string; platformType: string; needsBoot: boolean } {
+  const hit = pickNamed(connected, query);
+  if (hit) return { deviceId: hit.id, deviceName: hit.name, platformType: hit.platformType, needsBoot: false };
+
+  const bootable = pickNamed(bootables, query);
+  if (!bootable) {
+    const candidates = [...connected, ...bootables].map((d) => d.name);
+    throw new Error(
+      `no device matching "${query}"` +
+        (candidates.length ? ` — try one of:\n  ${candidates.join('\n  ')}` : ''),
+    );
+  }
+  return {
+    deviceId: bootable.id,
+    deviceName: bootable.name,
+    platformType: bootable.platformType,
+    needsBoot: !bootable.running,
+  };
+}
+
+type DevicePick = { deviceId: string; deviceName: string; platformType: string; needsBoot: boolean };
+
+/**
+ * Expand the proof matrix: devices × appearance × text scale × locale.
+ *
+ * Pure aside from the device-resolution inputs — the orchestrator supplies
+ * connected/bootable lists and handles booting anything with `needsBoot`.
+ */
+export function expandProofMatrix(
+  params: {
+    devices?: string[];
+    appearance?: ('light' | 'dark')[];
+    textScale?: number[];
+    locale?: string[];
+  },
+  connected: Device[],
+  bootables: Bootable[],
+): { cells: ProofCellSpec[]; boots: DevicePick[] } {
+  const appearances = params.appearance?.length ? params.appearance : [undefined] as const;
+  const scales = params.textScale?.length ? params.textScale : [undefined] as const;
+  const locales = params.locale?.length ? params.locale : [undefined] as const;
+
+  let picks: DevicePick[];
+  if (params.devices?.length) {
+    picks = params.devices.map((q) => resolveDeviceQuery(q, connected, bootables));
+  } else {
+    const first = connected[0];
+    if (first) {
+      picks = [{ deviceId: first.id, deviceName: first.name, platformType: first.platformType, needsBoot: false }];
+    } else {
+      const booted = bootables.find((b) => b.running);
+      if (!booted) {
+        throw new Error('no connected device — pass --devices or boot a simulator first (baton boot "<name>")');
+      }
+      picks = [{
+        deviceId: booted.id,
+        deviceName: booted.name,
+        platformType: booted.platformType,
+        needsBoot: false,
+      }];
+    }
+  }
+
+  const cells: ProofCellSpec[] = [];
+  for (const pick of picks) {
+    for (const appearance of appearances) {
+      for (const textScale of scales) {
+        for (const locale of locales) {
+          const spec: ProofCellSpec = {
+            id: '',
+            deviceId: pick.deviceId,
+            deviceName: pick.deviceName,
+            platformType: pick.platformType,
+            appearance: appearance as 'light' | 'dark' | undefined,
+            textScale: textScale as number | undefined,
+            locale: locale as string | undefined,
+          };
+          spec.id = cellId(spec);
+          cells.push(spec);
+        }
+      }
+    }
+  }
+  return { cells, boots: picks.filter((p) => p.needsBoot) };
+}
+
+/** Map a numeric scale to the nearest iOS Simulator content-size bucket. */
+export function textScaleToIosContentSize(scale: number): string {
+  if (scale <= 0.85) return 'small';
+  if (scale <= 1.0) return 'medium';
+  if (scale <= 1.15) return 'large';
+  if (scale <= 1.3) return 'extra-large';
+  if (scale <= 1.5) return 'extra-extra-large';
+  return 'accessibility-extra-extra-extra-large';
+}
+
+export async function applyCellSettings(spec: ProofCellSpec, exec: CellExecFn = defaultCellExec): Promise<void> {
+  if (spec.platformType === 'ios') {
+    if (spec.appearance) {
+      const r = await exec('xcrun', ['simctl', 'ui', spec.deviceId, 'appearance', spec.appearance]);
+      if (r.code !== 0) throw new Error(`simctl appearance failed: ${r.stderr}`);
+    }
+    if (spec.textScale !== undefined) {
+      const size = textScaleToIosContentSize(spec.textScale);
+      const r = await exec('xcrun', ['simctl', 'ui', spec.deviceId, 'content_size', size]);
+      if (r.code !== 0) throw new Error(`simctl content_size failed: ${r.stderr}`);
+    }
+    return;
+  }
+  if (spec.platformType === 'android') {
+    if (spec.appearance) {
+      const mode = spec.appearance === 'dark' ? 'yes' : 'no';
+      const r = await exec('adb', ['-s', spec.deviceId, 'shell', 'cmd', 'uimode', 'night', mode]);
+      if (r.code !== 0) throw new Error(`adb uimode night failed: ${r.stderr}`);
+    }
+    if (spec.textScale !== undefined) {
+      const r = await exec('adb', [
+        '-s', spec.deviceId, 'shell', 'settings', 'put', 'system', 'font_scale', String(spec.textScale),
+      ]);
+      if (r.code !== 0) throw new Error(`adb font_scale failed: ${r.stderr}`);
+    }
+  }
+}
+
+export async function openRouteOnDevice(
+  spec: ProofCellSpec,
+  route: string,
+  exec: CellExecFn = defaultCellExec,
+): Promise<void> {
+  if (spec.platformType === 'ios') {
+    const r = await exec('xcrun', ['simctl', 'openurl', spec.deviceId, route]);
+    if (r.code !== 0) throw new Error(`simctl openurl failed: ${r.stderr}`);
+    return;
+  }
+  if (spec.platformType === 'android') {
+    const r = await exec('adb', [
+      '-s', spec.deviceId, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', route,
+    ]);
+    if (r.code !== 0) throw new Error(`adb am start failed: ${r.stderr}`);
+  }
+}
+
+/** Network rows that count as failures for the `noFailedRequests` check. */
+export function countFailedRequests(requests: NetworkRequestSnapshot[]): number {
+  let failed = 0;
+  for (const row of requests) {
+    if (row.error || (row.statusCode !== undefined && row.statusCode >= 500)) failed++;
+  }
+  return failed;
+}
+
+const DIAGNOSTIC = /(^|\s)(\S+\.\w+:\d+:\d+:|error(\s+\w+\d+)?:|Error:|Failed to compile)/i;
+
+function isDiagnostic(text: string): boolean {
+  return DIAGNOSTIC.test(text);
+}
+
+export function runCellChecks(
+  names: ProofCheckName[],
+  evidence: {
+    reachedRunning: boolean;
+    logs: LogLine[];
+    network: NetworkRequestSnapshot[];
+    screenshotPath?: string;
+    allowPatterns?: RegExp[];
+  },
+): Partial<Record<ProofCheckName, CheckOutcome>> {
+  const out: Partial<Record<ProofCheckName, CheckOutcome>> = {};
+  for (const name of names) {
+    switch (name) {
+      case 'running':
+        out.running = evidence.reachedRunning
+          ? { pass: true }
+          : { pass: false, message: 'session never reached running' };
+        break;
+      case 'noErrors': {
+        const errors = evidence.logs.filter((line) => line.error || isDiagnostic(line.text));
+        const disallowed = errors.filter(
+          (line) => !evidence.allowPatterns?.some((pattern) => pattern.test(line.text)),
+        );
+        out.noErrors = disallowed.length === 0
+          ? { pass: true }
+          : { pass: false, message: `${disallowed.length} error line(s)` };
+        break;
+      }
+      case 'noFailedRequests': {
+        const n = countFailedRequests(evidence.network);
+        out.noFailedRequests = n === 0
+          ? { pass: true }
+          : { pass: false, message: `${n} failed request(s)` };
+        break;
+      }
+      case 'screenshot':
+        if (!evidence.screenshotPath) {
+          out.screenshot = { pass: false, message: 'no screenshot taken' };
+        } else if (!existsSync(evidence.screenshotPath)) {
+          out.screenshot = { pass: false, message: 'screenshot file missing' };
+        } else {
+          const size = statSync(evidence.screenshotPath).size;
+          out.screenshot = size >= MIN_SCREENSHOT_BYTES
+            ? { pass: true }
+            : { pass: false, message: `screenshot too small (${size} bytes)` };
+        }
+        break;
+      default: {
+        const _exhaustive: never = name;
+        throw new Error(`unknown check: ${_exhaustive}`);
+      }
+    }
+  }
+  return out;
+}
+
+export function gitInfo(root: string): { sha?: string; dirty?: boolean } {
+  try {
+    const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+    const status = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+    return { sha, dirty: status.length > 0 };
+  } catch {
+    return {};
+  }
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Write proof.json, per-cell evidence, summary.md and a self-contained report.html. */
+export function writeProofBundle(summary: ProofRunSummary, cellArtifacts: Map<string, {
+  logs: LogLine[];
+  network: NetworkRequestSnapshot[];
+  screenshotSrc?: string;
+}>): void {
+  const bundlePath = summary.bundlePath;
+  mkdirSync(bundlePath, { recursive: true });
+  const cellsDir = join(bundlePath, 'cells');
+  mkdirSync(cellsDir, { recursive: true });
+
+  for (const cell of summary.cells) {
+    const dir = join(cellsDir, cell.spec.id);
+    mkdirSync(dir, { recursive: true });
+    const artifacts = cellArtifacts.get(cell.spec.id);
+    if (artifacts) {
+      writeFileSync(join(dir, 'logs.json'), JSON.stringify(artifacts.logs, null, 2));
+      writeFileSync(join(dir, 'network.json'), JSON.stringify(artifacts.network, null, 2));
+      if (artifacts.screenshotSrc && existsSync(artifacts.screenshotSrc)) {
+        copyFileSync(artifacts.screenshotSrc, join(dir, 'screenshot.png'));
+        cell.screenshotPath = join(dir, 'screenshot.png');
+      }
+    }
+  }
+
+  writeFileSync(join(bundlePath, 'proof.json'), JSON.stringify(summary, null, 2));
+
+  const lines: string[] = [
+    `# Proof: ${summary.target}`,
+    '',
+    `**Result:** ${summary.passed ? 'PASSED' : 'FAILED'}`,
+    `**When:** ${new Date(summary.startedAt).toISOString()}`,
+    `**Project:** ${summary.root}`,
+  ];
+  if (summary.git?.sha) {
+    lines.push(`**Git:** \`${summary.git.sha.slice(0, 12)}\`${summary.git.dirty ? ' (dirty)' : ''}`);
+  }
+  lines.push('', '## Cells', '');
+  for (const cell of summary.cells) {
+    const mark = cell.status === 'passed' ? '✓' : '✗';
+    const failedChecks = Object.entries(cell.checks)
+      .filter(([, c]) => c && !c.pass)
+      .map(([name, c]) => `${name}: ${c!.message ?? 'failed'}`);
+    lines.push(`- ${mark} **${cell.spec.id}** (${cell.spec.deviceName}) — ${cell.status}${failedChecks.length ? ` — ${failedChecks.join('; ')}` : ''}`);
+    if (cell.error) lines.push(`  - error: ${cell.error}`);
+  }
+  writeFileSync(join(bundlePath, 'summary.md'), lines.join('\n') + '\n');
+
+  const grid = summary.cells.map((cell) => {
+    const shot = join('cells', cell.spec.id, 'screenshot.png');
+    const hasShot = existsSync(join(bundlePath, shot));
+    const checks = Object.entries(cell.checks)
+      .map(([name, c]) => `<li class="${c?.pass ? 'pass' : 'fail'}">${escapeHtml(name)}${c?.message ? `: ${escapeHtml(c.message)}` : ''}</li>`)
+      .join('');
+    return `<div class="cell ${cell.status}">
+      <h3>${escapeHtml(cell.spec.id)}</h3>
+      <p>${escapeHtml(cell.spec.deviceName)} · ${cell.status}</p>
+      ${hasShot ? `<img src="${shot}" alt="${escapeHtml(cell.spec.id)}">` : '<div class="noshot">no screenshot</div>'}
+      <ul>${checks}</ul>
+      ${cell.error ? `<pre class="err">${escapeHtml(cell.error)}</pre>` : ''}
+    </div>`;
+  }).join('\n');
+
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Proof: ${escapeHtml(summary.target)}</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1.5rem; background: #0f1117; color: #e8eaed; }
+  h1 { font-size: 1.25rem; }
+  .meta { color: #9aa0a6; margin-bottom: 1rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+  .cell { background: #1a1d26; border-radius: 8px; padding: 0.75rem; border: 1px solid #2d3140; }
+  .cell.passed { border-color: #34a853; }
+  .cell.failed, .cell.error { border-color: #ea4335; }
+  .cell img { width: 100%; border-radius: 4px; background: #000; }
+  .noshot { height: 120px; display: flex; align-items: center; justify-content: center; background: #000; color: #666; border-radius: 4px; }
+  .pass { color: #34a853; } .fail { color: #ea4335; }
+  pre.err { font-size: 0.75rem; color: #f28b82; white-space: pre-wrap; }
+</style></head><body>
+<h1>Proof: ${escapeHtml(summary.target)}</h1>
+<p class="meta">${summary.passed ? 'PASSED' : 'FAILED'} · ${new Date(summary.startedAt).toISOString()} · ${escapeHtml(summary.root)}</p>
+<div class="grid">${grid}</div>
+</body></html>`;
+  writeFileSync(join(bundlePath, 'report.html'), html);
+}
+
+/** List proof bundles newest-first. */
+export function listProofs(limit = 50): ProofListEntry[] {
+  const root = proofsDir();
+  const entries: ProofListEntry[] = [];
+  for (const name of readdirSync(root)) {
+    const bundlePath = join(root, name);
+    const proofFile = join(bundlePath, 'proof.json');
+    if (!existsSync(proofFile)) continue;
+    try {
+      const summary = JSON.parse(readFileSync(proofFile, 'utf8')) as ProofRunSummary;
+      entries.push({
+        id: summary.id,
+        target: summary.target,
+        root: summary.root,
+        startedAt: summary.startedAt,
+        finishedAt: summary.finishedAt,
+        passed: summary.passed,
+        cellCount: summary.cells.length,
+        bundlePath,
+      });
+    } catch { /* skip corrupt bundles */ }
+  }
+  return entries.sort((a, b) => b.startedAt - a.startedAt).slice(0, limit);
+}
+
+/** Read one proof bundle by id (directory name or prefix). */
+export function getProof(id: string): ProofRunSummary | undefined {
+  const root = proofsDir();
+  const exact = join(root, id);
+  if (existsSync(join(exact, 'proof.json'))) {
+    return JSON.parse(readFileSync(join(exact, 'proof.json'), 'utf8')) as ProofRunSummary;
+  }
+  const matches = readdirSync(root).filter((name) => name.startsWith(id) && existsSync(join(root, name, 'proof.json')));
+  if (matches.length === 1) {
+    return JSON.parse(readFileSync(join(root, matches[0], 'proof.json'), 'utf8')) as ProofRunSummary;
+  }
+  return undefined;
+}
+
+/**
+ * Everything the orchestrator needs from a live daemon — injectable for tests.
+ */
+export type ProofHost = {
+  root: string;
+  matchTarget(query: string): Target | undefined;
+  matchTargetCandidates(query: string): Target[];
+  listDevices(): Promise<{ connected: Device[]; bootables: Bootable[] }>;
+  boot(deviceId: string): Promise<Device>;
+  run(target: Target, deviceId: string): Promise<Session>;
+  waitRunning(session: Session, timeoutMs: number): Promise<boolean>;
+  screenshot(session: Session, path: string): Promise<void>;
+  logs(session: Session): LogLine[];
+  network(session: Session): NetworkRequestSnapshot[];
+  stop(session: Session): Promise<void>;
+  exec?: CellExecFn;
+  onProgress?: (event: ProofProgressEvent) => void;
+};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const t = setTimeout(resolve, ms);
+    t.unref?.();
+  });
+}
+
+function cellPassed(checks: Partial<Record<ProofCheckName, CheckOutcome>>): boolean {
+  return Object.values(checks).every((c) => c?.pass);
+}
+
+/** Orchestrate a full proof run across the expanded matrix. */
+export async function runProof(host: ProofHost, params: ProofRunParams): Promise<ProofRunSummary> {
+  const target = host.matchTarget(params.target);
+  if (!target) {
+    const candidates = host.matchTargetCandidates(params.target);
+    if (candidates.length > 1) {
+      throw new Error(
+        `"${params.target}" matches ${candidates.length} targets — say which:\n` +
+          candidates.map((t) => `  ${t.name}`).join('\n'),
+      );
+    }
+    throw new Error(`no target matching "${params.target}"`);
+  }
+
+  const checks = params.checks?.length ? params.checks : DEFAULT_CHECKS;
+  const settleMs = params.settleMs ?? DEFAULT_SETTLE_MS;
+  const timeoutMs = params.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const allowPatterns = (params.allow ?? []).map((pattern) => new RegExp(pattern, 'i'));
+  const exec = host.exec ?? defaultCellExec;
+
+  const { connected, bootables } = await host.listDevices();
+  const { cells, boots } = expandProofMatrix(params, connected, bootables);
+
+  const startedAt = Date.now();
+  const stamp = new Date(startedAt).toISOString().replace(/[:.]/g, '-');
+  const proofId = `${stamp}-${slugPart(target.name)}`;
+  const bundlePath = params.out ?? join(proofsDir(), proofId);
+
+  const booted = new Set<string>();
+  for (const pick of boots) {
+    if (booted.has(pick.deviceId)) continue;
+    host.onProgress?.({ proofId, cell: '*', status: 'starting', message: `booting ${pick.deviceName}` });
+    await host.boot(pick.deviceId);
+    booted.add(pick.deviceId);
+  }
+
+  const cellResults: ProofCellResult[] = cells.map((spec) => ({
+    spec, status: 'pending', checks: {},
+  }));
+  const artifacts = new Map<string, { logs: LogLine[]; network: NetworkRequestSnapshot[]; screenshotSrc?: string }>();
+
+  const runCell = async (cell: ProofCellResult): Promise<void> => {
+    const { spec } = cell;
+    cell.status = 'running';
+    cell.startedAt = Date.now();
+    host.onProgress?.({ proofId, cell: spec.id, status: 'running' });
+
+    let session: Session | undefined;
+    let reachedRunning = false;
+    let screenshotPath: string | undefined;
+    const cellDir = join(bundlePath, 'cells', spec.id);
+    mkdirSync(cellDir, { recursive: true });
+
+    try {
+      session = await host.run(target, spec.deviceId);
+      cell.sessionId = session.id;
+      reachedRunning = await host.waitRunning(session, timeoutMs);
+      await applyCellSettings(spec, exec);
+      if (params.route) await openRouteOnDevice(spec, params.route, exec);
+      if (settleMs > 0) await sleep(settleMs);
+
+      screenshotPath = join(cellDir, 'screenshot.png');
+      if (checks.includes('screenshot') && session.capabilities.has('screenshot')) {
+        try {
+          await host.screenshot(session, screenshotPath);
+          cell.screenshotPath = screenshotPath;
+        } catch (err) {
+          cell.error = (err as Error).message;
+        }
+      }
+
+      const logs = host.logs(session);
+      const network = host.network(session);
+      artifacts.set(spec.id, { logs, network, screenshotSrc: screenshotPath });
+
+      cell.checks = runCellChecks(checks, {
+        reachedRunning,
+        logs,
+        network,
+        screenshotPath: existsSync(screenshotPath) ? screenshotPath : undefined,
+        allowPatterns,
+      });
+      cell.status = cellPassed(cell.checks) ? 'passed' : 'failed';
+      host.onProgress?.({
+        proofId, cell: spec.id, status: cell.status,
+        message: cell.status === 'failed'
+          ? Object.entries(cell.checks).filter(([, c]) => !c?.pass).map(([n]) => n).join(', ')
+          : undefined,
+      });
+    } catch (err) {
+      cell.status = 'error';
+      cell.error = (err as Error).message;
+      host.onProgress?.({ proofId, cell: spec.id, status: 'error', message: cell.error });
+      if (session) {
+        artifacts.set(spec.id, {
+          logs: host.logs(session),
+          network: host.network(session),
+          screenshotSrc: screenshotPath,
+        });
+      }
+    } finally {
+      cell.finishedAt = Date.now();
+      cell.durationMs = cell.finishedAt - (cell.startedAt ?? cell.finishedAt);
+      if (session && !params.keep) {
+        await host.stop(session).catch(() => {});
+      }
+    }
+  };
+
+  await Promise.all(cellResults.map((cell) => runCell(cell)));
+
+  const finishedAt = Date.now();
+  const summary: ProofRunSummary = {
+    id: proofId,
+    target: target.name,
+    root: host.root,
+    startedAt,
+    finishedAt,
+    passed: cellResults.every((c) => c.status === 'passed'),
+    git: gitInfo(host.root),
+    cells: cellResults,
+    bundlePath,
+  };
+
+  writeProofBundle(summary, artifacts);
+  return summary;
+}
