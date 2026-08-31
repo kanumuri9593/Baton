@@ -6,7 +6,12 @@ import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { SessionRegistry } from '../core/registry.ts';
 import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.ts';
-import { validate } from '../config/validate.ts';
+import { validate, type ValidationIssue } from '../config/validate.ts';
+import { loadConfigs, type LaunchConfig } from '../config/loader.ts';
+import {
+  applyLaunchEdits, configsFromText, generateLaunchJson, launchFileFor, parseLaunchText, writeLaunchFile,
+} from '../config/writer.ts';
+import { browseDirs } from './browse.ts';
 import { ProjectRegistry } from '../core/projects.ts';
 import { handshakePath, sessionLogDir } from '../core/paths.ts';
 import { renderHud, HUD_ASSETS } from '../hud/render.ts';
@@ -15,7 +20,9 @@ import { LogSink } from './log-sink.ts';
 import { NetworkStore } from '../core/network-store.ts';
 import { NetworkService, type CreateVmClient } from './network.ts';
 import type { Capability, Session } from '../core/types.ts';
-import type { ProjectInfo, PushEvent, RpcMethods, TargetInfo } from '../core/api.ts';
+import type {
+  LaunchWriteResult, ProjectInfo, PushEvent, RpcMethods, TargetInfo,
+} from '../core/api.ts';
 
 export type LaunchDaemonOptions = {
   /** Injectable for tests; defaults to a real store rooted at `stateDir()`. */
@@ -257,8 +264,110 @@ export class LaunchDaemon {
           );
         }
         const described = this.#describeProject(root);
+        // A real project with nothing runnable is not a failure and not an empty
+        // tab -- it is a project that has not been configured yet. Say so, and
+        // let the caller offer to write a launch.json. It is deliberately not
+        // remembered until it has something to offer: a HUD full of blank tabs
+        // for directories you glanced at once is worse than no memory at all.
+        if (!described.error && described.targets.length === 0) {
+          return { ...described, needsConfig: true } satisfies RpcMethods['addProject']['result'];
+        }
         this.projects.remember(root);
         return described satisfies RpcMethods['addProject']['result'];
+      }
+
+      case 'browseDirs': {
+        const params = p as RpcMethods['browseDirs']['params'];
+        return browseDirs(params.path ?? undefined) satisfies RpcMethods['browseDirs']['result'];
+      }
+
+      case 'readLaunchConfig': {
+        const params = p as RpcMethods['readLaunchConfig']['params'];
+        const root = this.#resolveRoot(params.root);
+        const file = launchFileFor(root);
+        if (!file) {
+          return {
+            file: null, text: null, configs: [], issues: {}, parseErrors: [],
+          } satisfies RpcMethods['readLaunchConfig']['result'];
+        }
+
+        const text = readFileSync(file, 'utf8');
+        const mtimeMs = statSync(file).mtimeMs;
+        const { errors } = parseLaunchText(text);
+        // A file that is unreadable to us is exactly the file the editor exists
+        // to repair, so the raw text always comes back -- refusing the call
+        // would leave the user with no way to see, let alone fix, the problem.
+        let configs: LaunchConfig[] = [];
+        const parseErrors = [...errors];
+        if (parseErrors.length === 0) {
+          try {
+            configs = loadConfigs(file, root);
+          } catch (err) {
+            // Parseable JSON that is not a launch.json (no `configurations`).
+            parseErrors.push({ line: 1, col: 1, message: (err as Error).message });
+          }
+        }
+        return {
+          file, text, mtimeMs, configs, issues: issuesFor(configs), parseErrors,
+        } satisfies RpcMethods['readLaunchConfig']['result'];
+      }
+
+      case 'generateLaunchConfig': {
+        const params = p as RpcMethods['generateLaunchConfig']['params'];
+        const root = this.#resolveRoot(params.root);
+        const targets: TargetInfo[] = detectTargets(root).map((target) => ({
+          ...target,
+          issues: target.config ? validate(target.config) : [],
+        }));
+        return {
+          text: generateLaunchJson(root), targets,
+        } satisfies RpcMethods['generateLaunchConfig']['result'];
+      }
+
+      case 'writeLaunchConfig': {
+        const params = p as RpcMethods['writeLaunchConfig']['params'];
+        const root = this.#resolveRoot(params.root);
+        // An explicit choice wins. Otherwise write back to the file the project
+        // already uses: defaulting to .vscode when the project keeps its config
+        // in .claude would create a second file that silently takes precedence
+        // over the one being edited.
+        const file = params.file
+          ? join(root, params.file === 'claude' ? '.claude' : '.vscode', 'launch.json')
+          : launchFileFor(root) ?? join(root, '.vscode', 'launch.json');
+
+        const { mtimeMs } = writeLaunchFile(file, String(params.text ?? ''), params.expectedMtimeMs);
+        // Configuring a project is the clearest possible statement that you
+        // intend to work in it.
+        this.projects.remember(root);
+        return this.#launchResult(file, root, mtimeMs);
+      }
+
+      case 'editLaunchConfig': {
+        const params = p as RpcMethods['editLaunchConfig']['params'];
+        const root = this.#resolveRoot(params.root);
+        const file = launchFileFor(root);
+        if (!file) {
+          throw new Error(`no launch.json in ${root} — generate one first (baton init, or Create in the HUD)`);
+        }
+        const edited = applyLaunchEdits(readFileSync(file, 'utf8'), params.edits ?? []);
+        const { mtimeMs } = writeLaunchFile(file, edited, params.expectedMtimeMs);
+        this.projects.remember(root);
+        return this.#launchResult(file, root, mtimeMs);
+      }
+
+      case 'validateLaunchConfig': {
+        const params = p as RpcMethods['validateLaunchConfig']['params'];
+        const root = this.#resolveRoot(params.root);
+        const text = String(params.text ?? '');
+        const { errors } = parseLaunchText(text);
+        // Nothing can be said about the configurations in text that does not
+        // parse, and guessing at them would put noise under a real error.
+        if (errors.length > 0) {
+          return { parseErrors: errors, issues: {} } satisfies RpcMethods['validateLaunchConfig']['result'];
+        }
+        return {
+          parseErrors: [], issues: issuesFor(configsFromText(text, root)),
+        } satisfies RpcMethods['validateLaunchConfig']['result'];
       }
 
       case 'removeProject': {
@@ -489,6 +598,24 @@ export class LaunchDaemon {
     return this.projects.active() ?? findProjectRoot(process.cwd());
   }
 
+  /**
+   * What a launch.json save produced, read back from the file that was written.
+   *
+   * Read back rather than derived from the text we just sent: what the project
+   * actually runs from here on is what is on disk, and a caller that trusts its
+   * own draft over the file is one rename away from being wrong.
+   */
+  #launchResult(file: string, root: string, mtimeMs: number): LaunchWriteResult {
+    let configs: LaunchConfig[] = [];
+    try {
+      configs = loadConfigs(file, root);
+    } catch {
+      // Valid JSONC that is not a launch config (no `configurations` array).
+      // The write itself succeeded, so this is "nothing runnable", not an error.
+    }
+    return { file, mtimeMs, configs, issues: issuesFor(configs) };
+  }
+
   /** A project plus what it can run, tolerant of one that has gone missing. */
   #describeProject(root: string): ProjectInfo {
     const name = root.split(/[\\/]/).filter(Boolean).pop() ?? root;
@@ -576,6 +703,18 @@ export class LaunchDaemon {
     }
     return [this.#require(p.session)];
   }
+}
+
+/**
+ * Pre-flight issues keyed by configuration name.
+ *
+ * Keyed by name rather than index so the HUD's form can attach a warning to the
+ * card the user is looking at, and survive a reordered file.
+ */
+function issuesFor(configs: LaunchConfig[]): Record<string, ValidationIssue[]> {
+  const issues: Record<string, ValidationIssue[]> = {};
+  for (const config of configs) issues[config.name] = validate(config);
+  return issues;
 }
 
 /**

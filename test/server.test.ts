@@ -2,7 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 
 // Keep the daemon's state out of the real ~/.baton.
@@ -214,24 +214,44 @@ test('adding a directory that is not a project is refused, with the path', async
   );
 });
 
-test('a project with no runnable targets yet is still worth tracking', async () => {
-  // Baton itself: a real project, but no dev script to run.
-  const added: any = await daemon.handle({
-    method: 'addProject', params: { path: process.cwd() },
-  });
-  assert.equal(added.root, process.cwd());
+test('a project with nothing runnable asks to be configured instead of being tracked as empty', async () => {
+  // A real project directory, but nothing Baton knows how to run in it. The
+  // honest answer is "this needs a launch config", not an empty tab in the HUD
+  // that looks broken -- so it is described, and only remembered once it has
+  // something to offer.
+  const root = mkdtempSync(join(tmpdir(), 'baton-needsconfig-'));
+  mkdirSync(join(root, '.git'));
+
+  const added: any = await daemon.handle({ method: 'addProject', params: { path: root } });
+  assert.equal(added.root, root);
+  assert.deepEqual(added.targets, []);
+  assert.equal(added.needsConfig, true);
+
   const listed: any = await daemon.handle({ method: 'projects', params: {} });
-  assert.ok(listed.projects.some((p: any) => p.root === process.cwd()));
+  assert.ok(
+    !listed.projects.some((p: any) => p.root === root),
+    'a project with nothing runnable is not remembered until it has a config',
+  );
+});
+
+test('a project with something runnable is remembered, with no needsConfig flag', async () => {
+  const root = runnableProject();
+  const added: any = await daemon.handle({ method: 'addProject', params: { path: root } });
+  assert.equal(added.needsConfig, undefined);
+  assert.ok(added.targets.length > 0);
+  const listed: any = await daemon.handle({ method: 'projects', params: {} });
+  assert.ok(listed.projects.some((p: any) => p.root === root));
 });
 
 test('removing a project takes it out of the list without touching the disk', async () => {
-  await daemon.handle({ method: 'addProject', params: { path: process.cwd() } });
-  const result: any = await daemon.handle({ method: 'removeProject', params: { root: process.cwd() } });
+  const root = runnableProject();
+  await daemon.handle({ method: 'addProject', params: { path: root } });
+  const result: any = await daemon.handle({ method: 'removeProject', params: { root } });
   assert.equal(result.removed, true);
   const listed: any = await daemon.handle({ method: 'projects', params: {} });
-  assert.ok(!listed.projects.some((p: any) => p.root === process.cwd()));
+  assert.ok(!listed.projects.some((p: any) => p.root === root));
   assert.equal(
-    (await daemon.handle({ method: 'removeProject', params: { root: process.cwd() } }) as any).removed,
+    (await daemon.handle({ method: 'removeProject', params: { root } }) as any).removed,
     false,
     'removing twice is not an error, just a no-op',
   );
@@ -484,4 +504,239 @@ test('logHistory {root} normalizes a subdirectory the way targets/bootables do, 
     history.some((r: any) => r.sessionId === session.id),
     'a subdirectory of the project root must still match, the same way `targets {cwd}` resolves it',
   );
+});
+
+// --- opening a project, and configuring it in place (T4) ---------------------
+
+/** A real project with one runnable dev script -- enough to be worth remembering. */
+function runnableProject(): string {
+  const root = mkdtempSync(join(tmpdir(), 'baton-project-'));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({
+    scripts: { dev: 'vite' }, devDependencies: { vite: '5.0.0' },
+  }));
+  return root;
+}
+
+test('browseDirs lists a directory, flags the projects in it, and offers a way back out', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'baton-browse-rpc-'));
+  mkdirSync(join(root, 'an-app'));
+  writeFileSync(join(root, 'an-app', 'package.json'), '{}');
+  mkdirSync(join(root, '.hidden'));
+
+  const result: any = await daemon.handle({ method: 'browseDirs', params: { path: root } });
+  assert.equal(result.path, root);
+  assert.ok(result.parent, 'the parent must be offered');
+  assert.deepEqual(result.entries.map((e: any) => e.name), ['an-app']);
+  assert.equal(result.entries[0].isProject, true);
+  assert.equal(result.entries[0].hasLaunchJson, false);
+  assert.ok(result.shortcuts.length > 0);
+});
+
+test('browseDirs with no path starts at home rather than the daemon working directory', async () => {
+  const result: any = await daemon.handle({ method: 'browseDirs', params: {} });
+  assert.equal(result.path, homedir());
+});
+
+test('browseDirs reports an unreachable path instead of failing the call', async () => {
+  const result: any = await daemon.handle({
+    method: 'browseDirs', params: { path: join(tmpdir(), 'baton-not-here-xyz') },
+  });
+  assert.match(result.error, /no such directory/);
+  assert.deepEqual(result.entries, []);
+});
+
+test('readLaunchConfig on a project with no launch.json says so without inventing one', async () => {
+  const root = runnableProject();
+  const result: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  assert.equal(result.file, null);
+  assert.equal(result.text, null);
+  assert.deepEqual(result.configs, []);
+  assert.deepEqual(result.parseErrors, []);
+});
+
+test('readLaunchConfig returns the raw text, the parsed configs and their pre-flight issues', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), [
+    '{',
+    '  // kept',
+    '  "version": "0.2.0",',
+    '  "configurations": [',
+    '    { "name": "Sim DEV", "type": "dart", "program": "lib/main.dart",',
+    '      "toolArgs": ["--dart-define-from-file=env/missing.json"] }',
+    '  ]',
+    '}',
+  ].join('\n'));
+
+  const result: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  assert.equal(result.file, join(root, '.vscode', 'launch.json'));
+  assert.ok(result.text.includes('// kept'), 'the editor needs the file exactly as written');
+  assert.equal(typeof result.mtimeMs, 'number');
+  assert.equal(result.configs.length, 1);
+  assert.equal(result.configs[0].kind, 'flutter');
+  assert.equal(result.issues['Sim DEV'].length, 1, 'a missing dart-define file is reported per config');
+  assert.match(result.issues['Sim DEV'][0].path, /env\/missing\.json/);
+});
+
+test('readLaunchConfig on a malformed file still hands back the text, so it can be fixed', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), '{ "configurations": [ { "name": }\n');
+
+  const result: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  assert.ok(result.text.includes('"configurations"'));
+  assert.deepEqual(result.configs, []);
+  assert.ok(result.parseErrors.length > 0);
+  assert.equal(typeof result.parseErrors[0].line, 'number');
+});
+
+test('readLaunchConfig treats a file with no configurations array as a parse problem, not silence', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  writeFileSync(join(root, '.vscode', 'launch.json'), '{ "version": "0.2.0" }\n');
+  const result: any = await daemon.handle({ method: 'readLaunchConfig', params: { root } });
+  assert.deepEqual(result.configs, []);
+  assert.ok(result.parseErrors.length > 0);
+  assert.match(result.parseErrors[0].message, /configurations/);
+});
+
+test('generateLaunchConfig previews a file without writing anything', async () => {
+  const root = runnableProject();
+  const result: any = await daemon.handle({ method: 'generateLaunchConfig', params: { root } });
+  assert.match(result.text, /Generated by Baton/);
+  assert.ok(result.targets.some((t: any) => t.name === 'npm dev'));
+  assert.ok(result.targets.every((t: any) => Array.isArray(t.issues)));
+  assert.ok(!existsSync(join(root, '.vscode')), 'a preview must not touch the disk');
+});
+
+test('writeLaunchConfig saves the file, remembers the project, and reports what it now runs', async () => {
+  const root = runnableProject();
+  const preview: any = await daemon.handle({ method: 'generateLaunchConfig', params: { root } });
+  const result: any = await daemon.handle({
+    method: 'writeLaunchConfig', params: { root, text: preview.text },
+  });
+
+  assert.equal(result.file, join(root, '.vscode', 'launch.json'));
+  assert.equal(typeof result.mtimeMs, 'number');
+  assert.ok(result.configs.some((c: any) => c.name === 'dev'));
+  assert.deepEqual(result.issues, { dev: [] });
+
+  const listed: any = await daemon.handle({ method: 'projects', params: {} });
+  assert.ok(
+    listed.projects.some((p: any) => p.root === root),
+    'saving a config is the moment a project becomes worth remembering',
+  );
+});
+
+test('writeLaunchConfig can be told to use .claude instead of .vscode', async () => {
+  const root = runnableProject();
+  const result: any = await daemon.handle({
+    method: 'writeLaunchConfig',
+    params: { root, text: '{ "version": "0.2.0", "configurations": [] }\n', file: 'claude' },
+  });
+  assert.equal(result.file, join(root, '.claude', 'launch.json'));
+});
+
+test('writeLaunchConfig defaults to the file the project already uses, never shadowing it', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.claude'));
+  writeFileSync(join(root, '.claude', 'launch.json'), '{ "configurations": [] }\n');
+  const result: any = await daemon.handle({
+    method: 'writeLaunchConfig',
+    params: { root, text: '{ "configurations": [{ "name": "x", "runtimeExecutable": "true" }] }\n' },
+  });
+  assert.equal(result.file, join(root, '.claude', 'launch.json'));
+  assert.ok(
+    !existsSync(join(root, '.vscode', 'launch.json')),
+    'a .vscode file would silently take precedence over the one being edited',
+  );
+});
+
+test('writeLaunchConfig refuses invalid JSONC and reports a stale mtime as a conflict', async () => {
+  const root = runnableProject();
+  await assert.rejects(
+    daemon.handle({ method: 'writeLaunchConfig', params: { root, text: '{ "configurations": [ }' } }),
+    /invalid JSONC: \d+:\d+/,
+  );
+
+  const first: any = await daemon.handle({
+    method: 'writeLaunchConfig', params: { root, text: '{ "configurations": [] }\n' },
+  });
+  await assert.rejects(
+    daemon.handle({
+      method: 'writeLaunchConfig',
+      params: { root, text: '{ "configurations": [] }\n', expectedMtimeMs: first.mtimeMs - 1000 },
+    }),
+    /conflict: file changed on disk/,
+  );
+  // The same call without the guard is the "overwrite anyway" the HUD offers.
+  const forced: any = await daemon.handle({
+    method: 'writeLaunchConfig', params: { root, text: '{ "configurations": [] }\n' },
+  });
+  assert.equal(typeof forced.mtimeMs, 'number');
+});
+
+test('editLaunchConfig changes one value and leaves every comment in the file', async () => {
+  const root = runnableProject();
+  mkdirSync(join(root, '.vscode'));
+  const file = join(root, '.vscode', 'launch.json');
+  writeFileSync(file, [
+    '{',
+    '  // a comment nobody wants to lose',
+    '  "configurations": [',
+    '    { "name": "Sim DEV", "type": "dart", "program": "lib/main.dart" }',
+    '  ]',
+    '}',
+  ].join('\n') + '\n');
+
+  const result: any = await daemon.handle({
+    method: 'editLaunchConfig',
+    params: { root, edits: [{ path: ['configurations', 0, 'deviceId'], value: 'macos' }] },
+  });
+  assert.equal(result.file, file);
+  assert.equal(result.configs[0].deviceId, 'macos');
+
+  const onDisk = readFileSync(file, 'utf8');
+  assert.ok(onDisk.includes('// a comment nobody wants to lose'));
+  assert.ok(onDisk.includes('"program": "lib/main.dart"'));
+});
+
+test('editLaunchConfig on a project with no launch.json explains what to do instead', async () => {
+  const root = runnableProject();
+  await assert.rejects(
+    daemon.handle({ method: 'editLaunchConfig', params: { root, edits: [] } }),
+    /no launch\.json/,
+  );
+});
+
+test('validateLaunchConfig checks text without writing it', async () => {
+  const root = runnableProject();
+  const bad: any = await daemon.handle({
+    method: 'validateLaunchConfig', params: { root, text: '{ "configurations": [ }' },
+  });
+  assert.ok(bad.parseErrors.length > 0);
+  assert.equal(typeof bad.parseErrors[0].line, 'number');
+  assert.deepEqual(bad.issues, {});
+
+  const good: any = await daemon.handle({
+    method: 'validateLaunchConfig',
+    params: {
+      root,
+      text: '{ "configurations": [ { "name": "Sim", "type": "dart", ' +
+        '"toolArgs": ["--dart-define-from-file=env/nope.json"] } ] }',
+    },
+  });
+  assert.deepEqual(good.parseErrors, []);
+  assert.equal(good.issues['Sim'].length, 1);
+  assert.ok(!existsSync(join(root, '.vscode')), 'validation must never write');
+});
+
+test('a written launch.json is what the project then runs', async () => {
+  const root = runnableProject();
+  const preview: any = await daemon.handle({ method: 'generateLaunchConfig', params: { root } });
+  await daemon.handle({ method: 'writeLaunchConfig', params: { root, text: preview.text } });
+
+  const targets: any = await daemon.handle({ method: 'targets', params: { cwd: root } });
+  const fromFile = targets.targets.filter((t: any) => t.source === 'launch.json');
+  assert.ok(fromFile.some((t: any) => t.name === 'dev'), 'the generated file must round-trip into targets');
 });

@@ -12,9 +12,17 @@ import type {
 } from './types.ts';
 import type { Target, TargetKind } from '../config/detect.ts';
 import type { ValidationIssue } from '../config/validate.ts';
+import type { LaunchConfig } from '../config/loader.ts';
+import type { LaunchEdit, LaunchParseError } from '../config/writer.ts';
+import type { BrowseResult } from '../daemon/browse.ts';
 import type { Bootable } from '../daemon/simulators.ts';
 import type { Device } from '../daemon/devices.ts';
 import type { RunInfo } from './log-store.ts';
+
+// Re-exported so a client can name what it receives without reaching into the
+// daemon's own modules.
+export type { BrowseEntry, BrowseResult, BrowseShortcut } from '../daemon/browse.ts';
+export type { LaunchEdit, LaunchParseError } from '../config/writer.ts';
 
 /** A detected target plus its pre-flight state, as sent to clients. */
 export type TargetInfo = Target & { issues: ValidationIssue[] };
@@ -25,6 +33,38 @@ export type ProjectInfo = {
   name: string;
   targets: Array<{ name: string; kind: TargetKind; source: Target['source']; issues: ValidationIssue[] }>;
   error?: string;
+  /**
+   * A real project directory with nothing Baton knows how to run.
+   *
+   * Set only by `addProject`, and it is an invitation rather than a failure: the
+   * HUD answers it by offering to write a launch.json. Such a project is
+   * deliberately NOT remembered yet -- it becomes a tracked project the moment
+   * it has something to offer.
+   */
+  needsConfig?: boolean;
+};
+
+/** A project's launch.json as the editor needs it: the bytes, what they mean, and what is wrong. */
+export type LaunchConfigView = {
+  /** The file detection would use, or null when the project has none. */
+  file: string | null;
+  /** The file verbatim, comments and all -- a malformed file returns its text so it can be fixed. */
+  text: string | null;
+  /** For optimistic locking on the way back in; absent when there is no file. */
+  mtimeMs?: number;
+  configs: LaunchConfig[];
+  /** Pre-flight issues, keyed by configuration name. */
+  issues: Record<string, ValidationIssue[]>;
+  /** Non-empty when the file could not be understood; `configs` is then empty. */
+  parseErrors: LaunchParseError[];
+};
+
+/** What a save produced: where it landed, and what the project now runs. */
+export type LaunchWriteResult = {
+  file: string;
+  mtimeMs: number;
+  configs: LaunchConfig[];
+  issues: Record<string, ValidationIssue[]>;
 };
 
 /** Outcome of a reload/restart on one session, with the diagnostics an agent needs to act on a failure. */
@@ -53,6 +93,50 @@ export type RpcMethods = {
   removeProject: {
     params: { root: string };
     result: { removed: boolean };
+  };
+  /**
+   * One directory's worth of subdirectories, for the HUD's project browser.
+   *
+   * A page in a browser cannot open a native file dialog and hand the daemon a
+   * path, so the daemon does the walking. Never fails: an unreadable or missing
+   * directory comes back as `error` with the shortcuts intact.
+   */
+  browseDirs: {
+    params: { path?: string };
+    result: BrowseResult;
+  };
+  /** A project's launch.json: raw text for the editor, parsed configs for everything else. */
+  readLaunchConfig: {
+    params: { root: string };
+    result: LaunchConfigView;
+  };
+  /** What a launch.json for this project would look like. Writes nothing. */
+  generateLaunchConfig: {
+    params: { root: string };
+    result: { text: string; targets: TargetInfo[] };
+  };
+  /**
+   * Replace a project's launch.json wholesale.
+   *
+   * `file` picks the convention for a project that has neither; a project that
+   * already has one is written back to that same file rather than being shadowed
+   * by a new one. `expectedMtimeMs` guards against overwriting a change someone
+   * else (VS Code, another HUD window) saved in the meantime -- omitting it on a
+   * retry is the deliberate "overwrite anyway".
+   */
+  writeLaunchConfig: {
+    params: { root: string; text: string; file?: 'vscode' | 'claude'; expectedMtimeMs?: number };
+    result: LaunchWriteResult;
+  };
+  /** Change named values in place, leaving comments and layout untouched. */
+  editLaunchConfig: {
+    params: { root: string; edits: LaunchEdit[]; expectedMtimeMs?: number };
+    result: LaunchWriteResult;
+  };
+  /** Check launch.json text without saving it -- what the editor calls as you type. */
+  validateLaunchConfig: {
+    params: { root: string; text: string };
+    result: { parseErrors: LaunchParseError[]; issues: Record<string, ValidationIssue[]> };
   };
   bootables: {
     params: { cwd?: string };

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   generateLaunchJson, applyLaunchEdits, writeLaunchFile, parseLaunchText, launchFileFor,
+  configsFromText,
 } from '../src/config/writer.ts';
 import { loadConfigs } from '../src/config/loader.ts';
 
@@ -217,6 +218,25 @@ test('parseLaunchText accepts comments and trailing commas the way VS Code does'
   const { doc, errors } = parseLaunchText(FIXTURE);
   assert.deepEqual(errors, []);
   assert.equal((doc as any).configurations.length, 2);
+});
+
+// --- configsFromText: must not drift from loader.ts's normalise() ------------
+
+test('configsFromText produces exactly what loadConfigs produces for the same bytes', () => {
+  const root = scratch();
+  const file = join(root, 'launch.json');
+  writeFileSync(file, FIXTURE);
+  assert.deepEqual(
+    configsFromText(FIXTURE, root),
+    loadConfigs(file, root),
+    'the editor must agree with what actually runs, key for key',
+  );
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('configsFromText on unparseable or shapeless text is empty rather than a throw', () => {
+  assert.deepEqual(configsFromText('{ "configurations": [ }', '/tmp'), []);
+  assert.deepEqual(configsFromText('{ "version": "0.2.0" }', '/tmp'), []);
 });
 
 // --- launchFileFor -----------------------------------------------------------
