@@ -72,14 +72,17 @@
     border-radius: 7px; padding: 5px 7px; font: inherit; font-size: 12px; flex: 1;
   }
 
-  main { padding: 8px; display: grid; gap: 8px; }
+  /* minmax(0, 1fr) rather than the default `auto`: an auto grid column is sized
+     by its widest content and will happily grow past the window, which a URI or
+     a header value in the network pane does immediately. */
+  main { padding: 8px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .group-title {
     font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
     color: var(--muted); margin: 2px 0 -2px 2px;
   }
   .row {
     background: var(--panel); border: 1px solid var(--line); border-radius: 9px;
-    padding: 8px 10px; display: grid; gap: 6px;
+    padding: 8px 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px;
   }
   .row-top { display: flex; align-items: center; gap: 8px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--idle); flex: none; }
@@ -115,6 +118,63 @@
   .history-row .meta { color: var(--muted); font-size: 11px; margin-left: auto; white-space: nowrap; }
   .history .logs { margin-top: 6px; }
   .history .empty { padding: 8px 4px; text-align: left; }
+
+  /* network inspector: the same slab as .logs, with a table inside it */
+  .net {
+    display: none; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--bg); overflow: hidden;
+  }
+  .net.open { display: block; }
+  .net-bar {
+    display: flex; align-items: center; gap: 6px; padding: 5px 6px;
+    background: var(--panel-2); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 1;
+  }
+  /* min-width:0 so a long row or a wide filter box cannot push the pane past
+     the panel's 420px -- flex items refuse to shrink below their content
+     otherwise, and the whole HUD ends up scrolling sideways. */
+  .net-bar input[type=text] { padding: 3px 6px; font-size: 11px; min-width: 0; }
+  .net-bar button { padding: 3px 8px; font-size: 11px; }
+  .net-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .net-rows {
+    font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    max-height: 240px; overflow: auto;
+  }
+  .net-empty { color: var(--muted); padding: 10px 8px; }
+  .net-row {
+    display: flex; align-items: baseline; gap: 8px; padding: 3px 8px; cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+  }
+  .net-row:hover, .net-row.on { background: var(--panel-2); }
+  .net-row .m { color: var(--muted); min-width: 42px; }
+  .net-row .s { min-width: 26px; font-weight: 600; color: var(--muted); }
+  .net-row .s.ok { color: var(--ok); }
+  .net-row .s.redir { color: var(--accent); }
+  .net-row .s.bad { color: var(--err); }
+  .net-row .s.wait { color: var(--warn); animation: pulse 1.1s ease-in-out infinite; }
+  .net-row .d, .net-row .z { color: var(--muted); min-width: 46px; text-align: right; }
+  .net-row .u { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .net-detail {
+    padding: 7px 9px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; justify-items: start;
+  }
+  .net-detail.net-err { color: var(--err); }
+  .net-line {
+    display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+    max-width: 100%; overflow-wrap: anywhere;
+  }
+  .net-line .muted, .net-detail .muted { color: var(--muted); }
+  .net-copy { padding: 2px 7px; font-size: 11px; }
+  .net-block { width: 100%; display: grid; gap: 2px; }
+  .net-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  }
+  .net-h { word-break: break-all; }
+  .net-h span { color: var(--muted); margin-right: 5px; }
+  .net-detail pre {
+    margin: 0; max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px;
+  }
 
   .toast {
     position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px;

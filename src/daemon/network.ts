@@ -81,12 +81,36 @@ export class NetworkService {
           '(the request list itself is still readable)',
       );
     }
-    const split = id.lastIndexOf('#');
+    const full = this.#resolveId(sessionId, id);
+    const split = full.lastIndexOf('#');
     if (split <= 0) throw new Error(`"${id}" is not a request id — use the id from the request list`);
-    const isolateId = id.slice(0, split);
-    const requestId = id.slice(split + 1);
+    const isolateId = full.slice(0, split);
+    const requestId = full.slice(split + 1);
     const raw = await monitor.fetchDetail(isolateId, requestId);
     return normalizeDetail(sessionId, isolateId, raw, maxBody);
+  }
+
+  /**
+   * Accept the short request id a human actually reads off a table.
+   *
+   * Full ids carry the isolate (`isolates/1963006521159535#12`) because request
+   * numbers restart at 1 in each isolate, and a hot restart makes a new one. That
+   * matters to the code and not at all to the person typing `--detail 12`, so a
+   * bare number is resolved against what has been captured -- and refused,
+   * rather than guessed at, when two isolates both have one.
+   */
+  #resolveId(sessionId: string, id: string): string {
+    if (id.includes('#')) return id;
+    const matches = this.store.list(sessionId, { tail: Number.MAX_SAFE_INTEGER })
+      .filter((row) => row.id.endsWith(`#${id}`));
+    if (matches.length === 1) return matches[0].id;
+    if (matches.length > 1) {
+      throw new Error(
+        `"${id}" matches ${matches.length} requests (the app restarted since some of them) — ` +
+          `use a full id:\n${matches.map((m) => `  ${m.id}`).join('\n')}`,
+      );
+    }
+    throw new Error(`no captured request "${id}" — check the id in the request list`);
   }
 
   /** Empty the captured window, and the app's own buffer while we can still reach it. */

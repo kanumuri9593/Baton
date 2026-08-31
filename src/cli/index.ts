@@ -16,6 +16,10 @@ Usage
   baton stop [target|--all]      stop
   baton logs <target> [-n 200] [-f]   -- also works after the run has ended
   baton history [-n 20]          past runs, on disk, across daemon restarts
+  baton network <session> [-n 50] [--filter re] [-f]
+                                 HTTP the app made (Flutter debug sessions)
+      --detail <id> [--body]     one request in full
+      --clear                    forget what has been captured
   baton devices [--all]          connected devices; --all adds bootable ones
   baton boot <device>            start a simulator or emulator
   baton projects                 projects the HUD knows about
@@ -28,6 +32,7 @@ Examples
   baton run dev                  # matches "npm run dev"
   baton reload --all
   baton boot "iPhone 17 Pro Max" # boot it, then run on it
+  baton network mclane360 --filter 'POST|4\\d\\d'
   baton add ~/code/storefront    # watch three projects in one HUD
 `;
 
@@ -38,6 +43,7 @@ const bold = (t: string) => c('1', t);
 const green = (t: string) => c('32', t);
 const red = (t: string) => c('31', t);
 const yellow = (t: string) => c('33', t);
+const blue = (t: string) => c('34', t);
 
 const STATUS_COLOR: Record<string, (t: string) => string> = {
   running: green, starting: yellow, failed: red, stopped: dim,
@@ -88,6 +94,7 @@ function parseArgs(argv: string[]) {
     else if (arg === '-d' || arg === '--device') flags.device = argv[++i];
     else if (arg === '-n' || arg === '--tail') flags.tail = argv[++i];
     else if (arg === '--filter') flags.filter = argv[++i];
+    else if (arg === '--detail') flags.detail = argv[++i];
     else if (arg.startsWith('-')) flags[arg.replace(/^-+/, '')] = true;
     else positional.push(arg);
   }
@@ -241,6 +248,48 @@ async function main() {
         break;
       }
 
+      case 'network': {
+        const session = positional.join(' ');
+        if (!session) throw new Error('which session? try `baton ps`');
+
+        if (flags.clear === true) {
+          await client.call('networkClear', { session });
+          console.log(dim('captured requests cleared, in the daemon and in the app'));
+          break;
+        }
+
+        if (typeof flags.detail === 'string') {
+          printRequestDetail(await client.call('networkDetail', { session, id: flags.detail }), flags.body === true);
+          break;
+        }
+
+        const rows = await client.call('network', {
+          session, tail: Number(flags.tail ?? 50), filter: flags.filter,
+        });
+        if (!rows.length && !flags.follow) {
+          console.log('no requests captured yet');
+          console.log(dim('  only dart:io HttpClient traffic is captured (package:http, dio) — not cupertino_http/cronet or websockets'));
+          break;
+        }
+        for (const request of rows) console.log(networkRow(request));
+        if (!flags.follow) {
+          console.log(dim(`\n  baton network ${session} --detail <id> --body   for one request in full`));
+          break;
+        }
+        // Live tail: the daemon pushes every request as it starts and again as
+        // it finishes, so a slow call shows up immediately rather than at the end.
+        const pattern = flags.filter ? new RegExp(String(flags.filter), 'i') : undefined;
+        await new Promise<void>(() => {
+          client.onEvent((msg) => {
+            if (msg.event !== 'network') return;
+            if (!msg.sessionId.startsWith(session) && !session.startsWith(msg.sessionId)) return;
+            if (pattern && !pattern.test(`${msg.request.method} ${msg.request.uri}`)) return;
+            console.log(networkRow(msg.request));
+          });
+        });
+        break;
+      }
+
       case 'devices': {
         const devices = await client.call('devices', { cwd });
         if (devices.length) {
@@ -339,6 +388,119 @@ async function main() {
   } finally {
     if (!flags.follow) client.close();
   }
+}
+
+// --- network inspector ------------------------------------------------------
+
+/** "87ms" up to a second, "1.2s" beyond it -- the scale you care about changes there. */
+function duration(ms?: number): string {
+  if (ms === undefined) return '';
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** Path and query only: the host is the same for every row of a given app. */
+function shortUri(uri: string): string {
+  try {
+    const parsed = new URL(uri);
+    return parsed.pathname + parsed.search;
+  } catch {
+    return uri;
+  }
+}
+
+const STATUS_PAINT = (code: number) =>
+  code < 300 ? green : code < 400 ? blue : red;
+
+/**
+ * One request as a table row: `GET  200  87ms   1.2 KB  /v2/orders?page=2`.
+ *
+ * Padding is applied before colour, because escape codes count towards a
+ * string's length and would knock every column out of line.
+ */
+function networkRow(r: {
+  id: string; method: string; uri: string; statusCode?: number; durationMs?: number;
+  responseContentLength?: number; error?: string; inProgress: boolean;
+}): string {
+  const status = r.error
+    ? red('err'.padEnd(5))
+    : r.inProgress
+      ? yellow('…'.padEnd(5))
+      : r.statusCode === undefined
+        ? dim('?'.padEnd(5))
+        : STATUS_PAINT(r.statusCode)(String(r.statusCode).padEnd(5));
+
+  const size = r.responseContentLength === undefined ? '' : humanSize(r.responseContentLength);
+  const prefix = `  ${bold(r.method.padEnd(6))} ${status} ${dim(duration(r.durationMs).padStart(6))} ${dim(size.padStart(9))}  `;
+
+  // The isolate half of the id is noise to a reader -- `--detail` takes the short
+  // form and resolves it, so that is what the table shows.
+  const id = ' #' + r.id.slice(r.id.lastIndexOf('#') + 1);
+  // 30 columns of fixed prefix, plus a little slack so wrapping never doubles
+  // a row -- a wrapped table is much harder to scan than a truncated one.
+  const room = Math.max(20, (process.stdout.columns || 100) - 32 - id.length);
+  const uri = shortUri(r.uri);
+  return prefix + (uri.length > room ? uri.slice(0, room - 1) + '…' : uri) +
+    dim(id) + (r.error ? '  ' + red(r.error) : '');
+}
+
+/** Headers as `name: value`, one line per value -- a repeated header is not a list to squint at. */
+function printHeaders(label: string, headers?: Record<string, string[]>): void {
+  const entries = Object.entries(headers ?? {});
+  if (!entries.length) return;
+  console.log(bold(`\n${label}`));
+  for (const [name, values] of entries.sort(([a], [b]) => a.localeCompare(b))) {
+    for (const value of values) console.log(`  ${dim(name + ':')} ${value}`);
+  }
+}
+
+/** Pretty-print a body when it is JSON and we are sure it is text. */
+function printBody(label: string, body: { text?: string; size: number; truncated: boolean } | undefined, contentType = ''): void {
+  if (!body) return;
+  console.log(bold(`\n${label}`) + dim(`  ${humanSize(body.size)}${body.truncated ? ', truncated' : ''}`));
+  if (body.text === undefined) {
+    console.log(dim(`  <binary, ${body.size} bytes>`));
+    return;
+  }
+  let text = body.text;
+  if (/json/i.test(contentType)) {
+    try {
+      text = JSON.stringify(JSON.parse(body.text), null, 2);
+    } catch { /* a truncated or non-conforming body prints as it arrived */ }
+  }
+  for (const line of text.split('\n')) console.log('  ' + line);
+}
+
+function printRequestDetail(
+  detail: {
+    method: string; uri: string; statusCode?: number; reasonPhrase?: string; durationMs?: number;
+    error?: string; inProgress: boolean; contentType?: string;
+    requestHeaders: Record<string, string[]>; responseHeaders?: Record<string, string[]>;
+    requestBody?: { text?: string; size: number; truncated: boolean };
+    responseBody?: { text?: string; size: number; truncated: boolean };
+  },
+  withBodies: boolean,
+): void {
+  const outcome = detail.error
+    ? red(detail.error)
+    : detail.inProgress
+      ? yellow('in flight')
+      : detail.statusCode === undefined
+        ? dim('no response')
+        : STATUS_PAINT(detail.statusCode)(`${detail.statusCode} ${detail.reasonPhrase ?? ''}`.trim());
+
+  const timing = duration(detail.durationMs);
+  console.log(`${bold(detail.method)} ${detail.uri}`);
+  console.log(outcome + (timing ? '  ' + dim(timing) : ''));
+
+  printHeaders('request headers', detail.requestHeaders);
+  printHeaders('response headers', detail.responseHeaders);
+  if (!withBodies) {
+    console.log(dim('\n  --body to print the request and response bodies'));
+    return;
+  }
+  const requestType = (detail.requestHeaders['content-type'] ?? detail.requestHeaders['Content-Type'] ?? [])[0];
+  printBody('request body', detail.requestBody, requestType);
+  printBody('response body', detail.responseBody, detail.contentType);
 }
 
 /** Exact name, then case-insensitive substring -- the same rule as targets. */

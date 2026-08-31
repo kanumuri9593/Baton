@@ -56,8 +56,26 @@ function connect() {
     if (msg.event === 'session') { sessions.set(msg.snapshot.id, msg.snapshot); render(); }
     if (msg.event === 'devices') loadDevices(true);
     if (msg.event === 'log') appendLog(msg);
+    for (const addon of addons) {
+      try { addon.event && addon.event(msg); } catch (err) { console.error(err); }
+    }
   };
 }
+
+// --- add-ons ---------------------------------------------------------------
+
+/**
+ * The HUD's own extension point.
+ *
+ * The network inspector and the launch.json editor are separate scripts so each
+ * owns its file rather than growing this one. They hook in here: `row` decorates
+ * a session row as it is built, `event` sees every pushed message.
+ */
+const addons = [];
+window.baton = {
+  call, toast, esc, humanSize,
+  extend(addon) { addons.push(addon); render(); },
+};
 
 // --- projects -------------------------------------------------------------
 
@@ -525,6 +543,9 @@ function renderRow(s) {
   row.appendChild(logs);
   if (openLogs.has(s.id)) queueMicrotask(() => (logs.scrollTop = logs.scrollHeight));
 
+  for (const addon of addons) {
+    try { addon.row && addon.row(s, { row, top, button }); } catch (err) { console.error(err); }
+  }
   return row;
 }
 

@@ -143,6 +143,79 @@ server.tool(
     }),
 );
 
+/**
+ * What HTTP capture can and cannot see, said the same way everywhere.
+ *
+ * An agent that believes this is a complete record of the app's networking will
+ * chase the wrong bug when a request made through a native client does not
+ * appear. Cheaper to say it in every description than to be believed wrongly.
+ */
+const COVERAGE =
+  ' Flutter debug/profile sessions only, while the app is running. Captures dart:io HttpClient ' +
+  'traffic (package:http and dio with its default adapter) — NOT cupertino_http/cronet_http ' +
+  'native clients, WebSockets or raw sockets. Traffic those make is invisible here, not absent.';
+
+server.tool(
+  'list_network_requests',
+  'List HTTP requests the app has made, newest last. One line each: ' +
+    'id, method, status (… while in flight), duration in ms, response bytes, URI.' +
+    COVERAGE,
+  {
+    session: z.string().describe('Session id from list_sessions.'),
+    tail: z.number().optional().describe('How many requests (default 200).'),
+    filter: z.string().optional().describe('Case-insensitive regular expression over "METHOD uri".'),
+  },
+  async ({ session, tail, filter }) =>
+    guarded(async () => {
+      const requests = await (await daemon()).call('network', { session, tail, filter });
+      if (!requests.length) return '(no requests captured yet)';
+      return requests
+        .map((r) => {
+          const status = r.error ? 'ERR' : r.inProgress ? '…' : r.statusCode ?? '?';
+          const size = r.responseContentLength ?? 0;
+          return `${r.id}  ${r.method}  ${status}  ${r.durationMs ?? 0}ms  ${size}B  ${r.uri}` +
+            (r.error ? `  ${r.error}` : '');
+        })
+        .join('\n');
+    }),
+);
+
+server.tool(
+  'get_network_request',
+  'One captured request in full: headers, timeline events, and optionally the bodies. ' +
+    'Fetched from the running app, so it works only while the session is alive.' +
+    COVERAGE,
+  {
+    session: z.string(),
+    id: z.string().describe('Request id from list_network_requests (the short number works too).'),
+    includeBodies: z.boolean().optional().describe('Include request and response bodies (capped at 256 KB).'),
+  },
+  async ({ session, id, includeBodies }) =>
+    guarded(async () => {
+      const detail = await (await daemon()).call('networkDetail', {
+        session, id, maxBody: includeBodies ? undefined : 0,
+      });
+      const { requestBody, responseBody, ...rest } = detail;
+      if (!includeBodies) return rest;
+      return { ...rest, requestBody: readable(requestBody), responseBody: readable(responseBody) };
+    }),
+);
+
+server.tool(
+  'clear_network_requests',
+  'Forget every captured request for a session, in the daemon and in the app itself. ' +
+    'Useful before reproducing one specific call.',
+  { session: z.string() },
+  async ({ session }) => guarded(async () => (await daemon()).call('networkClear', { session })),
+);
+
+/** A body an agent can read: the text, or an honest note that there is none to read. */
+function readable(body?: { text?: string; size: number; truncated: boolean }) {
+  if (!body) return undefined;
+  if (body.text === undefined) return { note: `<binary, ${body.size} bytes>`, size: body.size };
+  return { text: body.text, size: body.size, truncated: body.truncated };
+}
+
 server.tool(
   'list_devices',
   'List connected devices, simulators and emulators available to Flutter.',
