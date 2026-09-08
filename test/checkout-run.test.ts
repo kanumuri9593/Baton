@@ -85,3 +85,21 @@ test('run refuses branch and checkout together', async () => {
     /mutually exclusive/,
   );
 });
+
+test('proof resolves the requested project and branch before device discovery, then cleans failed preparation', async (t) => {
+  const repo = makeRepo();
+  const another = makeRepo();
+  daemon.projects.remember(another);
+  let inspectedRoot = '';
+  t.mock.method(daemon.registry, 'devices', (root: string) => {
+    inspectedRoot = root;
+    return { ready: async () => { throw new Error('test device discovery reached'); } };
+  });
+  await assert.rejects(daemon.handle({
+    method: 'proofRun', params: { cwd: repo, target: 'npm start', branch: 'feat/x' },
+  }), /test device discovery reached/);
+  assert.notEqual(inspectedRoot, another);
+  assert.notEqual(inspectedRoot, repo);
+  assert.equal(existsSync(inspectedRoot), false, 'failed proof preparation releases its owned copy');
+  assert.equal(git(repo, ['rev-parse', '--abbrev-ref', 'HEAD']), 'main');
+});

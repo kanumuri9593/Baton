@@ -74,9 +74,14 @@ test('reports the pinned version from .fvmrc so a mismatch can be surfaced', () 
   rmSync(root, { recursive: true, force: true });
 });
 
-test('resolves the real McLane360 project to its pinned FVM SDK', () => {
-  const real = '/Users/yxkanum/Documents/McLane360';
-  const resolved = resolveFlutter(real);
+test('resolves a project to its pinned FVM SDK', () => {
+  const root = project();
+  const sdk = fakeSdk(root);
+  mkdirSync(join(root, '.fvm'));
+  symlinkSync(sdk, join(root, '.fvm/flutter_sdk'), 'dir');
+  writeFileSync(join(root, '.fvmrc'), JSON.stringify({ flutter: '3.38.2' }));
+  const resolved = resolveFlutter(root);
   assert.equal(resolved.source, 'fvm-sdk');
   assert.equal(resolved.pinnedVersion, '3.38.2');
+  rmSync(root, { recursive: true, force: true });
 });

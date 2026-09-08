@@ -1,7 +1,8 @@
 {
   "name": "baton-run",
-  "version": "0.1.0",
-  "description": "Baton - conduct your dev sessions from any terminal. Flutter, Next.js, Vite, React Native: run, hot-reload, boot simulators, watch several projects at once, with a floating HUD and MCP access for coding agents.",
+  "version": "0.2.0",
+  "description": "Baton: MCP server, CLI, and floating HUD so coding agents can run, hot-reload, boot simulators, and screenshot Flutter, Next.js, Vite, and React Native apps.",
+  "author": "kanumuri9593",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -20,6 +21,11 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "@opentelemetry/instrumentation": "^0.222.0",
+    "@opentelemetry/instrumentation-http": "^0.222.0",
+    "@opentelemetry/instrumentation-undici": "^0.32.0",
+    "@opentelemetry/sdk-trace-base": "^2.11.0",
+    "@opentelemetry/sdk-trace-node": "^2.11.0",
     "jsonc-parser": "^3.3.1",
     "ws": "^8.21.3",
     "zod": "^4.5.4"
@@ -30,36 +36,65 @@
     "typescript": "^5.7.0"
   },
   "keywords": [
+    "baton",
+    "mcp",
+    "model-context-protocol",
+    "coding-agents",
+    "claude-code",
+    "cursor",
+    "codex",
+    "gemini-cli",
     "flutter",
     "hot-reload",
+    "hud",
     "launch.json",
-    "mcp",
     "dev-server",
     "react-native",
     "nextjs",
     "vite",
     "cli",
-    "agents",
-    "claude-code",
     "simulator",
     "ios-simulator",
+    "android-emulator",
     "monorepo",
-    "multi-project"
+    "multi-project",
+    "devtools"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR_GITHUB_USERNAME/baton.git"
+    "url": "git+https://github.com/kanumuri9593/Baton.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/baton/issues"
+    "url": "https://github.com/kanumuri9593/Baton/issues"
   },
-  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/baton#readme",
+  "homepage": "https://github.com/kanumuri9593/Baton#readme",
   "files": [
     "src",
     "hud",
     "assets",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "AGENTS.md",
+    "llms.txt",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "docs/launch-guide.md",
+    "examples/flutter-lab/.vscode/launch.json",
+    "examples/flutter-lab/lib/main.dart",
+    "examples/flutter-lab/pubspec.yaml",
+    "examples/workflow-lab/api/*.mjs",
+    "examples/workflow-lab/api/.vscode/launch.json",
+    "examples/workflow-lab/console/server.mjs",
+    "examples/workflow-lab/console/index.html",
+    "examples/workflow-lab/console/.vscode/launch.json",
+    "examples/workflow-lab/workflow.json",
+    "examples/workflow-lab/README.md",
+    "examples/workflow-lab/workflow-test.json",
+    "examples/flutter-lab/README.md",
+    "examples/flutter-lab/test/widget_test.dart"
   ]
 }

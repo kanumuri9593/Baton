@@ -67,3 +67,13 @@ test('registry forwards launch.json env into a react-native-kind session child',
   const text = session.recentLogs().map((l) => l.text).join('');
   assert.match(text, /VALUE=from-launch-json/);
 });
+
+test('Node targets still launch when a desktop environment omits Node from PATH', async () => {
+  const target = envTarget('process', tmpProject());
+  target.name = 'desktop-node';
+  target.command = 'node';
+  target.config!.env = { BATON_ENV_TEST: 'from-launch-json', PATH: '' };
+  const session = await registry.run(target);
+  await waitForExit(session);
+  assert.match(session.recentLogs().map(l=>l.text).join(''),/VALUE=from-launch-json/);
+});

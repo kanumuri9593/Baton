@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+import { parseWorkflow } from '../daemon/workflow.ts';
 import { DaemonClient, startDaemon } from '../core/client.ts';
 import { readHandshake } from '../daemon/server.ts';
 import { spawn } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync } from 'node:fs';
-import { basename, dirname } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 import { regenerationLoss } from '../config/writer.ts';
 import type { RpcMethods } from '../core/api.ts';
@@ -14,6 +15,9 @@ import {
 const HELP = `baton — run and control dev sessions from any terminal
 
 Usage
+  baton diagnose [query] [--all] search errors (or all evidence) across sessions
+  baton workflow <file.json>     launch a multi-project workflow and await readiness
+  baton doctor [--json]           inspect sources, blockers and launch guidance
   baton list                     what can be run here
   baton run <target> [-d <dev>] [--branch <ref>|--checkout <path>]
                                  start a target (--force to skip pre-flight)
@@ -209,6 +213,39 @@ async function main() {
 
   try {
     switch (command) {
+      case 'diagnose': {
+        console.log(JSON.stringify(await client.call('diagnose', {
+          query: positional.join(' '), errorsOnly: flags.all !== true,
+        }), null, 2));
+        break;
+      }
+      case 'workflow': {
+        if (!positional[0]) throw new Error('Pass a workflow JSON file.');
+        const file = resolve(positional[0]);
+        const plan = parseWorkflow(JSON.parse(readFileSync(file, 'utf8')), dirname(file));
+        const result = await client.call('workflowRun', plan);
+        console.log(JSON.stringify(result, null, 2));
+        if (!result.ok) process.exitCode = 1;
+        break;
+      }
+      case 'doctor': {
+        const report = await client.call('inspectProject', { cwd });
+        if (rest.includes('--json')) console.log(JSON.stringify(report, null, 2));
+        else {
+          console.log(bold(report.root));
+          console.log(`Sources: ${report.sources.join(', ') || 'none'} · revision ${report.revision}`);
+          for (const issue of report.diagnostics) console.log(yellow(`${issue.file}: ${issue.message}`));
+          for (const target of report.targets) {
+            console.log(`  ${target.issues.length ? 'BLOCKED' : 'READY'} ${target.name} · ${target.sourceFile}`);
+            for (const issue of target.issues) console.log(`    ${issue.path}: ${issue.hint}`);
+            for (const warning of target.warnings) console.log(`    ${warning}`);
+          }
+          for (const child of report.children) console.log(`Nested project: ${child.root}`);
+          if (report.guidanceFiles.length) console.log(`Project guidance: ${report.guidanceFiles.join(', ')}`);
+          report.steps.forEach((step, i) => console.log(`${i + 1}. ${step}`));
+        }
+        break;
+      }
       case 'list': {
         const { targets, root } = await client.call('targets', { cwd });
         console.log(dim(root));
@@ -512,6 +549,8 @@ async function main() {
 
         const result = await client.call('proofRun', {
           target,
+          branch: typeof flags.branch === 'string' ? flags.branch : undefined,
+          checkout: typeof flags.checkout === 'string' ? flags.checkout : undefined,
           cwd,
           devices,
           appearance,

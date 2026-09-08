@@ -73,7 +73,7 @@ export class NetworkStore extends EventEmitter {
         // matched", which sends the caller hunting for the wrong bug.
         throw new Error(`invalid network filter "${query.filter}": ${(err as Error).message}`);
       }
-      matches = matches.filter((r) => pattern.test(`${r.method} ${r.uri}`));
+      matches = matches.filter((r) => pattern.test(`${r.method} ${r.uri}`) || [r.traceId, r.error, r.statusCode?.toString()].some((value) => value !== undefined && pattern.test(value)));
     }
     return matches.slice(-(query.tail ?? DEFAULT_TAIL));
   }
@@ -88,7 +88,7 @@ export class NetworkStore extends EventEmitter {
     let failed = 0;
     let inFlight = 0;
     for (const row of rows.values()) {
-      if (row.error) failed++;
+      if (row.error || (row.statusCode !== undefined && row.statusCode >= 400)) failed++;
       if (row.inProgress) inFlight++;
     }
     return { total: rows.size, failed, inFlight };

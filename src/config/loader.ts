@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { parse as parseJsonc, type ParseError } from 'jsonc-parser';
 
 export type ConfigKind = 'flutter' | 'process';
@@ -7,11 +8,16 @@ export type LaunchConfig = {
   /** Display name, exactly as written in launch.json. This is the user-facing handle. */
   name: string;
   kind: ConfigKind;
+  request?: string;
+  batonTrace?: boolean;
+  batonKind?: 'web-dev' | 'react-native' | 'process';
   /** Project root the config is relative to. */
   cwd: string;
   // --- flutter ---
   /** Entrypoint, e.g. lib/main.dart */
   program?: string;
+  flutterMode?: 'debug' | 'profile' | 'release';
+  warnings?: string[];
   /** Explicit device from the config. When set it wins over any resolver suggestion. */
   deviceId?: string;
   /** Flutter-tool arguments, passed through verbatim and in order. */
@@ -73,22 +79,42 @@ export function loadConfigs(path: string, cwd: string): LaunchConfig[] {
     .map((raw) => normalise(raw, cwd));
 }
 
-function normalise(raw: RawConfig, cwd: string): LaunchConfig {
+export function normalise(raw: RawConfig, cwd: string): LaunchConfig {
   // `type: dart` is how the Dart-Code extension marks a Flutter/Dart launch.
   // Anything else we can still supervise, just without hot reload.
   const kind: ConfigKind = raw.type === 'dart' ? 'flutter' : 'process';
 
+  const expand = (value: string) => value.replaceAll('${workspaceFolder}', cwd);
+  const args = asStringArray(raw.args).map(expand);
+  const toolArgs = asStringArray(raw.toolArgs).map(expand);
+  const appArgs: string[] = [];
+  const warnings: string[] = [];
+  // Older Flutter configs commonly put tool flags in args. Recognise only
+  // known build flags; never guess at arbitrary application arguments.
+  for (let i = 0; i < args.length; i++) {
+    if (kind === 'flutter' && /^--(?:dart-define|dart-define-from-file|flavor)(?:=|$)/.test(args[i])) {
+      const flag = args[i];
+      toolArgs.push(flag);
+      if (!flag.includes('=') && args[i + 1] && !args[i + 1].startsWith('--')) toolArgs.push(args[++i]);
+      if (!warnings.length) warnings.push('Flutter build flags in args are treated as toolArgs. Move them to toolArgs for editor compatibility.');
+    } else appArgs.push(args[i]);
+  }
   return {
     name: raw.name as string,
     kind,
-    cwd,
-    program: typeof raw.program === 'string' ? raw.program : undefined,
+    batonTrace: raw.batonTrace === true,
+    batonKind: ['web-dev', 'react-native', 'process'].includes(raw.batonKind as string) ? raw.batonKind as LaunchConfig['batonKind'] : undefined,
+    request: typeof raw.request === 'string' ? raw.request : undefined,
+    cwd: typeof raw.cwd === 'string' ? resolve(cwd, expand(raw.cwd)) : cwd,
+    flutterMode: ['debug', 'profile', 'release'].includes(raw.flutterMode as string) ? raw.flutterMode as LaunchConfig['flutterMode'] : undefined,
+    warnings,
+    program: typeof raw.program === 'string' ? expand(raw.program) : undefined,
     deviceId: typeof raw.deviceId === 'string' ? raw.deviceId : undefined,
-    toolArgs: asStringArray(raw.toolArgs),
-    args: asStringArray(raw.args),
+    toolArgs,
+    args: appArgs,
     runtimeExecutable:
-      typeof raw.runtimeExecutable === 'string' ? raw.runtimeExecutable : undefined,
-    runtimeArgs: asStringArray(raw.runtimeArgs),
+      typeof raw.runtimeExecutable === 'string' ? expand(raw.runtimeExecutable) : undefined,
+    runtimeArgs: asStringArray(raw.runtimeArgs).map(expand),
     port: typeof raw.port === 'number' ? raw.port : undefined,
     env: asEnv(raw.env),
   };
@@ -112,6 +138,7 @@ export function buildFlutterArgv(config: LaunchConfig, resolvedDeviceId: string)
   }
 
   const argv = ['run', '--machine'];
+  if (config.flutterMode) argv.push('--' + config.flutterMode);
   if (config.program) argv.push('-t', config.program);
   argv.push('-d', device);
   argv.push(...config.toolArgs);

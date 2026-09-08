@@ -1,10 +1,12 @@
+import { fixtureProject } from './helpers/project.ts';
+const FIXTURE_PROJECT = fixtureProject();
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadConfigs } from '../src/config/loader.ts';
 import { validate, isRunnable } from '../src/config/validate.ts';
 
 const REAL = 'test/fixtures/mclane360-launch.json';
-const PROJECT = '/Users/yxkanum/Documents/McLane360';
+const PROJECT = FIXTURE_PROJECT;
 
 test('a config whose dart-define files all exist is runnable', () => {
   const configs = loadConfigs(REAL, PROJECT);

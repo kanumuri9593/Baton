@@ -1,11 +1,14 @@
+import { diagnose } from './diagnose.ts';
+import { runWorkflow } from './workflow.ts';
+import { inspectProject } from '../config/guide.ts';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { randomBytes } from 'node:crypto';
-import { writeFileSync, rmSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { writeFileSync, renameSync, rmSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { SessionRegistry } from '../core/registry.ts';
-import { CheckoutStore } from '../core/checkouts.ts';
+import { CheckoutStore, type Checkout } from '../core/checkouts.ts';
 import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.ts';
 import { validate, type ValidationIssue } from '../config/validate.ts';
 import { loadConfigs, type LaunchConfig } from '../config/loader.ts';
@@ -24,7 +27,7 @@ import { NetworkService, type CreateVmClient } from './network.ts';
 import { screenshotSession } from './capture.ts';
 import { waitForSession, type WaitableSession } from './waiter.ts';
 import {
-  getProof, listProofs, runProof, type ProofHost, type ProofRunParams,
+  getProof, listProofs, runProof, type ProofHost,
 } from './proof.ts';
 import { overlayResources, samplePids } from '../core/resources.ts';
 import type { Capability, Session, SessionSnapshot } from '../core/types.ts';
@@ -73,6 +76,7 @@ export class LaunchDaemon {
   #clients = new Set<WebSocket>();
   #token = randomBytes(24).toString('hex');
   #version: string;
+  #proofCheckoutUsers = new Map<string, number>();
   #samplePids: (pids: number[]) => Promise<Map<number, { pid: number; cpuPct: number; rssBytes: number }>>;
 
   constructor(version = '0.1.0', options: LaunchDaemonOptions = {}) {
@@ -86,6 +90,7 @@ export class LaunchDaemon {
       { pollIntervalMs: options.networkPollIntervalMs, retryBaseMs: options.networkRetryBaseMs },
     );
     this.#samplePids = options.samplePids ?? ((pids) => samplePids(pids));
+    this.registry.on('network', (id, row) => this.network.store.upsert(id, row));
     this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
     this.registry.on('log', (sessionId, text, error) =>
       this.#broadcast({ event: 'log', sessionId, text, error } satisfies PushEvent),
@@ -117,8 +122,13 @@ export class LaunchDaemon {
     const handshake: Handshake = {
       port: actualPort, token: this.#token, pid: process.pid, version: this.#version,
     };
+    // Publish atomically so the native HUD never observes a truncated JSON
+    // file while a daemon is starting or replacing a stale handshake.
     // 0600: the token is a local capability, not a secret worth sharing.
-    writeFileSync(handshakePath(), JSON.stringify(handshake, null, 2), { mode: 0o600 });
+    const path = handshakePath();
+    const pending = `${path}.tmp-${process.pid}-${this.#token}`;
+    writeFileSync(pending, JSON.stringify(handshake, null, 2), { mode: 0o600 });
+    renameSync(pending, path);
     return handshake;
   }
 
@@ -131,7 +141,10 @@ export class LaunchDaemon {
     // shutdown appear to hang. Drop them explicitly.
     this.#http.closeAllConnections?.();
     await new Promise<void>((resolve) => this.#http.close(() => resolve()));
-    try { rmSync(handshakePath()); } catch { /* already gone */ }
+    try {
+      const stored = JSON.parse(readFileSync(handshakePath(), 'utf8'));
+      if (stored.token === this.#token) rmSync(handshakePath());
+    } catch { /* already gone, or replaced by another daemon */ }
   }
 
   // --- transport ---
@@ -237,6 +250,23 @@ export class LaunchDaemon {
     const p = request.params ?? {};
 
     switch (request.method) {
+      case 'diagnose': return diagnose(this.registry.list(), this.network.store, p);
+      case 'workflowRun': {
+        return runWorkflow({
+          run: (step) => this.handle({ method: 'run', params: step }) as Promise<SessionSnapshot>,
+          wait: async (session, step) => {
+            const started = Date.now();
+            const ready = await this.handle({ method: 'wait', params: { session, until: 'running', timeoutMs: step.timeoutMs } }) as RpcMethods['wait']['result'];
+            if (step.until === 'running') return ready;
+            return this.handle({ method: 'wait', params: { session, until: 'url', timeoutMs: Math.max(1, step.timeoutMs - (Date.now() - started)) } }) as Promise<RpcMethods['wait']['result']>;
+          },
+        }, p);
+      }
+      case 'inspectProject': {
+        const params = p as RpcMethods['inspectProject']['params'];
+        return inspectProject(this.#resolveRoot(params.cwd));
+      }
+
       case 'targets': {
         const params = p as RpcMethods['targets']['params'];
         const root = this.#resolveRoot(params.cwd);
@@ -697,9 +727,20 @@ export class LaunchDaemon {
 
       case 'proofRun': {
         const params = p as RpcMethods['proofRun']['params'];
-        const host = this.#proofHost();
-        const result = await runProof(host, params as ProofRunParams);
-        return result satisfies RpcMethods['proofRun']['result'];
+        const root = this.#resolveRoot(params.cwd);
+        const checkout = this.checkouts.resolve(root, { branch: params.branch, checkout: params.checkout });
+        const host = this.#proofHost(root, checkout);
+        this.#proofCheckoutUsers.set(checkout.cwd, (this.#proofCheckoutUsers.get(checkout.cwd) ?? 0) + 1);
+        try {
+          return await runProof(host, params) satisfies RpcMethods['proofRun']['result'];
+        } finally {
+          // Keep a branch copy alive across every cell, then release only if
+          // no retained (or concurrently launched) session still uses it.
+          const users = (this.#proofCheckoutUsers.get(checkout.cwd) ?? 1) - 1;
+          if (users) this.#proofCheckoutUsers.set(checkout.cwd, users);
+          else this.#proofCheckoutUsers.delete(checkout.cwd);
+          if (!users && !this.registry.list().some((s) => s.checkout?.cwd === checkout.cwd)) this.checkouts.release(checkout, false);
+        }
       }
 
       case 'proofList': {
@@ -733,7 +774,7 @@ export class LaunchDaemon {
     this.#lastOperation.delete(session.id);
     if (session.checkout) {
       const cwd = session.checkout.cwd;
-      const stillUsed = this.registry.list().some((s) => s.checkout?.cwd === cwd);
+      const stillUsed = this.#proofCheckoutUsers.has(cwd) || this.registry.list().some((s) => s.checkout?.cwd === cwd);
       this.checkouts.release({
         kind: session.checkout.kind,
         sourceRoot: session.root ?? session.checkout.cwd,
@@ -784,13 +825,8 @@ export class LaunchDaemon {
       return { root, name, targets: [], error: 'directory no longer exists' };
     }
     try {
-      const targets = detectTargets(root).map((target) => ({
-        name: target.name,
-        kind: target.kind,
-        source: target.source,
-        issues: target.config ? validate(target.config) : [],
-      }));
-      return { root, name, targets };
+      const inspection = inspectProject(root);
+      return { root, name, targets: inspection.targets, inspection };
     } catch (err) {
       return { root, name, targets: [], error: (err as Error).message };
     }
@@ -848,8 +884,8 @@ export class LaunchDaemon {
   }
 
   /** Injectable seam for `runProof` — wires the daemon's real session machinery. */
-  #proofHost(): ProofHost {
-    const root = this.#resolveRoot();
+  #proofHost(projectRoot: string, checkout: Checkout): ProofHost {
+    const root = checkout.cwd;
     return {
       root,
       matchTarget: (query) => {
@@ -858,12 +894,16 @@ export class LaunchDaemon {
       },
       matchTargetCandidates: (query) => matchCandidates(detectTargets(root), query),
       listDevices: async () => {
-        const devices = this.registry.devices(this.#deviceRoot());
+        const devices = this.registry.devices(root);
         await devices.ready(500);
         return { connected: devices.list(), bootables: await devices.bootables() };
       },
-      boot: (id) => this.registry.devices(this.#deviceRoot()).boot(id),
-      run: (target, deviceId) => this.registry.run(target, { deviceId }),
+      boot: (id) => this.registry.devices(root).boot(id),
+      run: (target, deviceId) => {
+        const issues = target.config ? validate(target.config) : [];
+        if (issues.length) throw new Error(issues.map((i) => `${i.path}: ${i.hint}`).join('\n'));
+        return this.registry.run(target, { deviceId, projectRoot, checkout });
+      },
       waitRunning: async (session, timeoutMs) => {
         try {
           await waitForSession(
@@ -899,7 +939,11 @@ export class LaunchDaemon {
       },
       stop: (session) => session.stop(),
       forget: (session) => {
-        this.#forgetSession(session);
+        if (this.registry.forget(session.id)) {
+          this.network.forget(session.id);
+          this.#lastOperation.delete(session.id);
+          this.#broadcast({ event: 'forgotten', sessionId: session.id } satisfies PushEvent);
+        }
       },
       onProgress: (event) => this.#broadcast({ event: 'proof', ...event } satisfies PushEvent),
     };

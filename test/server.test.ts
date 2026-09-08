@@ -1,3 +1,5 @@
+import { fixtureProject } from './helpers/project.ts';
+const FIXTURE_PROJECT = fixtureProject();
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
@@ -124,9 +126,9 @@ test('reload --all with nothing running is a no-op, not an error', async () => {
 
 test('targets discovers the real McLane360 project', async () => {
   const result: any = await daemon.handle({
-    method: 'targets', params: { cwd: '/Users/yxkanum/Documents/McLane360' },
+    method: 'targets', params: { cwd: FIXTURE_PROJECT },
   });
-  assert.equal(result.root, '/Users/yxkanum/Documents/McLane360');
+  assert.equal(result.root, FIXTURE_PROJECT);
   assert.ok(result.targets.length >= 16);
 });
 
@@ -176,24 +178,24 @@ test('a context-free client gets the most recently used project, not the daemon 
   assert.ok(bare.root, 'must always resolve to some project');
 
   // A terminal runs from a real project...
-  await daemon.handle({ method: 'useProject', params: { root: '/Users/yxkanum/Documents/McLane360' } });
+  await daemon.handle({ method: 'useProject', params: { root: FIXTURE_PROJECT } });
 
   // ...and the context-free client now sees that project's targets.
   const after: any = await daemon.handle({ method: 'targets', params: { cwd: null } });
-  assert.equal(after.root, '/Users/yxkanum/Documents/McLane360');
+  assert.equal(after.root, FIXTURE_PROJECT);
   assert.ok(after.targets.length >= 16, 'the real launch configs must be reachable from the HUD');
-  assert.ok(after.projects.includes('/Users/yxkanum/Documents/McLane360'));
+  assert.ok(after.projects.includes(FIXTURE_PROJECT));
 });
 
 test('an explicit cwd still overrides the remembered project', async () => {
-  await daemon.handle({ method: 'useProject', params: { root: '/Users/yxkanum/Documents/McLane360' } });
+  await daemon.handle({ method: 'useProject', params: { root: FIXTURE_PROJECT } });
   const result: any = await daemon.handle({ method: 'targets', params: { cwd: process.cwd() } });
   assert.equal(result.root, process.cwd());
 });
 
 test('targets reports blocking issues so the HUD can flag them', async () => {
   const result: any = await daemon.handle({
-    method: 'targets', params: { cwd: '/Users/yxkanum/Documents/McLane360' },
+    method: 'targets', params: { cwd: FIXTURE_PROJECT },
   });
   // every flutter target carries an issues array, empty when runnable
   for (const target of result.targets) assert.ok(Array.isArray(target.issues));
@@ -202,10 +204,10 @@ test('targets reports blocking issues so the HUD can flag them', async () => {
 // --- several projects at once ---------------------------------------------
 
 test('projects lists every remembered project with what it can run', async () => {
-  await daemon.handle({ method: 'useProject', params: { root: '/Users/yxkanum/Documents/McLane360' } });
+  await daemon.handle({ method: 'useProject', params: { root: FIXTURE_PROJECT } });
   const result: any = await daemon.handle({ method: 'projects', params: {} });
 
-  const mclane = result.projects.find((p: any) => p.root === '/Users/yxkanum/Documents/McLane360');
+  const mclane = result.projects.find((p: any) => p.root === FIXTURE_PROJECT);
   assert.ok(mclane, 'a remembered project must appear in the list');
   assert.equal(mclane.name, 'McLane360', 'the HUD labels tabs with this');
   assert.ok(mclane.targets.length >= 16);

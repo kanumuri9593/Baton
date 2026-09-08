@@ -40,6 +40,7 @@ export class DeviceRegistry {
   #child?: ChildProcess;
   #codec = new MachineCodec();
   #ready?: Promise<void>;
+  #failure?: string;
   #projectRoot: string;
   #nextId = 100;
   #pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
@@ -67,6 +68,7 @@ export class DeviceRegistry {
       // sit on a timeout: a missing Flutter SDK is a permanent condition, and
       // waiting 15s to discover that makes the device picker feel broken.
       const dead = (reason: string) => {
+        this.#failure = reason;
         if (this.#child === child) this.#child = undefined;
         for (const pending of this.#pending.values()) pending.reject(new Error(reason));
         this.#pending.clear();
@@ -124,6 +126,7 @@ export class DeviceRegistry {
     await this.ready(500);
     const target = (await this.bootables()).find((b) => b.id === id);
     if (!target) throw new Error(`no bootable device with id "${id}"`);
+    if (this.#failure) throw new Error(this.#failure + '. Check your Flutter SDK / PATH before booting a device.');
 
     if (target.via === 'simctl') {
       bootSimulator(target.id);
@@ -181,7 +184,13 @@ export class DeviceRegistry {
 
     const want = DeviceRegistry.platformFor(configName);
     const devices = this.list();
-    if (!want) return devices[0];
+    if (!want) {
+      // Flutter normally reports desktop and web before a booted phone. For a
+      // platform-neutral target that made "Auto" silently choose macOS for a
+      // mobile app. Prefer an already-running mobile emulator, then a physical
+      // mobile device, with web and desktop as later fallbacks.
+      return devices.toSorted((a, b) => automaticRank(a) - automaticRank(b))[0];
+    }
 
     const candidates = devices.filter((d) => matches(d, want));
     if (want.match) {
@@ -201,6 +210,7 @@ export class DeviceRegistry {
     await this.ready(500);
     const deadline = Date.now() + timeoutMs;
     for (;;) {
+      if (this.#failure) throw new Error(this.#failure + '. Check your Flutter SDK / PATH; this is not a missing simulator.');
       const device = this.resolveForName(configName, preferred);
       if (device) return device;
       if (Date.now() >= deadline) return undefined;
@@ -279,6 +289,16 @@ export class DeviceRegistry {
       this.#devices.delete(e.params.id);
     }
   }
+}
+
+/** Stable fallback order for a target whose name does not name a platform. */
+function automaticRank(device: Device): number {
+  const mobile = device.platformType === 'ios' || device.platformType === 'android';
+  if (mobile && device.emulator) return 0;
+  if (mobile) return 1;
+  if (device.platformType === 'web') return 2;
+  if (device.category === 'desktop') return 3;
+  return 4;
 }
 
 function matches(device: Device, want: DevicePreference): boolean {

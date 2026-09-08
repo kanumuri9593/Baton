@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Baton · Delivery lab</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10151e;color:#edf2f8;font:16px/1.6 system-ui}main{max-width:820px;margin:8vh auto;padding:30px}header{color:#97a9c2;font-size:13px;letter-spacing:.12em}h1{font-size:42px;line-height:1.1;margin-bottom:12px}.intro{color:#aab8cd;max-width:620px}article{background:#1b2432;padding:28px;border:1px solid #344258;border-radius:18px;margin-top:28px}.top{display:flex;justify-content:space-between;gap:20px}.badge{color:#a5e8cd}h2{margin:10px 0;font-size:28px}button{background:#9ef0cc;border:0;border-radius:9px;padding:12px 20px;font:inherit;font-weight:600;color:#12251e;cursor:pointer;margin:8px 10px 8px 0}button.secondary{background:#303e53;color:white}button:disabled{opacity:.5;cursor:default}#message{color:#f8c77b}footer{margin-top:26px;color:#8798af;font-size:13px}
+</style>
+<main><header>BATON / WORKFLOW LAB</header><h1>One flow. Two projects.</h1><p class="intro">The console renders this screen. A separate API owns delivery state. Baton launches both and keeps their sessions available to your agent.</p>
+<article><div class="top"><span>DELIVERY DEMO-1042</span><span id="environment" class="badge">Connecting…</span></div><h2 id="status">Loading delivery…</h2><p>No accounts, real customer data, or external services.</p><button id="complete" disabled>Complete delivery</button><button id="reset" class="secondary">Reset demo</button><button id="retry" class="secondary">Refresh status</button><p id="receipt" hidden></p><p id="message" role="status" aria-live="polite"></p></article><footer>Validate the screen, the API response, and the session logs together.</footer></main>
+<script type="module">
+const status = document.querySelector('#status'), message = document.querySelector('#message'), complete = document.querySelector('#complete');
+async function request(path, method='GET') {
+ const response = await fetch('/api'+path, {method}); const data = await response.json();
+ if (!response.ok) throw new Error(data.error || 'Request failed'); return data;
+}
+async function refresh() {
+ try { const data = await request('/delivery'); status.textContent = data.status; document.querySelector('#environment').textContent = data.environment; complete.disabled = data.status === 'Delivered'; message.textContent = ''; const receipt = document.querySelector('#receipt'); receipt.hidden = !data.receipt; receipt.textContent = data.receipt ? 'Receipt ' + data.receipt : ''; return true; }
+ catch(error) { status.textContent = 'Service unavailable'; complete.disabled = true; message.textContent = error.message; document.querySelector('#receipt').hidden = true; return false; }
+}
+complete.onclick = async () => { complete.disabled = true; try { await request('/delivery/complete','POST'); if (await refresh()) message.textContent = 'Delivery confirmed by the API.'; } catch(error) { message.textContent = error.message; complete.disabled = false; } };
+document.querySelector('#reset').onclick = async () => { try { await request('/delivery/reset','POST'); await refresh(); } catch(error) { message.textContent = error.message; } };
+document.querySelector('#retry').onclick = refresh;
+refresh();
+</script></html>

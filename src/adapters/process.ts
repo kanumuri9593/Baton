@@ -1,3 +1,6 @@
+import { TraceStream } from '../instrumentation/stream.ts';
+import { pathToFileURL } from 'node:url';
+import { join, dirname, delimiter } from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { BaseSession, sessionId } from '../core/session-base.ts';
 import type { Capability, OperationResult, SessionSnapshot } from '../core/types.ts';
@@ -8,6 +11,7 @@ export type ProcessSessionOptions = {
   args: string[];
   cwd: string;
   env?: Record<string, string>;
+  trace?: boolean;
   /** Folder whose basename prefixes the session id (the HUD project). */
   idRoot?: string;
   /** Extra id fragment when this run is not This checkout. */
@@ -55,9 +59,22 @@ export class ProcessSession extends BaseSession {
     this.setStatus('starting');
 
     const spawnFn = this.options.spawnFn ?? spawn;
+    const env = { ...process.env, ...this.options.env };
+    // Desktop launchers can omit Node's installation directory from PATH.
+    const pathKey = Object.keys(env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH';
+    env[pathKey] = [env[pathKey], dirname(process.execPath)].filter(Boolean).join(delimiter);
+    if (this.options.trace) {
+      const preload = pathToFileURL(join(import.meta.dirname, '../instrumentation/node.mjs')).href;
+      env.NODE_OPTIONS = `${env.NODE_OPTIONS ?? ''} --import=${preload}`;
+    }
+    const traces = this.options.trace ? new TraceStream({
+      log: (text) => this.handleOutput(text, false),
+      ready: () => this.grantCapability('network'),
+      row: (row) => this.emit('network', { ...row, sessionId: this.id }),
+    }) : undefined;
     const child = spawnFn(this.options.command, this.options.args, {
       cwd: this.options.cwd,
-      env: { ...process.env, ...this.options.env },
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
       // On Windows, dev servers are usually .cmd shims that need a shell.
       shell: process.platform === 'win32',
@@ -65,13 +82,14 @@ export class ProcessSession extends BaseSession {
     this.child = child;
     this.pid = child.pid;
 
-    child.stdout?.on('data', (c: Buffer) => this.handleOutput(c.toString(), false));
+    child.stdout?.on('data', (c: Buffer) => traces ? traces.write(c.toString()) : this.handleOutput(c.toString(), false));
     child.stderr?.on('data', (c: Buffer) => this.handleOutput(c.toString(), true));
     child.on('error', (err: Error) => {
       this.appendLog(`failed to spawn ${this.options.command}: ${err.message}`, true);
       this.setStatus('failed');
     });
     child.on('exit', (code: number | null) => {
+      traces?.flush();
       this.exitCode = code ?? 0;
       this.pid = undefined;
       // An exit we asked for is a stop; an exit we did not ask for is a failure.

@@ -3,8 +3,8 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readHandshake, type Handshake } from '../daemon/server.ts';
-import { logDir } from './paths.ts';
-import { openSync } from 'node:fs';
+import { logDir, stateDir } from './paths.ts';
+import { openSync, closeSync, mkdirSync, statSync, rmSync } from 'node:fs';
 import type { RpcMethods } from './api.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -99,19 +99,40 @@ async function isAlive(handshake: Handshake): Promise<boolean> {
 
 /** Launch a detached daemon and wait for it to publish a handshake. */
 export async function startDaemon(timeoutMs = 20000): Promise<Handshake> {
-  const out = openSync(join(logDir(), 'daemon.log'), 'a');
-  const child = spawn(process.execPath, [DAEMON_ENTRY], {
-    detached: true,
-    stdio: ['ignore', out, out],
-  });
-  // Let the daemon outlive the shell that spawned it -- that is the entire point.
-  child.unref();
-
   const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const handshake = readHandshake();
-    if (handshake && (await isAlive(handshake))) return handshake;
-    await new Promise((r) => setTimeout(r, 150));
+  const lock = join(stateDir(), 'daemon-start.lock');
+  for (;;) {
+    const existing = readHandshake();
+    if (existing && await isAlive(existing)) return existing;
+    try { mkdirSync(lock); break; }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      // A crashed starter must not permanently prevent future launches.
+      try { if (Date.now() - statSync(lock).mtimeMs > 60000) rmSync(lock, { recursive: true }); } catch { /* another starter released it */ }
+      if (Date.now() >= deadline) throw new Error('Another daemon is starting. Retry shortly.');
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
   }
-  throw new Error(`daemon did not start within ${timeoutMs}ms; see ${join(logDir(), 'daemon.log')}`);
+  try {
+    const existing = readHandshake();
+    if (existing && await isAlive(existing)) return existing;
+    const out = openSync(join(logDir(), 'daemon.log'), 'a');
+    const child = spawn(process.execPath, [DAEMON_ENTRY], {
+      detached: true,
+      stdio: ['ignore', out, out],
+    });
+    closeSync(out);
+    let failure: Error | undefined;
+    child.on('error', (error) => { failure = error; });
+    child.unref();
+    while (Date.now() < deadline) {
+      if (failure) throw failure;
+      const handshake = readHandshake();
+      if (handshake && handshake.pid === child.pid && (await isAlive(handshake))) return handshake;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    throw new Error(`daemon did not start within ${timeoutMs}ms; see ${join(logDir(), 'daemon.log')}`);
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
 }

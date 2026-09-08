@@ -97,6 +97,12 @@ export class NetworkService {
    * available while the app runs, which the error says plainly.
    */
   async detail(sessionId: string, id: string, maxBody?: number): Promise<NetworkRequestDetail> {
+    const captured = this.store.list(sessionId, { tail: 500 }).find((row) => row.id === id);
+    if (captured?.captureSource === 'otel-node') {
+      return { ...captured, requestHeaders: {}, cookies: [], redirects: [], events: [
+        { event: 'OpenTelemetry metadata only; bodies, headers and URL queries are not captured', timestamp: captured.startTime },
+      ] };
+    }
     const monitor = this.#monitors.get(sessionId);
     if (!monitor) {
       throw new Error(

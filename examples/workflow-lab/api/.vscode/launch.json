@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Delivery API",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server.mjs"
+      ],
+      "batonKind": "web-dev",
+      "env": {
+        "PORT": "43121",
+        "APP_ENV": "Local lab"
+      },
+      "batonTrace": true
+    },
+    {
+      "name": "Delivery API \u00b7 Test",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server.mjs"
+      ],
+      "batonKind": "web-dev",
+      "env": {
+        "PORT": "43131",
+        "APP_ENV": "Test lab"
+      },
+      "batonTrace": true
+    }
+  ]
+}

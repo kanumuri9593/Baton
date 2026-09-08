@@ -37,8 +37,8 @@ const INFO_PLIST = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIdentifier</key><string>dev.baton.hud</string>
   <key>CFBundleExecutable</key><string>BatonHUD</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleVersion</key><string>2</string>
+  <key>CFBundleShortVersionString</key><string>0.2.0</string>
+  <key>CFBundleVersion</key><string>3</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>CFBundleIconFile</key><string>baton</string>
   <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
@@ -82,9 +82,16 @@ export function buildPanelApp(onBuild?: () => void): string {
   // A GUI app does not inherit the terminal's npm PATH reliably. Bundle the
   // exact Node + daemon entry paths that built it so reopening from the Dock can
   // bring Baton back after an intentional Quit shut the daemon down.
-  const daemon = join(dirname(import.meta.dirname), 'daemon', 'main.ts');
+  const entry = join(dirname(import.meta.dirname), 'cli', 'index.ts');
   const daemonLog = join(logDir(), 'daemon.log');
-  const launcher = JSON.stringify({ node: process.execPath, daemon, log: daemonLog }, null, 2);
+  // Use the CLI's locked startup path here as well. Launching daemon/main.ts
+  // directly let a transient handshake miss create an independent runner.
+  const launcher = JSON.stringify({
+    node: process.execPath,
+    entry,
+    arguments: ['daemon', 'start'],
+    log: daemonLog,
+  }, null, 2);
   const hash = createHash('sha256').update(readFileSync(source)).update(INFO_PLIST).update(launcher);
   if (existsSync(icns)) hash.update(readFileSync(icns));
   const digest = hash.digest('hex');

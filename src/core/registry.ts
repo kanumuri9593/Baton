@@ -103,6 +103,7 @@ export class SessionRegistry extends EventEmitter {
     session.on('log', (text: string, error: boolean, at?: number) =>
       this.emit('log', session.id, text, error, at),
     );
+    session.on('network', (row) => this.emit('network', session.id, row));
     session.on('exit', () => this.emit('change', session.snapshot()));
     return session;
   }
@@ -116,7 +117,9 @@ export class SessionRegistry extends EventEmitter {
 
     switch (target.kind) {
       case 'flutter': {
-        const config = target.config!;
+        const config = options.deviceId
+          ? { ...target.config!, deviceId: options.deviceId }
+          : target.config!;
         const devices = this.devices(idRoot ?? target.cwd);
         const device = await devices.waitForDevice(
           config.name,
@@ -142,17 +145,17 @@ export class SessionRegistry extends EventEmitter {
 
       case 'web-dev':
         return WebDevSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, trace: target.config?.batonTrace, ...ids,
         });
 
       case 'react-native':
         return ReactNativeSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, trace: target.config?.batonTrace, ...ids,
         });
 
       case 'process':
         return ProcessSession.forCommand(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, trace: target.config?.batonTrace, ...ids,
         });
       default: {
         const _exhaustive: never = target.kind;

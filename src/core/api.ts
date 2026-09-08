@@ -1,3 +1,5 @@
+import type { DiagnoseParams, DiagnoseResult } from '../daemon/diagnose.ts';
+import type { Workflow, WorkflowResult } from '../daemon/workflow.ts';
 /**
  * The daemon's RPC contract, in one place.
  *
@@ -10,7 +12,8 @@
 import type {
   LogLine, NetworkRequestDetail, NetworkRequestSnapshot, OperationResult, SessionSnapshot, SessionStatus,
 } from './types.ts';
-import type { Target, TargetKind } from '../config/detect.ts';
+import type { ProjectInspection } from '../config/guide.ts';
+import type { Target } from '../config/detect.ts';
 import type { ValidationIssue } from '../config/validate.ts';
 import type { LaunchConfig } from '../config/loader.ts';
 import type { LaunchEdit, LaunchParseError } from '../config/writer.ts';
@@ -38,7 +41,8 @@ export type TargetInfo = Target & { issues: ValidationIssue[] };
 export type ProjectInfo = {
   root: string;
   name: string;
-  targets: Array<{ name: string; kind: TargetKind; source: Target['source']; issues: ValidationIssue[] }>;
+  targets: ProjectInspection['targets'];
+  inspection?: ProjectInspection;
   error?: string;
   /**
    * A real project directory with nothing Baton knows how to run.
@@ -122,6 +126,13 @@ export type SessionSummary = {
  * method name to its params and result shape.
  */
 export type RpcMethods = {
+  diagnose: { params: DiagnoseParams; result: DiagnoseResult };
+  workflowRun: { params: Workflow; result: WorkflowResult };
+
+  inspectProject: {
+    params: { cwd?: string };
+    result: ProjectInspection;
+  };
   targets: {
     params: { cwd?: string };
     result: { root: string; targets: TargetInfo[]; projects: string[] };

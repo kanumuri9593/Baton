@@ -1,5 +1,6 @@
+import { homedir } from 'node:os';
 import { existsSync, readFileSync, accessSync, constants } from 'node:fs';
-import { join } from 'node:path';
+import { join, delimiter } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 export type FlutterSource = 'fvm-sdk' | 'fvm-cli' | 'path';
@@ -76,6 +77,17 @@ export function resolveFlutter(projectRoot: string, options: Options = {}): Flut
     }
   }
 
+  const executable = process.platform === 'win32' ? 'flutter.bat' : 'flutter';
+  const pathHasFlutter = (process.env.PATH ?? '').split(delimiter).some((dir) => dir && isExecutable(join(dir, executable)));
+  if (!pathHasFlutter) {
+    // GUI-started daemons may not inherit shell PATH setup. Respect an explicit
+    // SDK root, then the conventional local installation, before reporting failure.
+    const candidates = [process.env.FLUTTER_ROOT, join(homedir(), 'flutter')].filter((root): root is string => Boolean(root));
+    for (const sdk of candidates) {
+      const command = join(sdk, 'bin', executable);
+      if (isExecutable(command)) return { command, prefixArgs: [], source: 'path', pinnedVersion };
+    }
+  }
   return { command: 'flutter', prefixArgs: [], source: 'path', pinnedVersion };
 }
 

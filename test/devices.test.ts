@@ -28,6 +28,13 @@ test('resolves configs to devices the way a human picks from the dropdown', () =
   assert.equal(registry.resolveForName('macOS desktop build')!.id, 'macos');
 });
 
+test('a platform-neutral Flutter target prefers a running mobile simulator over macOS and Chrome', () => {
+  const registry = fromRealTranscript();
+  const chosen = registry.resolveForName('Dev / Retail (local GCP)')!;
+  assert.ok(chosen.platformType === 'ios' || chosen.platformType === 'android');
+  assert.equal(chosen.emulator, true);
+});
+
 test('an explicit device id always wins over the name heuristic', () => {
   const registry = fromRealTranscript();
   const chosen = registry.resolveForName('iOS Simulator (DEV)', '15AE8779-8EA5-4CEF-A1A7-2472C4FCC20E');

@@ -29,6 +29,7 @@ test('the HUD launcher includes a checkout picker next to device', () => {
   const core = readFileSync(HUD_ASSETS.get('core.js')!.path, 'utf8');
   assert.match(core, /'checkouts'/);
   assert.match(core, /forgotten/);
+  assert.match(core, /Auto ·.*matched\.name/, 'Auto previews the concrete device it will launch');
 });
 
 // --- the asset files themselves ---------------------------------------------
@@ -143,8 +144,16 @@ test('the macOS panel pins resize to the trailing edge', () => {
 test('the macOS menu-bar item separates adaptive chrome, count, and run status', () => {
   const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
   assert.match(source, /menuBarIcon/);
-  assert.match(source, /NSColor\.labelColor\.setFill\(\)/,
-    'the Baton mark must follow the current light or dark menu-bar appearance');
+  assert.match(source, /statusItem\(withLength: NSStatusItem\.squareLength\)/,
+    'an idle custom image must retain a visible menu-bar slot');
+  assert.match(source, /statusItem\.length = count > 0 \? 42 : NSStatusItem\.squareLength/,
+    'the status item should expand only when it has a session count');
+  assert.match(source, /image\.isTemplate = true/,
+    'macOS must tint the status icon for the current menu-bar appearance');
+  assert.match(source, /NSBitmapImageRep/,
+    'the status item must receive rasterized pixels instead of a fragile lazy drawing image');
+  assert.match(source, /NSColor\.black\.setFill\(\)/,
+    'the template mask must contain opaque pixels for macOS to tint');
   assert.match(source, /foregroundColor: NSColor\.labelColor/,
     'the session count must remain neutral rather than inheriting status color');
   for (const state of ['running', 'starting', 'failed', 'offline']) {
@@ -152,6 +161,15 @@ test('the macOS menu-bar item separates adaptive chrome, count, and run status',
   }
   assert.match(source, /string: count > 0 \? "\\\(count\)" : ""/,
     'zero should stay visually quiet while active sessions show their count');
+});
+
+test('the macOS HUD has a permission-free global toggle shortcut', () => {
+  const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  assert.match(source, /RegisterEventHotKey/);
+  assert.match(source, /kVK_ANSI_B/);
+  assert.match(source, /controlKey \| optionKey/);
+  assert.match(source, /UnregisterEventHotKey/);
+  assert.match(source, /keyEquivalentModifierMask = \[\.control, \.option\]/);
 });
 
 test('quitting the macOS app confirms and shuts down every run', () => {
@@ -170,9 +188,15 @@ test('reopening the macOS app starts the daemon and never shows a blank panel', 
   assert.match(swift, /startDaemonIfNeeded/);
   assert.match(swift, /launcher.*json/i, 'the app must use the launcher bundled at build time');
   assert.match(swift, /\/health/, 'a stale handshake must be verified before WebKit loads it');
+  assert.match(swift, /missedHealthChecks < 3/,
+    'one missed health check must not replace and resize a working HUD');
+  assert.match(swift, /healthCheckInFlight/,
+    'the timer must not stack health requests when the machine or daemon is busy');
   assert.match(swift, /retryDaemon/, 'a failed start must offer a recovery action');
   assert.match(builder, /process\.execPath/);
   assert.match(builder, /launcher\.json/);
+  assert.match(builder, /arguments: \['daemon', 'start'\]/,
+    'the native HUD must use the same locked daemon startup path as the CLI');
 });
 
 test('the generated HUD app is a regular Mac app with a Dock icon', () => {

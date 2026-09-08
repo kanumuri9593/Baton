@@ -10,6 +10,7 @@ export type Target = {
   kind: TargetKind;
   /** Where this target was discovered, shown so the list is never mysterious. */
   source: 'launch.json' | 'package.json' | 'auto';
+  sourceFile?: string;
   cwd: string;
   /** Present for launch.json-derived targets. */
   config?: LaunchConfig;
@@ -50,11 +51,16 @@ const WEB_FRAMEWORK_DEPS = [
  * Explicit launch.json entries win, because someone wrote them deliberately.
  * Everything else is inferred so a fresh clone is useful immediately.
  */
-export function detectTargets(root: string): Target[] {
+export type DetectionDiagnostic = { file: string; message: string };
+
+export function detectTargets(root: string, diagnostics: DetectionDiagnostic[] = []): Target[] {
   const targets: Target[] = [];
   const seen = new Set<string>();
   const add = (t: Target) => {
-    if (seen.has(t.name)) return;
+    if (seen.has(t.name)) {
+      diagnostics.push({ file: t.sourceFile ?? t.source, message: `Duplicate target "${t.name}" is shadowed by an earlier source. Rename it to make both selectable.` });
+      return;
+    }
     seen.add(t.name);
     targets.push(t);
   };
@@ -66,22 +72,30 @@ export function detectTargets(root: string): Target[] {
     let configs: LaunchConfig[];
     try {
       configs = loadConfigs(path, root);
-    } catch {
+    } catch (err) {
+      diagnostics.push({ file: rel, message: (err as Error).message });
       continue; // a malformed launch.json must not block detection of everything else
     }
     for (const config of configs) {
+      if (config.request === 'attach') {
+        diagnostics.push({ file: rel, message: `"${config.name}" is an attach configuration. Baton currently starts new processes; choose a launch configuration.` });
+        continue;
+      }
       if (config.kind === 'flutter') {
-        add({ name: config.name, kind: 'flutter', source: 'launch.json', cwd: root, config });
+        add({ name: config.name, kind: 'flutter', source: 'launch.json', sourceFile: rel, cwd: config.cwd, config });
       } else if (config.runtimeExecutable) {
         add({
           name: config.name,
-          kind: 'process',
+          kind: config.batonKind ?? 'process',
           source: 'launch.json',
-          cwd: root,
+          sourceFile: rel,
+          cwd: config.cwd,
           command: config.runtimeExecutable,
-          args: config.runtimeArgs ?? [],
+          args: [...(config.runtimeArgs ?? []), ...(config.program ? [config.program] : []), ...config.args],
           config,
         });
+      } else {
+        diagnostics.push({ file: rel, message: `"${config.name}" has no supported runtimeExecutable. Add an explicit command to launch it with Baton.` });
       }
     }
   }
@@ -111,7 +125,7 @@ export function detectTargets(root: string): Target[] {
     const isWeb = WEB_FRAMEWORK_DEPS.some((d) => deps[d]);
     const scripts = (pkg.scripts ?? {}) as Record<string, string>;
 
-    for (const script of DEV_SCRIPTS) {
+    for (const script of new Set([...DEV_SCRIPTS, ...Object.keys(scripts).filter((s) => /^(dev|start|serve):/.test(s))])) {
       if (!scripts[script]) continue;
       const body = scripts[script];
       const kind: TargetKind =
@@ -125,6 +139,7 @@ export function detectTargets(root: string): Target[] {
         name: `${pm.command} ${script}`,
         kind,
         source: 'package.json',
+        sourceFile: 'package.json',
         cwd: root,
         command: pm.command,
         args: [...pm.runPrefix, script],

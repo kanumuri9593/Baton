@@ -15,7 +15,10 @@ export type ValidationIssue = { kind: 'missing-file'; path: string; hint: string
 export function validate(config: LaunchConfig): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
-  for (const arg of config.toolArgs) {
+  for (let i = 0; i < config.toolArgs.length; i++) {
+    const arg = config.toolArgs[i] === '--dart-define-from-file'
+      ? '--dart-define-from-file=' + (config.toolArgs[++i] ?? '')
+      : config.toolArgs[i];
     const match = /^--dart-define-from-file[= ](.+)$/.exec(arg);
     if (!match) continue;
 

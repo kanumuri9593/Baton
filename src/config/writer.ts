@@ -1,3 +1,4 @@
+import { normalise } from './loader.ts';
 import { existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -75,7 +76,7 @@ function lineCol(text: string, offset: number): { line: number; col: number } {
  * saved yet -- `loadConfigs` reads a path, and writing the draft to a temp file
  * on every keystroke to get it parsed would be absurd.
  *
- * This mirrors `normalise()` in `loader.ts`, which stays read-only and is the
+ * This uses `normalise()` in `loader.ts`, which stays read-only and is the
  * authority on the shape. `test/writer.test.ts` asserts the two agree on the
  * same fixture, so a change to one that is not made here fails a test rather
  * than quietly making the editor disagree with what actually runs.
@@ -103,33 +104,8 @@ export function configEntries(text: string, cwd: string): Array<{ index: number;
     .filter((entry): entry is { raw: Record<string, unknown>; index: number } =>
       Boolean(entry.raw) && typeof entry.raw === 'object' &&
       typeof (entry.raw as Record<string, unknown>).name === 'string')
-    .map(({ raw, index }) => ({ index, config: {
-      name: raw.name as string,
-      kind: raw.type === 'dart' ? 'flutter' : 'process',
-      cwd,
-      program: typeof raw.program === 'string' ? raw.program : undefined,
-      deviceId: typeof raw.deviceId === 'string' ? raw.deviceId : undefined,
-      toolArgs: asStringArray(raw.toolArgs),
-      args: asStringArray(raw.args),
-      runtimeExecutable: typeof raw.runtimeExecutable === 'string' ? raw.runtimeExecutable : undefined,
-      runtimeArgs: asStringArray(raw.runtimeArgs),
-      port: typeof raw.port === 'number' ? raw.port : undefined,
-      env: asEnv(raw.env),
-    } }));
+    .map(({ raw, index }) => ({ index, config: normalise(raw, cwd) }));
 }
-
-const asStringArray = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-
-const asEnv = (v: unknown): Record<string, string> | undefined => {
-  if (typeof v !== 'object' || v === null || Array.isArray(v)) return undefined;
-  const out: Record<string, string> = {};
-  for (const [key, value] of Object.entries(v as Record<string, unknown>)) {
-    if (value === null || value === undefined || typeof value === 'object') continue;
-    out[key] = String(value);
-  }
-  return out;
-};
 
 /**
  * A launch.json for a project that has none, built from what is already there.

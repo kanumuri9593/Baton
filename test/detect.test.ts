@@ -1,3 +1,5 @@
+import { fixtureProject } from './helpers/project.ts';
+const FIXTURE_PROJECT = fixtureProject();
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -55,7 +57,7 @@ test('picks the package manager from the lockfile that is present', () => {
 });
 
 test('discovers all 16 real McLane360 launch configs as flutter targets', () => {
-  const targets = detectTargets('/Users/yxkanum/Documents/McLane360');
+  const targets = detectTargets(FIXTURE_PROJECT);
   const flutter = targets.filter((t) => t.kind === 'flutter' && t.source === 'launch.json');
   assert.equal(flutter.length, 16);
   // the .claude/launch.json docs server is a plain process target

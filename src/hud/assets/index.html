@@ -26,6 +26,8 @@
 <header>
   <div class="brand">%%MARK%%<div>Baton<small id="status">connecting…</small></div></div>
   <span class="spacer"></span>
+  <button id="diagnoseBtn" title="Search errors and requests across projects">Diagnose</button>
+  <button id="refreshProjects" title="Re-read project launch configurations from disk">Refresh</button>
   <button id="historyBtn" title="Past runs, persisted on disk -- survives a daemon restart">History</button>
   <button class="icon" id="reloadAll" title="Hot reload every running session (r)"></button>
   <button class="icon" id="restartAll" title="Hot restart every running session (R)"></button>
@@ -46,12 +48,15 @@
 </div>
 
 <div class="launcher">
-  <select id="picker"><option value="">Loading targets…</option></select>
-  <select id="checkout" title="Checkout"><option value="">This checkout</option></select>
-  <select id="device" title="Device"><option value="">Auto</option></select>
+  <select id="picker" aria-label="Environment or launch target"><option value="">Loading targets…</option></select>
+  <select id="checkout" aria-label="Branch or checkout" title="Checkout"><option value="">This checkout</option></select>
+  <select id="device" aria-label="Device or simulator" title="Device"><option value="">Auto</option></select>
   <button class="go" id="run">Run</button>
 </div>
 
+<section id="launchGuide" class="launch-guide" aria-live="polite"></section>
+
+<section id="diagnostics" class="launch-guide" hidden></section>
 <main id="list"></main>
 </div>
 
@@ -62,6 +67,7 @@
 <script>window.BATON_TOKEN='%%TOKEN%%';</script>
 <script src="/assets/icons.js"></script>
 <script src="/assets/core.js"></script>
+<script src="/assets/diagnostics.js"></script>
 <script src="/assets/network.js"></script>
 <script src="/assets/editor.js"></script>
 <script type="module" src="/assets/inspector.js"></script>

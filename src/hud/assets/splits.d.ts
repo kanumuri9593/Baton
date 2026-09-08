@@ -1,0 +1,15 @@
+export const SPLIT_KEY: string;
+export const CHIP_COL: number;
+export const GUTTER: number;
+export const MIN_MAIN: number;
+export const MIN_INSPECTOR: number;
+export const MIN_PANE: number;
+export const DEFAULT_INSPECTOR_RATIO: number;
+export type Splits = { inspector: number | null; detail: number | null };
+export function parseSplits(raw: unknown): Splits;
+export function serializeSplits(splits: Splits): string;
+export function clampInspectorWidth(viewport: number, stored: number | null): number;
+export function clampDetailWidth(inner: number, stored: number | null): number;
+export function loadSplits(store?: { getItem(key: string): string | null }): Splits;
+export function saveSplits(splits: Splits, store?: { setItem(key: string, value: string): void }): void;
+export function wireGutter(el: { addEventListener: Function }, onDelta: (delta: number) => void, onEnd?: () => void): void;

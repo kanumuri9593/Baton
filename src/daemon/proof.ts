@@ -44,6 +44,8 @@ export type ProofCellResult = {
 
 export type ProofRunParams = {
   target: string;
+  branch?: string;
+  checkout?: string;
   cwd?: string;
   devices?: string[];
   appearance?: ('light' | 'dark')[];

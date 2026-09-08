@@ -1,0 +1,26 @@
+# Baton
+
+> MCP server, CLI, and floating HUD so coding agents can run, hot-reload, boot simulators, and screenshot Flutter, Next.js, Vite, and React Native apps from any terminal.
+
+Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `baton` and `baton hud`. Agents use `baton-mcp` (Model Context Protocol) or the same CLI.
+
+## Install
+
+- Git (works now): `npm install -g github:kanumuri9593/Baton`
+- npm (package name `baton-run`): `npm install -g baton-run`
+- MCP: command `baton-mcp`
+- HUD: `baton hud`
+- Node.js 24+, MIT license, macOS / Linux / Windows
+- Repo: https://github.com/kanumuri9593/Baton
+
+## Agent docs
+
+- https://github.com/kanumuri9593/Baton/blob/master/AGENTS.md
+- https://github.com/kanumuri9593/Baton/blob/master/README.md
+- https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md
+- Labs: examples/flutter-lab, examples/workflow-lab
+
+## Optional
+
+- [Launch and validation guide](https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md): people and agents
+- [CONTRIBUTING](https://github.com/kanumuri9593/Baton/blob/master/CONTRIBUTING.md): adapters and tests

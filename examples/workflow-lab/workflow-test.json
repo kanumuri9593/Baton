@@ -1,0 +1,17 @@
+{
+  "name": "Delivery Test environment",
+  "steps": [
+    {
+      "name": "Test API",
+      "cwd": "./api",
+      "target": "Delivery API \u00b7 Test",
+      "until": "url"
+    },
+    {
+      "name": "Test Console",
+      "cwd": "./console",
+      "target": "Delivery console \u00b7 Test",
+      "until": "url"
+    }
+  ]
+}

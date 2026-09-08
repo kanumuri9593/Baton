@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Local lab",
+      "type": "dart",
+      "request": "launch",
+      "flutterMode": "debug",
+      "program": "lib/main.dart",
+      "toolArgs": ["--dart-define=APP_ENV=Local lab"]
+    },
+    {
+      "name": "Test lab",
+      "type": "dart",
+      "request": "launch",
+      "flutterMode": "debug",
+      "program": "lib/main.dart",
+      "toolArgs": ["--dart-define=APP_ENV=Test"]
+    }
+  ]
+}

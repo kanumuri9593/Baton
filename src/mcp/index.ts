@@ -1,9 +1,13 @@
 #!/usr/bin/env node
+import { diagnoseSchema } from '../daemon/diagnose.ts';
+import { workflowSchema } from '../daemon/workflow.ts';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { DaemonClient } from '../core/client.ts';
 import { readFileSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * MCP surface over the daemon.
@@ -13,7 +17,10 @@ import { readFileSync, existsSync } from 'node:fs';
  * clicking anything. Every tool returns structured text so failures (a Dart
  * compile error, a dead device) are legible rather than scraped.
  */
-const server = new McpServer({ name: 'baton', version: '0.1.0' });
+const pkg = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'), 'utf8'),
+) as { version: string };
+const server = new McpServer({ name: 'baton', version: pkg.version });
 
 let client: DaemonClient | undefined;
 async function daemon(): Promise<DaemonClient> {
@@ -39,6 +46,27 @@ async function guarded<T>(fn: () => Promise<T>) {
     return fail((err as Error).message);
   }
 }
+
+server.tool(
+  'diagnose',
+  'Search bounded log and network evidence across projects. Defaults to errors only and 20 findings. Pass a trace ID and errorsOnly=false to follow a request across Node services. Use exact session IDs to limit scope.',
+  diagnoseSchema.shape,
+  async (params) => guarded(async () => (await daemon()).call('diagnose', params)),
+);
+
+server.tool(
+  'run_workflow',
+  'Launch up to eight project targets in dependency order and wait for each to become ready, in one call. Stops launching dependents on failure. Returns compact session IDs, URLs and errors; retains sessions for debugging. Use browser/device tools next to validate the actual flow. Paths must be absolute.',
+  workflowSchema.shape,
+  async (plan) => guarded(async () => (await daemon()).call('workflowRun', plan)),
+);
+
+server.tool(
+  'inspect_project',
+  'Read fresh launch sources, configuration problems, nested projects and guidance file paths. Does not run commands or expose environment values. Use before choosing an environment, checkout and device; review screenshot evidence rather than treating capture as visual approval.',
+  { cwd: z.string().optional() },
+  async ({ cwd }) => guarded(async () => (await daemon()).call('inspectProject', { cwd })),
+);
 
 server.tool(
   'list_targets',
@@ -348,6 +376,8 @@ server.tool(
   {
     target: z.string().describe('Target name or unambiguous substring.'),
     cwd: z.string().optional(),
+    branch: z.string().optional().describe('Branch to verify in an isolated worktree.'),
+    checkout: z.string().optional().describe('Existing worktree to verify.'),
     devices: z.string().optional().describe('Comma-separated device names, e.g. "iPhone SE,iPhone 16 Pro Max".'),
     appearance: z.string().optional().describe('Comma-separated: light,dark'),
     textScale: z.string().optional().describe('Comma-separated scales, e.g. 1.0,1.5'),
@@ -371,6 +401,8 @@ server.tool(
       const result = await (await daemon()).call('proofRun', {
         target: params.target,
         cwd: params.cwd,
+        branch: params.branch,
+        checkout: params.checkout,
         devices: devices?.length ? devices : undefined,
         appearance: appearance?.length ? appearance : undefined,
         textScale: textScale?.length ? textScale : undefined,

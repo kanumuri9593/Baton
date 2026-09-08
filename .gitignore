@@ -5,3 +5,13 @@ node_modules/
 # Generated from assets/baton.svg by `npm run icons` -- never edit by hand.
 assets/png/
 assets/baton.icns
+
+# Local platform scaffolding created while trying the Flutter example.
+examples/flutter-lab/.dart_tool/
+examples/flutter-lab/build/
+examples/flutter-lab/ios/
+examples/flutter-lab/android/
+examples/flutter-lab/web/
+examples/flutter-lab/.metadata
+examples/flutter-lab/*.iml
+examples/flutter-lab/pubspec.lock

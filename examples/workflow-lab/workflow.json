@@ -1,0 +1,17 @@
+{
+  "name": "Delivery end-to-end",
+  "steps": [
+    {
+      "name": "API",
+      "cwd": "./api",
+      "target": "Delivery API",
+      "until": "url"
+    },
+    {
+      "name": "Console",
+      "cwd": "./console",
+      "target": "Delivery console",
+      "until": "url"
+    }
+  ]
+}

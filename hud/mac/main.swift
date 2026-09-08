@@ -1,13 +1,13 @@
 // Baton HUD — a menu-bar extra and a floating panel over the local daemon.
 //
-// The panel is an NSPanel at `.floating` level with `.canJoinAllSpaces`, so it
-// stays above a full-screen terminal on every desktop, and `becomesKeyOnlyIfNeeded`
-// so clicking Run never steals focus from whatever you were typing in.
+// The compact launcher floats across desktops; the expanded inspector uses
+// normal window ordering so switching apps brings their windows to the front.
 //
 // It is a regular app (Dock + Cmd-Tab) that still hosts the same HTML the
 // daemon serves to a browser: one control surface, two ways to open it.
 
 import AppKit
+import Carbon.HIToolbox
 import Darwin
 import WebKit
 
@@ -19,7 +19,8 @@ struct Handshake: Decodable {
 
 struct DaemonLauncher: Decodable {
     let node: String
-    let daemon: String
+    let entry: String
+    let arguments: [String]
     let log: String
 }
 
@@ -89,6 +90,8 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     }
 
     private var statusItem: NSStatusItem!
+    private var toggleHotKey: EventHotKeyRef?
+    private var hotKeyHandler: EventHandlerRef?
     private var panel: NSPanel!
     private var web: WKWebView!
     private var compactSurface: CompactChipSurface!
@@ -99,13 +102,18 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private var attemptedDaemonStart = false
     private var daemonStartError: String?
     private var statusPage: String?
+    private var healthCheckInFlight = false
+    private var missedHealthChecks = 0
     private var terminationConfirmed = false
     private var terminationInProgress = false
 
     // MARK: lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        // A variable-length item can collapse to zero before AppKit has lazily
+        // resolved a custom image. Reserve a square slot whenever no count is
+        // shown so the Baton is always present in the menu bar.
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
             button.image = HUDController.menuBarIcon(state: .offline)
             button.imagePosition = .imageLeading
@@ -116,6 +124,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
             button.action = #selector(statusClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
+        registerGlobalShortcut()
 
         // Leave CFBundleIconFile alone when the icns is in the bundle. Assigning
         // it to applicationIconImage flattens the icon to a low-res bitmap, which
@@ -141,6 +150,11 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         // Closing the panel leaves the menu-bar item behind, which is the point.
         return false
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if let toggleHotKey { UnregisterEventHotKey(toggleHotKey) }
+        if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -192,32 +206,48 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         return image
     }
 
-    /// The Baton follows the current appearance while a small Teams-style
-    /// badge carries run status. This cannot be an AppKit template image because
-    /// it mixes adaptive and semantic colors, so the uncached drawing handler
-    /// resolves `labelColor` again whenever the menu bar redraws.
+    /// The Baton follows the menu-bar tint while a small state glyph reports run
+    /// status. A template image is essential here: macOS chooses the correct
+    /// light or dark tint for the desktop and the active menu-bar appearance.
     private static func menuBarIcon(state: MenuBarState, size: CGFloat = 19) -> NSImage {
-        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
-            NSColor.labelColor.setFill()
-            HUDController.fillBaton(size: size - 2)
+        let logicalSize = NSSize(width: size, height: size)
+        let image = NSImage(size: logicalSize)
+        let pixels = Int(ceil(size * 2))
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixels,
+            pixelsHigh: pixels,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            return batonGlyph(size: size, color: .black)
+        }
+        rep.size = logicalSize
 
-            guard let badgeColor = state.badgeColor else { return true }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSColor.clear.setFill()
+        NSRect(origin: .zero, size: logicalSize).fill(using: .copy)
+        NSColor.black.setFill()
+        HUDController.fillBaton(size: size - 2)
+
+        if state != .idle {
             let center = NSPoint(x: size - 4.5, y: 4.5)
             let radius: CGFloat = 4.25
-
-            // An adaptive keyline keeps the badge distinct on pale desktops and
-            // dark full-screen menu bars.
-            NSColor.windowBackgroundColor.setStroke()
-            badgeColor.setFill()
-            let badge = NSBezierPath(ovalIn: NSRect(
+            NSBezierPath(ovalIn: NSRect(
                 x: center.x - radius, y: center.y - radius,
                 width: radius * 2, height: radius * 2
-            ))
-            badge.lineWidth = 1.25
-            badge.fill()
-            badge.stroke()
+            )).fill()
 
-            NSColor.white.setStroke()
+            // Template images use alpha as a mask, so cut the state symbol out
+            // of the badge instead of painting a second color over it.
+            NSGraphicsContext.current?.cgContext.setBlendMode(.clear)
+            NSColor.black.setStroke()
             let symbol = NSBezierPath()
             symbol.lineWidth = 1.15
             symbol.lineCapStyle = .round
@@ -235,11 +265,6 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
             case .failed:
                 symbol.move(to: NSPoint(x: center.x, y: center.y - 0.7))
                 symbol.line(to: NSPoint(x: center.x, y: center.y + 1.9))
-                symbol.stroke()
-                NSColor.white.setFill()
-                NSBezierPath(ovalIn: NSRect(x: center.x - 0.6, y: center.y - 2.85,
-                                            width: 1.2, height: 1.2)).fill()
-                return true
             case .offline:
                 symbol.move(to: NSPoint(x: center.x - 1.8, y: center.y))
                 symbol.line(to: NSPoint(x: center.x + 1.8, y: center.y))
@@ -247,10 +272,15 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                 break
             }
             symbol.stroke()
-            return true
+            if state == .failed {
+                NSColor.black.setFill()
+                NSBezierPath(ovalIn: NSRect(x: center.x - 0.6, y: center.y - 2.85,
+                                            width: 1.2, height: 1.2)).fill()
+            }
         }
-        image.cacheMode = .never
-        image.isTemplate = false
+        NSGraphicsContext.restoreGraphicsState()
+        image.addRepresentation(rep)
+        image.isTemplate = true
         return image
     }
 
@@ -365,7 +395,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 64, height: 76),
             styleMask: [.titled, .closable, .miniaturizable, .resizable,
-                        .fullSizeContentView, .utilityWindow, .nonactivatingPanel],
+                        .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -376,10 +406,10 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.backgroundColor = .clear
         panel.isFloatingPanel = true
         panel.level = .floating
-        // Follows you between desktops and sits above full-screen apps.
+        // Compact mode follows you between desktops and full-screen apps.
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
-        // Take focus only for the text field, never for a button press.
+        // Compact mode only needs keyboard focus for text input.
         panel.becomesKeyOnlyIfNeeded = true
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
@@ -464,6 +494,17 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// Chip/peek stay chrome-less; inspector gets traffic lights and a title.
     private func applyChrome(_ density: String) {
         let compact = density != "inspector"
+        let wasCompact = panel.styleMask.contains(.fullSizeContentView)
+        // Transparency belongs only to the rounded launcher. The inspector's
+        // native title bar needs an opaque backing, including while inactive.
+        panel.titlebarAppearsTransparent = compact
+        panel.isOpaque = !compact
+        panel.backgroundColor = compact ? .clear : .windowBackgroundColor
+        panel.isFloatingPanel = compact
+        panel.level = compact ? .floating : .normal
+        panel.collectionBehavior = compact
+            ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
+        panel.becomesKeyOnlyIfNeeded = compact
         if compact {
             panel.styleMask.insert(.fullSizeContentView)
             panel.titleVisibility = .hidden
@@ -476,6 +517,9 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.standardWindowButton(.zoomButton)?.isHidden = compact
         compactSurface?.isHidden = !compact
         panel.hasShadow = true
+        if wasCompact && !compact {
+            showPanel()
+        }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -497,7 +541,12 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     private func showPanel() {
         if panel.isMiniaturized { panel.deminiaturize(nil) }
-        panel.orderFrontRegardless()
+        if panel.isFloatingPanel {
+            panel.orderFrontRegardless()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+            panel.makeKeyAndOrderFront(nil)
+        }
     }
 
     private func togglePanel() {
@@ -522,11 +571,18 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     // MARK: daemon
 
     private func refresh() {
-        guard !terminationInProgress else { return }
+        guard !terminationInProgress, !healthCheckInFlight else { return }
         let candidate = (try? Data(contentsOf: handshakeURL()))
             .flatMap { try? JSONDecoder().decode(Handshake.self, from: $0) }
 
         guard let candidate else {
+            // Keep an already-loaded control surface steady through a brief
+            // file replacement or wake-from-sleep delay. Three consecutive
+            // misses still recover normally when the daemon has really gone.
+            if handshake != nil {
+                missedHealthChecks += 1
+                if missedHealthChecks < 3 { return }
+            }
             daemonUnavailable(startIfPossible: true)
             return
         }
@@ -540,13 +596,19 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 1
+        healthCheckInFlight = true
         URLSession.shared.dataTask(with: request) { [weak self] _, response, _ in
             let healthy = (response as? HTTPURLResponse)?.statusCode == 200
             DispatchQueue.main.async {
                 guard let self, !self.terminationInProgress else { return }
+                self.healthCheckInFlight = false
                 if healthy {
                     self.daemonReady(candidate)
                 } else {
+                    if self.handshake != nil {
+                        self.missedHealthChecks += 1
+                        if self.missedHealthChecks < 3 { return }
+                    }
                     // A live pid may still be finishing shutdown. The next poll
                     // will see its removed handshake and start a clean daemon.
                     self.daemonUnavailable(startIfPossible: kill(pid_t(candidate.pid), 0) != 0)
@@ -558,6 +620,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private func daemonReady(_ current: Handshake) {
         let previous = handshake?.port ?? 0
         handshake = current
+        missedHealthChecks = 0
         attemptedDaemonStart = false
         daemonStartError = nil
         statusPage = nil
@@ -608,7 +671,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: launcher.node)
-        process.arguments = [launcher.daemon]
+        process.arguments = [launcher.entry] + launcher.arguments
         if let log = FileHandle(forWritingAtPath: launcher.log) {
             _ = try? log.seekToEnd()
             process.standardOutput = log
@@ -689,6 +752,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     }
 
     private func setMenuBar(count: Int, state: MenuBarState, tooltip: String) {
+        statusItem.length = count > 0 ? 42 : NSStatusItem.squareLength
         statusItem.button?.image = HUDController.menuBarIcon(state: state)
         statusItem.button?.attributedTitle = NSAttributedString(
             string: count > 0 ? "\(count)" : "",
@@ -719,6 +783,58 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         }.resume()
     }
 
+    // MARK: keyboard shortcut
+
+    /// Control-Option-B toggles Baton from any app without Accessibility or
+    /// Input Monitoring permission. Carbon hot keys are old, but remain the
+    /// smallest native API for a privacy-friendly global shortcut.
+    private func registerGlobalShortcut() {
+        let signature: OSType = 0x42544F4E // "BTON"
+        let identifier = EventHotKeyID(signature: signature, id: 1)
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+
+        let handlerStatus = InstallEventHandler(
+            GetApplicationEventTarget(),
+            { _, event, userData -> OSStatus in
+                guard let event, let userData else { return OSStatus(eventNotHandledErr) }
+                var pressed = EventHotKeyID()
+                let readStatus = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &pressed
+                )
+                guard readStatus == noErr,
+                      pressed.signature == 0x42544F4E,
+                      pressed.id == 1 else { return OSStatus(eventNotHandledErr) }
+                let controller = Unmanaged<HUDController>
+                    .fromOpaque(userData).takeUnretainedValue()
+                DispatchQueue.main.async { controller.togglePanel() }
+                return noErr
+            },
+            1,
+            &eventType,
+            Unmanaged.passUnretained(self).toOpaque(),
+            &hotKeyHandler
+        )
+        guard handlerStatus == noErr else { return }
+
+        let modifiers = UInt32(controlKey | optionKey)
+        if RegisterEventHotKey(
+            UInt32(kVK_ANSI_B), modifiers, identifier,
+            GetApplicationEventTarget(), 0, &toggleHotKey
+        ) != noErr {
+            if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }
+            hotKeyHandler = nil
+        }
+    }
+
     // MARK: menu
 
     @objc private func statusClicked(_ sender: NSStatusBarButton) {
@@ -736,7 +852,9 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item(panelShown ? "Hide HUD" : "Show HUD", #selector(menuToggle)))
+        let toggle = item(panelShown ? "Hide HUD" : "Show HUD", #selector(menuToggle), key: "b")
+        toggle.keyEquivalentModifierMask = [.control, .option]
+        menu.addItem(toggle)
         menu.addItem(.separator())
         menu.addItem(item("Hot reload all", #selector(menuReload), key: "r"))
         menu.addItem(item("Hot restart all", #selector(menuRestart), key: "R"))
@@ -770,7 +888,6 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 let application = NSApplication.shared
 let controller = HUDController()
 application.delegate = controller
-// Regular: Dock tile and Cmd-Tab. The panel is still nonactivating, so Run
-// does not steal the terminal's keyboard focus.
+// Regular: Dock tile, Cmd-Tab, and normal activation for the inspector.
 application.setActivationPolicy(.regular)
 application.run()

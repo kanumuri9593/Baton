@@ -14,8 +14,8 @@
 
   /** What capture can see, said wherever the feature is offered. */
   const COVERAGE =
-    'HTTP the app made — dart:io HttpClient only (package:http, dio).\n' +
-    'cupertino_http/cronet, WebSockets and raw sockets are not captured.';
+    'Flutter: dart:io HTTP. Node opt-in: OpenTelemetry HTTP/HTTPS and fetch metadata.\n' +
+    'Node capture excludes bodies, headers and URL queries; browser-only traffic and raw sockets are not captured.';
 
   const open = new Set();            // session ids whose pane is showing
   const rows = new Map();            // session id -> Map(request id -> snapshot)
@@ -326,7 +326,7 @@
       const make = ctx.iconButton || ctx.button;
       const button = make(
         ctx.iconButton ? 'network' : '⇅',
-        can ? COVERAGE : 'network capture needs a Flutter debug session',
+        can ? COVERAGE : 'Enable batonTrace on a Node target, or run a Flutter debug session',
         can,
         () => toggle(session.id),
       );

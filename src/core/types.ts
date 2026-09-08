@@ -71,6 +71,11 @@ export type SessionCheckout = {
  * the finished one that replaces it are the same row, updated.
  */
 export type NetworkRequestSnapshot = {
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  direction?: 'inbound' | 'outbound';
+  captureSource?: 'otel-node';
   id: string;
   sessionId: string;
   method: string;
@@ -130,7 +135,7 @@ export interface Session {
   recentLogs(limit?: number): LogLine[];
   snapshot(): SessionSnapshot;
 
-  on(event: 'change' | 'log' | 'exit', listener: (...args: any[]) => void): this;
+  on(event: 'change' | 'log' | 'exit' | 'network', listener: (...args: any[]) => void): this;
 }
 
 /** Thrown when a session is asked for something its framework cannot do. */

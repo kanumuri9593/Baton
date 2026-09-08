@@ -444,3 +444,25 @@
   }
 
   .toast { grid-column: 1; grid-row: 1; }
+
+/* Guidance stays readable in the floating panel as well as a full window. */
+.launch-guide { margin: 0 12px 12px; padding: 12px; border: 1px solid var(--line, #353b44); border-radius: 10px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; background: var(--panel, #1b2028); }
+.guide-title { font-weight: 650; font-size: 13px; }
+.guide-path { opacity: .65; font-size: 11px; }
+.guide-warning { color: var(--warn, #efbb69); }
+.launch-guide details { margin-top: 6px; }
+.launch-guide summary { cursor: pointer; }
+.launch-guide ol { padding-left: 20px; margin-bottom: 4px; }
+
+#hudMain { container-type: inline-size; }
+#hudMain header { flex-wrap: wrap; flex-shrink: 0; }
+#hudMain nav { position: relative; top: auto; flex-shrink: 0; }
+#diagnostics { flex-shrink: 0; max-height: 330px; overflow: auto; }
+#diagnostics > input { display: block; width: 100%; min-width: 0; margin-bottom: 8px; }
+#diagnostics > label { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+#diagnostics p > button { display: block; margin-top: 5px; }
+@container (max-width: 420px) {
+  .launcher { flex-wrap: wrap; flex-shrink: 0; }
+  #picker { flex-basis: 100%; }
+  select#device, select#checkout { flex: 1 1 30%; }
+}

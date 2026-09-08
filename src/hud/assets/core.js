@@ -15,6 +15,12 @@ let bootables = [];         // not running, but startable
 let devicesLoaded = false;
 let checkouts = [];
 let checkoutsLoaded = false;
+let checkoutRoot = null;
+let checkoutRequest = 0;
+let deviceRoot = null;
+let deviceRequest = 0;
+let projectRequest = 0;
+let projectFingerprint = null;
 const openLogs = new Set();
 const pending = new Map();
 const logBuffers = new Map();
@@ -67,10 +73,13 @@ function call(method, params = {}) {
 
 function connect() {
   socket = new WebSocket('ws://' + location.host + '?token=' + TOKEN);
-  socket.onopen = () => { statusEl.textContent = 'connected'; loadProjects(); };
+  socket.onopen = () => { statusEl.textContent = 'connected'; projectFingerprint = null; loadProjects(); };
   socket.onclose = () => {
     statusEl.textContent = 'daemon offline — retrying';
     devicesLoaded = false;
+    checkoutsLoaded = false;
+    for (const request of pending.values()) request.reject(new Error('daemon disconnected'));
+    pending.clear();
     setTimeout(connect, 1500);
   };
   socket.onmessage = (e) => {
@@ -218,8 +227,15 @@ function hook(name, ...args) {
 // --- projects -------------------------------------------------------------
 
 async function loadProjects() {
+  const request = ++projectRequest;
   try {
     const result = await call('projects');
+    if (request !== projectRequest) return;
+    const fingerprint = JSON.stringify((result.projects ?? []).map(({ inspection, ...project }) => ({
+      ...project, inspection: inspection && { ...inspection, checkedAt: undefined },
+    })));
+    if (fingerprint === projectFingerprint) return;
+    projectFingerprint = fingerprint;
     projects = result.projects ?? [];
     if (selectedRoot && !projects.some((p) => p.root === selectedRoot)) selectedRoot = null;
     if (selectedRoot === null && projects.length === 1) selectedRoot = projects[0].root;
@@ -302,7 +318,9 @@ function select(root) {
   renderTabs();
   renderPicker();
   render();
-  loadCheckouts(true);
+  loadDevices();
+  loadCheckouts();
+  loadProjects();
   if (!historyPanel.hidden) loadHistory();
 }
 
@@ -447,9 +465,10 @@ function renderPicker() {
 
   if (!total) {
     picker.innerHTML = '<option value="">No runnable targets</option>';
-  } else if (previous) {
-    picker.value = previous; // keep the selection across re-renders
+  } else if ([...picker.options].some((option) => option.value === previous)) {
+    picker.value = previous;
   }
+  renderLaunchGuide();
   statusEl.textContent = selectedRoot ? basename(selectedRoot) : projects.length + ' projects';
 }
 
@@ -460,17 +479,22 @@ function renderPicker() {
  * never blocks the first paint.
  */
 async function loadDevices(force) {
-  if (devicesLoaded && !force) return;
+  const cwd = launchRoot();
+  if (devicesLoaded && deviceRoot === cwd && !force) return;
+  const request = ++deviceRequest;
+  if (deviceRoot !== cwd) { devices = []; bootables = []; renderDevices(); }
+  deviceRoot = cwd;
   devicesLoaded = true;
   try {
-    const cwd = selectedRoot;
     const [connected, startable] = await Promise.all([
       call('devices', { cwd }), call('bootables', { cwd }),
     ]);
+    if (request !== deviceRequest) return;
     devices = connected ?? [];
     bootables = startable ?? [];
     renderDevices();
   } catch (err) {
+    if (request !== deviceRequest) return;
     devicesLoaded = false;
     statusEl.title = 'device discovery failed: ' + err.message;
   }
@@ -482,7 +506,8 @@ function renderDevices() {
 
   const auto = document.createElement('option');
   auto.value = '';
-  auto.textContent = 'Auto · match target';
+  const matched = autoDeviceForTarget();
+  auto.textContent = matched ? 'Auto · ' + matched.name : 'Auto · no matching device';
   auto.title = 'Pick a device from the target name, the way an IDE does';
   deviceSel.appendChild(auto);
 
@@ -522,6 +547,31 @@ function renderDevices() {
   if (!deviceSel.value) deviceSel.value = '';
 }
 
+/** Preview the same device preference used by DeviceRegistry.resolveForName. */
+function autoDeviceForTarget() {
+  const [root, name = ''] = picker.value.split('\u0000');
+  const project = projects.find((p) => p.root === (root || selectedRoot));
+  const target = project?.targets.find((t) => t.name === name);
+  if (target?.deviceId) {
+    const exact = devices.find((d) => d.id === target.deviceId);
+    if (exact) return exact;
+  }
+
+  const lower = name.toLowerCase();
+  let candidates = devices;
+  if (/\bipad\b/.test(lower)) candidates = devices.filter((d) => d.platformType === 'ios' && d.emulator && /ipad/i.test(d.name));
+  else if (/\bphysical\b/.test(lower)) candidates = devices.filter((d) => d.platformType === (/\bandroid\b/.test(lower) ? 'android' : 'ios') && !d.emulator);
+  else if (/\b(web|chrome)\b/.test(lower)) candidates = devices.filter((d) => d.platformType === 'web');
+  else if (/\bandroid\b/.test(lower)) candidates = devices.filter((d) => d.platformType === 'android');
+  else if (/\b(ios|iphone|simulator)\b/.test(lower)) candidates = devices.filter((d) => d.platformType === 'ios' && d.emulator);
+  else if (/\b(macos|desktop|windows|linux)\b/.test(lower)) candidates = devices.filter((d) => d.category === 'desktop');
+  else candidates = devices.toSorted((a, b) => {
+    const rank = (d) => ((d.platformType === 'ios' || d.platformType === 'android') ? (d.emulator ? 0 : 1) : d.platformType === 'web' ? 2 : d.category === 'desktop' ? 3 : 4);
+    return rank(a) - rank(b);
+  });
+  return candidates[0];
+}
+
 deviceSel.onchange = () => {
   if (deviceSel.value !== 'refresh') return;
   deviceSel.value = '';
@@ -530,13 +580,20 @@ deviceSel.onchange = () => {
 };
 
 async function loadCheckouts(force) {
-  if (checkoutsLoaded && !force) return;
+  const cwd = launchRoot();
+  if (checkoutsLoaded && checkoutRoot === cwd && !force) return;
+  const request = ++checkoutRequest;
+  checkoutRoot = cwd;
   checkoutsLoaded = true;
-  const cwd = selectedRoot;
+  checkouts = [{ id: 'inplace', kind: 'inplace', label: 'This checkout', group: 'this' }];
+  renderCheckouts();
   try {
-    checkouts = (await call('checkouts', { cwd })) ?? [];
+    const listed = await call('checkouts', { cwd });
+    if (request !== checkoutRequest) return;
+    checkouts = listed ?? [];
     renderCheckouts();
   } catch (err) {
+    if (request !== checkoutRequest) return;
     checkoutsLoaded = false;
     checkouts = [{ id: 'inplace', kind: 'inplace', label: 'This checkout', group: 'this' }];
     renderCheckouts();
@@ -544,6 +601,7 @@ async function loadCheckouts(force) {
     return;
   }
   call('checkouts', { cwd, fetch: true }).then((listed) => {
+    if (request !== checkoutRequest) return;
     checkouts = listed ?? checkouts;
     renderCheckouts();
   }).catch(() => {});
@@ -575,7 +633,57 @@ function renderCheckouts() {
   }
   if (previous) checkoutSel.value = previous;
   if (!checkoutSel.value) checkoutSel.value = 'inplace';
+  renderLaunchGuide();
 }
+
+// The launch target owns its context even when the All tab is selected.
+function launchRoot() { return picker.value.split('\u0000')[0] || selectedRoot; }
+picker.addEventListener('change', () => { renderDevices(); loadDevices(); loadCheckouts(); renderLaunchGuide(); });
+checkoutSel.addEventListener('change', renderLaunchGuide);
+
+function renderLaunchGuide() {
+  const panel = $('launchGuide');
+  if (!panel) return;
+  const [root, name] = picker.value.split('\u0000');
+  const project = projects.find((p) => p.root === (root || selectedRoot));
+  const target = project?.targets.find((t) => t.name === name);
+  const report = project?.inspection;
+  panel.replaceChildren();
+  const line = (text, cls) => {
+    const el = document.createElement('div');
+    el.textContent = text; if (cls) el.className = cls;
+    panel.appendChild(el);
+  };
+  line(target ? (target.issues.length ? 'Needs setup' : 'Ready to launch') + ' · ' + target.name : 'Choose a project and launch target', 'guide-title');
+  if (project) line(project.root, 'guide-path');
+  if (target) {
+    line('Source: ' + (target.sourceFile || target.source) + (target.program ? ' · ' + target.program : '') + (target.mode ? ' · ' + target.mode : ''));
+    if (target.capture) line('Network: ' + target.capture);
+    if (target.deviceId) line('Default device: ' + target.deviceId + '. Selecting a device overrides this default.');
+    for (const issue of target.issues) line(issue.path + ' — ' + issue.hint, 'guide-warning');
+    for (const warning of target.warnings || []) line(warning, 'guide-warning');
+  }
+  for (const diagnostic of report?.diagnostics || []) line(diagnostic.file + ': ' + diagnostic.message, 'guide-warning');
+  if (project?.error) line(project.error, 'guide-warning');
+  if (checkoutSel.value && checkoutSel.value !== 'inplace') line('Branch/worktree launch: targets above describe this project folder. Baton re-reads the chosen checkout at launch; its config must contain this target.', 'guide-warning');
+  if (report?.guidanceFiles.length) line('Project guidance: ' + report.guidanceFiles.join(', '));
+  const details = document.createElement('details');
+  const summary = document.createElement('summary'); summary.textContent = 'Launch & validation guide';
+  details.appendChild(summary);
+  const steps = document.createElement('ol');
+  for (const step of report?.steps || ['Add a project folder with launch.json, package.json or pubspec.yaml.']) {
+    const li = document.createElement('li'); li.textContent = step; steps.appendChild(li);
+  }
+  details.appendChild(steps); panel.appendChild(details);
+  if (report) line('Synced from disk · ' + report.revision, 'guide-path');
+}
+$('refreshProjects').onclick = async () => {
+  projectFingerprint = null;
+  await loadProjects();
+  loadCheckouts(true);
+};
+addEventListener('focus', () => loadProjects());
+setInterval(() => { if (socket?.readyState === 1 && !document.hidden) loadProjects(); }, 3000);
 
 // --- running --------------------------------------------------------------
 
@@ -957,7 +1065,7 @@ function restoreDensity() {
 // Keyboard shortcuts mirroring the flutter run terminal: r reload, R restart.
 addEventListener('keydown', (e) => {
   const tag = e.target.tagName;
-  if (tag === 'SELECT' || tag === 'INPUT' || e.metaKey || e.ctrlKey) return;
+  if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable || e.metaKey || e.ctrlKey) return;
   if (e.key === 'Escape' && e.target.blur) e.target.blur();
   if (e.key === 'r') act('reload', scopedAll());
   if (e.key === 'R') act('restart', scopedAll());

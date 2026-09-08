@@ -1,0 +1,21 @@
+name: Feedback
+description: Tell us what worked, what broke, or what you wanted from Baton in your agent setup
+title: "Feedback: "
+labels: ["feedback"]
+body:
+  - type: textarea
+    id: story
+    attributes:
+      label: What did you try?
+      description: MCP client (Claude Code, Cursor, Codex, …), CLI, HUD, or all three.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and Node version
+      placeholder: macOS 15 / Node 24.x
+  - type: textarea
+    id: want
+    attributes:
+      label: What should happen next?
