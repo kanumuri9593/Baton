@@ -1,6 +1,6 @@
-# Adaptive HUD System
+# Adaptive Baton App Theming
 
-Design-approved adaptive theming for the Baton HUD chip and topnav.
+Adaptive theming for the compact Baton launcher and control-panel navigation.
 
 ## Assets
 
@@ -51,20 +51,20 @@ Design-approved adaptive theming for the Baton HUD chip and topnav.
 | `.failed` | `--err` | `#f87171` |
 | `.idle` | `--idle` | `#64748b` |
 
-## JavaScript API
+## Preference integration
 
-```javascript
-// Set appearance mode
-window.batonSetAppearance('system' | 'light' | 'dark');
+`src/hud/assets/settings.js` is the single source of truth. It stores the
+selected theme in `baton.preferences.v1`, applies `data-theme` to the document,
+and resolves `data-appearance` on the compact launcher. System-mode changes are
+followed through `prefers-color-scheme`; explicit light and dark choices are
+never overwritten by the native host.
 
-// Sync from system (called automatically)
-syncChipAppearance();
-```
+See `docs/app-settings.md` for the complete preference map.
 
 ## macOS Native Integration
 
-The Swift host (`hud/mac/main.swift`) syncs appearance:
+The Swift host (`hud/mac/main.swift`) provides native presentation:
 
 1. `NSVisualEffectView` with `.hudWindow` material behind chip
-2. `NSApp.effectiveAppearance` observation
-3. Injects `data-theme` and `data-appearance` via JavaScript
+2. Persistent WebKit storage so browser-safe preferences survive relaunches
+3. Native always-on-top and launch-at-login preferences via the settings bridge

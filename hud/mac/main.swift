@@ -100,7 +100,6 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private var handshake: Handshake?
     private var loadedPort = 0
     private var timer: Timer?
-    private var appearanceObserver: NSKeyValueObservation?
     private var daemonProcess: Process?
     private var attemptedDaemonStart = false
     private var daemonStartError: String?
@@ -532,7 +531,6 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         ])
         panel.contentView = content
         applyChrome("chip")
-        observeAppearance()
         // v2: chip-sized default. The previous autosave restored a 430pt HUD
         // and would fight the density-driven resize.
         panel.setFrameAutosaveName("BatonHUD.v2")

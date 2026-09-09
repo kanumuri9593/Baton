@@ -577,8 +577,11 @@
   body.panel[data-density="chip"] #chip {
     justify-content: center; padding: 0; border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
     border-radius: 18px; background: color-mix(in srgb, var(--panel) 94%, transparent);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .32);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .32); opacity: .58;
+    transition: opacity 160ms ease, box-shadow 160ms ease;
   }
+  body.panel[data-density="chip"] #chip:hover,
+  body.panel[data-density="chip"] #chip:focus-within { opacity: 1; }
   body.panel[data-density="chip"] .chip-face { padding: 0; }
   body.panel[data-density="chip"] .chip-face:hover { background: transparent; }
   body.panel[data-density="chip"] .chip-mark,
@@ -606,6 +609,9 @@
     width: auto; height: auto; border: 1px solid var(--line); border-radius: 16px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, .4);
   }
+  body:not(.panel)[data-density="chip"] #chip { opacity: .58; transition: opacity 160ms ease; }
+  body:not(.panel)[data-density="chip"] #chip:hover,
+  body:not(.panel)[data-density="chip"] #chip:focus-within { opacity: 1; }
 
   .insp-head, .insp-bar {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;

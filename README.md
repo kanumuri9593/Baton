@@ -16,6 +16,12 @@
   <a href="https://modelcontextprotocol.io/"><img alt="MCP server" src="https://img.shields.io/badge/MCP-baton--mcp-7c3aed"></a>
 </p>
 
+<p align="center">
+  <a href="https://kanumuri9593.github.io/Baton/">Website</a> ·
+  <a href="docs/launch-guide.md">Documentation</a> ·
+  <a href="https://kanumuri9593.github.io/Baton/roi.html">ROI scenarios</a>
+</p>
+
 ```bash
 npm install -g github:kanumuri9593/Baton
 baton app
@@ -43,25 +49,15 @@ baton app                                   # floating launcher + full control p
 
 | Way | Command |
 |---|---|
+| **npm** (publish pending) | `npm install -g baton-run` |
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
 | **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
 | **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
-| **npm** (after v0.2.1 is published) | `npm install -g baton-run` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
 | **Baton app** | After install: `baton app` — native floating launcher + control panel on macOS; app-style browser window on Linux/Windows. `baton hud` remains an alias. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
 
 Requires **Node.js 24+**. macOS, Linux, and Windows.
-
-| Method | Command |
-|---|---|
-| **GitHub** | `npm install -g github:kanumuri9593/Baton` |
-| **npm** (404 until published) | `npm install -g baton-run` — not yet on registry |
-| **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
-| **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
-| **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
-| **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. |
-| **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
 
 Pin a release:
 
@@ -84,7 +80,7 @@ First launch may take a few seconds while the panel compiles.
 
 ```bash
 npm uninstall -g baton-run
-npm install -g github:kanumuri9593/Baton   # or wait for baton-run@0.2.1+ on npm
+npm install -g github:kanumuri9593/Baton
 ```
 
 ---
@@ -117,8 +113,6 @@ Without a global install:
   }
 }
 ```
-
-Full agent notes: **[AGENTS.md](AGENTS.md)** · Crawler-friendly summary: **[llms.txt](llms.txt)**
 
 ---
 
@@ -266,49 +260,13 @@ baton app
 
 One compact row per session: status, ⟳ ⟲ ■, logs, and links to the app URL and DevTools. `r` hot-reloads everything in view, `R` hot-restarts.
 
-On **macOS** this opens a native floating launcher and a menu-bar item:
-
-**Linux/Windows:** Same page as a chromeless browser window. Single self-contained file, served on loopback.
+On **macOS** this opens a native floating launcher and a menu-bar item.
 
 The small AppKit host serves the same page and is compiled from source on first use — no opaque binary to trust, and it rebuilds only when that source changes. It needs Xcode or the Command Line Tools; without them Baton opens in the browser instead.
 
 On **Linux and Windows** (or with `baton app --browser`) the same page opens as an app-style browser window. It is self-contained, makes no external requests, and is served on loopback by the daemon.
 
 Settings cover system/light/dark appearance, reduced motion, startup view, last-project restoration, Stop-all confirmation, always-on-top, and launch-at-login. See the [Baton app settings](docs/app-settings.md). The older `hud` name described the first tiny floating display; it is retained only as a command and implementation compatibility alias.
-
-### Branch without switching git
-
-Pick a branch from the **Checkout** menu and Baton makes a git worktree — your branch, stash, and VS Code folder don't move. Stop keeps the copy warm; dismissing deletes only Baton-created copies.
-
-```bash
-baton run "iOS Simulator (DEV)" --branch origin/main
-```
-
-### Multi-project workflows
-
-Launch an API and console in dependency order:
-
-```bash
-baton workflow examples/workflow-lab/workflow.json
-```
-
-### Pre-flight checks
-
-Configs often reference gitignored files. Baton checks first:
-
-```
-✗ "iOS Simulator (DEV)" cannot run yet:
-  missing config/secrets.local.json — copy config/secrets.local.template.json
-```
-
-### Boot devices by name
-
-```bash
-baton devices --all    # what's connected and what could be
-baton boot "iPad mini" # start it and wait until Flutter can see it
-```
-
----
 
 ## Performance
 
@@ -371,8 +329,9 @@ Feedback from other agent setups is the point of this release: [open an issue](h
 
 ## The icon
 
-`assets/baton.svg` is the only source of truth: a conductor's baton sweeping
-across three running lanes. Everything else is derived from it —
+`assets/baton.svg` is the source of truth: a conductor's baton with three
+signal arcs on an indigo-to-cyan field. Runtime and small-size variants derive
+from the same geometry.
 
 ```bash
 npm run icons     # PNGs at every common size, plus a macOS .icns
@@ -397,18 +356,6 @@ npm run typecheck
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
-
----
-
-## Status
-
-**v0.2.1** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once.
-
-The Flutter adapter is the most complete. Web and React Native adapters cover run/restart/logs/URL detection — contributions extending them are welcome.
-
-[Open an issue](https://github.com/kanumuri9593/Baton/issues) with OS, Node version, MCP client, and whether you used CLI or HUD.
-
----
 
 ## License
 

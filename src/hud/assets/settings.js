@@ -43,6 +43,12 @@
   function apply() {
     document.documentElement.dataset.theme = preferences.theme;
     document.documentElement.dataset.motion = preferences.motion;
+    const chip = document.getElementById('chip');
+    if (chip) {
+      chip.dataset.appearance = preferences.theme === 'system'
+        ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : preferences.theme;
+    }
   }
 
   function nativeHandler() {
@@ -134,6 +140,10 @@
   bindSelect('startupViewPreference', 'startupView');
   bindCheck('restoreProjectPreference', 'restoreProject');
   bindCheck('confirmStopAllPreference', 'confirmStopAll');
+
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (preferences.theme === 'system') apply();
+  });
 
   document.getElementById('alwaysOnTopPreference')?.addEventListener('change', (event) => {
     post({ type: 'setPreference', key: 'alwaysOnTop', value: event.target.checked });
