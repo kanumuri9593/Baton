@@ -41,7 +41,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "baton-mcp"]
+      "args": ["-y", "baton-run", "baton-mcp"]
     }
   }
 }

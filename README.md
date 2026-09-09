@@ -43,8 +43,8 @@ baton hud                                   # floating panel + menu-bar item
 | Way | Command |
 |---|---|
 | **npm** (package name `baton-run`; the name `baton` is taken) | `npm install -g baton-run` |
-| **One-shot CLI** | `npx baton list` |
-| **One-shot MCP** | `npx baton-mcp` |
+| **One-shot CLI** | `npx -y baton-run baton list` |
+| **One-shot MCP** | `npx -y baton-run baton-mcp` |
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install` |
 | **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. No App Store download; the panel is compiled from this repo on first use. |
@@ -89,7 +89,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "baton-mcp"]
+      "args": ["-y", "baton-run", "baton-mcp"]
     }
   }
 }
