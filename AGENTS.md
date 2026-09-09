@@ -1,6 +1,8 @@
 # Baton for coding agents
 
-Baton is an MCP server, CLI, and floating HUD. Install it once on the machine that runs the apps. Then any MCP client (Claude Code, Cursor, Codex, Gemini CLI, Windsurf, and others) can list targets, run them, hot-reload, read logs, boot simulators, and capture screenshots.
+Baton is an MCP server, CLI, and floating HUD. Install it once on the machine that runs the apps. Any MCP-compatible client can then list targets, run them, hot-reload, read logs, boot simulators, and capture screenshots.
+
+**Compatible MCP clients:** Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Zed, Claude Desktop, and any other tool that implements the [Model Context Protocol](https://modelcontextprotocol.io/).
 
 Requires **Node.js 24+**. The daemon listens on loopback only.
 
