@@ -18,7 +18,7 @@
 </p>
 
 ```bash
-npm install -g baton-run
+npm install -g github:kanumuri9593/Baton
 baton hud
 ```
 
@@ -42,11 +42,11 @@ baton hud                                   # floating panel + menu-bar item
 
 | Way | Command |
 |---|---|
-| **npm** (recommended) | `npm install -g baton-run` |
-| **One-shot CLI** | `npx -y baton-run baton list` |
-| **One-shot MCP** | `npx -y baton-run baton-mcp` |
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
-| **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install` |
+| **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
+| **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
+| **npm** (after v0.2.1 is published) | `npm install -g baton-run` |
+| **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
 | **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. No App Store download; the panel is compiled from this repo on first use. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
 
@@ -55,7 +55,6 @@ Requires **Node.js 24+**. macOS, Linux, and Windows.
 Pin a release:
 
 ```bash
-npm install -g baton-run@0.2.1
 npm install -g github:kanumuri9593/Baton#v0.2.1
 ```
 
@@ -90,7 +89,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "baton-run", "baton-mcp"]
+      "args": ["-y", "--package=github:kanumuri9593/Baton", "baton-mcp"]
     }
   }
 }

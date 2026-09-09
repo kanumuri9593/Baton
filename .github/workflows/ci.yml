@@ -21,6 +21,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - run: npm run build
       - run: npm run typecheck
       - run: npm test
 
@@ -34,5 +35,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: npm run build
       # Fails the build if the tarball is missing anything the bins import.
       - run: npm pack --dry-run
