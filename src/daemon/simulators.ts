@@ -39,7 +39,9 @@ export function runtimeLabel(key: string): string | undefined {
  * real list, so ask it directly.
  */
 export function listSimulators(exec: Exec = defaultExec): Bootable[] {
-  if (process.platform !== 'darwin') return [];
+  // Real simulator discovery is macOS-only. Keep injected executors usable on
+  // every platform so recorded simctl output can be tested in CI.
+  if (process.platform !== 'darwin' && exec === defaultExec) return [];
 
   let parsed: any;
   try {

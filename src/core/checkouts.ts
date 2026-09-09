@@ -75,7 +75,7 @@ type Worktree = { path: string; branch?: string };
 function parseWorktreeList(text: string): Worktree[] {
   const trees: Worktree[] = [];
   let current: Worktree | undefined;
-  for (const line of text.split('\n')) {
+  for (const line of text.split(/\r?\n/)) {
     if (line.startsWith('worktree ')) {
       current = { path: line.slice('worktree '.length) };
       trees.push(current);
@@ -91,10 +91,11 @@ function parseWorktreeList(text: string): Worktree[] {
 }
 
 function samePath(a: string, b: string): boolean {
+  const comparable = (path: string) => process.platform === 'win32' ? path.toLowerCase() : path;
   try {
-    return realpathSync(a) === realpathSync(b);
+    return comparable(realpathSync(a)) === comparable(realpathSync(b));
   } catch {
-    return resolve(a) === resolve(b);
+    return comparable(resolve(a)) === comparable(resolve(b));
   }
 }
 
@@ -291,7 +292,7 @@ export class CheckoutStore {
     if (samePath(path, sourceRoot)) {
       return { kind: 'inplace', sourceRoot, cwd: sourceRoot, label: 'This checkout' };
     }
-    if (!this.#isRepo(path) || this.#commonDir(path) !== this.#commonDir(sourceRoot)) {
+    if (!this.#isRepo(path) || !samePath(this.#commonDir(path), this.#commonDir(sourceRoot))) {
       throw new Error(`${path} is not a worktree of ${sourceRoot}`);
     }
     copyLocalConfig(sourceRoot, path, false);
@@ -375,7 +376,7 @@ export class CheckoutStore {
   #refs(sourceRoot: string, kind: 'heads' | 'remotes'): string[] {
     try {
       const text = this.#git(['for-each-ref', '--format=%(refname:short)', `refs/${kind}`], sourceRoot);
-      return text ? text.split('\n').filter(Boolean) : [];
+      return text ? text.split(/\r?\n/).filter(Boolean) : [];
     } catch {
       return [];
     }
