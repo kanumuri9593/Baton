@@ -1094,8 +1094,60 @@ if (runBtn && !runBtn.querySelector('.ico')) {
 wireChip();
 restoreDensity();
 paintPeek();
+syncChipAppearance();
 
 connect();
+
+/* ============================================
+   Adaptive Appearance System
+   ============================================ */
+const APPEARANCE_KEY = 'baton.appearance';
+
+/**
+ * Sync chip appearance with system preference or explicit override.
+ * Chip uses data-appearance attribute which CSS uses for light/dark tokens.
+ */
+function syncChipAppearance() {
+  const chip = $('chip');
+  if (!chip) return;
+
+  let appearance = 'system';
+  try { appearance = localStorage.getItem(APPEARANCE_KEY) || 'system'; } catch {}
+
+  if (appearance === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    chip.dataset.appearance = prefersDark ? 'dark' : 'light';
+    document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light';
+  } else {
+    chip.dataset.appearance = appearance;
+    document.documentElement.dataset.theme = appearance;
+  }
+}
+
+/**
+ * Set appearance mode: 'system', 'light', or 'dark'.
+ * Used by native hosts (macOS) to sync with system appearance.
+ */
+window.batonSetAppearance = function(mode) {
+  const chip = $('chip');
+  if (mode === 'system' || mode === 'light' || mode === 'dark') {
+    try { localStorage.setItem(APPEARANCE_KEY, mode); } catch {}
+    if (chip) chip.dataset.appearance = mode === 'system' 
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : mode;
+    document.documentElement.dataset.theme = mode === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : mode;
+  }
+};
+
+// Listen for system theme changes
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const stored = localStorage.getItem(APPEARANCE_KEY);
+    if (!stored || stored === 'system') syncChipAppearance();
+  });
+}
 
 /** Refresh rss/cpu without a second websocket; one `ps -p` on the daemon. */
 async function refreshResources() {

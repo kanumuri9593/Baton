@@ -95,9 +95,11 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private var panel: NSPanel!
     private var web: WKWebView!
     private var compactSurface: CompactChipSurface!
+    private var vibrancyView: NSVisualEffectView!
     private var handshake: Handshake?
     private var loadedPort = 0
     private var timer: Timer?
+    private var appearanceObserver: NSKeyValueObservation?
     private var daemonProcess: Process?
     private var attemptedDaemonStart = false
     private var daemonStartError: String?
@@ -489,13 +491,31 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.delegate = self
 
         let content = NSView()
+        
+        // Vibrancy effect for compact chip (hudWindow style)
+        vibrancyView = NSVisualEffectView()
+        vibrancyView.translatesAutoresizingMaskIntoConstraints = false
+        vibrancyView.material = .hudWindow
+        vibrancyView.blendingMode = .behindWindow
+        vibrancyView.state = .active
+        vibrancyView.wantsLayer = true
+        vibrancyView.layer?.cornerRadius = 10
+        vibrancyView.layer?.masksToBounds = true
+        vibrancyView.isHidden = false
+        
         web.translatesAutoresizingMaskIntoConstraints = false
         compactSurface = CompactChipSurface()
         compactSurface.webView = web
         compactSurface.translatesAutoresizingMaskIntoConstraints = false
+        
+        content.addSubview(vibrancyView)
         content.addSubview(web)
         content.addSubview(compactSurface)
         NSLayoutConstraint.activate([
+            vibrancyView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            vibrancyView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            vibrancyView.topAnchor.constraint(equalTo: content.topAnchor),
+            vibrancyView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
             web.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             web.topAnchor.constraint(equalTo: content.topAnchor),
@@ -507,6 +527,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         ])
         panel.contentView = content
         applyChrome("chip")
+        observeAppearance()
         // v2: chip-sized default. The previous autosave restored a 430pt HUD
         // and would fight the density-driven resize.
         panel.setFrameAutosaveName("BatonHUD.v2")
@@ -589,10 +610,32 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = compact
         panel.standardWindowButton(.zoomButton)?.isHidden = compact
         compactSurface?.isHidden = !compact
+        vibrancyView?.isHidden = !compact
         panel.hasShadow = true
         if wasCompact && !compact {
             showPanel()
         }
+    }
+
+    /// Observe system appearance changes and sync to web view.
+    private func observeAppearance() {
+        syncAppearance()
+        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async { self?.syncAppearance() }
+        }
+    }
+
+    /// Sync macOS appearance to web view data-theme and data-appearance.
+    private func syncAppearance() {
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let theme = dark ? "dark" : "light"
+        let js = """
+            document.documentElement.dataset.theme = '\(theme)';
+            const chip = document.getElementById('chip');
+            if (chip) chip.dataset.appearance = '\(theme)';
+            if (typeof window.batonSetAppearance === 'function') window.batonSetAppearance('\(theme)');
+        """
+        web?.evaluateJavaScript(js, completionHandler: nil)
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

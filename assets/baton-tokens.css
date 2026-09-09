@@ -1,5 +1,5 @@
 /**
- * Baton HUD Design Tokens — Adaptive System
+ * Baton Design Tokens — Adaptive System
  * Supports: prefers-color-scheme, [data-theme], [data-appearance]
  */
 
@@ -8,43 +8,44 @@
    ============================================ */
 :root {
   /* Brand */
-  --bg: #0b0f1a;
-  --accent: #6366f1;
-  --accent-2: #06b6d4;
-  --accent-grad: linear-gradient(135deg, #6366f1, #06b6d4);
+  --baton-accent: #6366f1;
+  --baton-accent-2: #06b6d4;
+  --baton-accent-grad: linear-gradient(135deg, #6366f1, #06b6d4);
 
   /* Status */
-  --ok: #34d399;
-  --warn: #fbbf24;
-  --err: #f87171;
-  --info: #a78bfa;
-  --idle: #64748b;
+  --baton-status-1: #34d399; /* ok / running */
+  --baton-status-2: #fbbf24; /* warn / starting */
+  --baton-status-3: #f87171; /* err / failed */
+  --baton-status-4: #a78bfa; /* info */
+  --baton-status-5: #64748b; /* idle */
 
-  /* Surfaces */
-  --panel: #121620;
-  --panel-2: #1a1f2e;
-  --line: #252b3b;
+  /* Surfaces (dark) */
+  --baton-bg: #0b0f1a;
+  --baton-bg-elevated: #121620;
+  --baton-bg-overlay: rgba(11, 15, 26, 0.92);
+  --baton-border: #252b3b;
+  --baton-border-subtle: #1a1f2e;
 
-  /* Text */
-  --text: #f0f2f7;
-  --muted: #8892a8;
-  --dim: #5a6478;
+  /* Text (dark) */
+  --baton-text: #f0f2f7;
+  --baton-text-muted: #8892a8;
+  --baton-text-dim: #5a6478;
 
-  /* Chip (dark) */
+  /* Chip tokens (dark) */
   --chip-bg: rgba(18, 22, 32, 0.85);
   --chip-border: rgba(37, 43, 59, 0.6);
   --chip-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
   --chip-icon-color: #f0f2f7;
-  --chip-count-bg: var(--accent);
+  --chip-count-bg: var(--baton-accent);
   --chip-count-color: #fff;
   --chip-radius: 10px;
   --chip-icon-size: 32px;
 
-  /* Topnav */
-  --topnav-bg: var(--panel);
-  --topnav-border: var(--line);
-  --topnav-text: var(--text);
-  --topnav-text-muted: var(--muted);
+  /* Topnav tokens (dark) */
+  --topnav-bg: var(--baton-bg-elevated);
+  --topnav-border: var(--baton-border);
+  --topnav-text: var(--baton-text);
+  --topnav-text-muted: var(--baton-text-muted);
   --topnav-tab-hover: rgba(99, 102, 241, 0.1);
   --topnav-tab-active: rgba(99, 102, 241, 0.15);
 }
@@ -54,24 +55,25 @@
    ============================================ */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #f8fafc;
-    --panel: #ffffff;
-    --panel-2: #f1f5f9;
-    --line: #e2e8f0;
+    --baton-bg: #f8fafc;
+    --baton-bg-elevated: #ffffff;
+    --baton-bg-overlay: rgba(248, 250, 252, 0.92);
+    --baton-border: #e2e8f0;
+    --baton-border-subtle: #f1f5f9;
 
-    --text: #0f172a;
-    --muted: #64748b;
-    --dim: #94a3b8;
+    --baton-text: #0f172a;
+    --baton-text-muted: #64748b;
+    --baton-text-dim: #94a3b8;
 
     --chip-bg: rgba(255, 255, 255, 0.88);
     --chip-border: rgba(226, 232, 240, 0.7);
     --chip-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
     --chip-icon-color: #0f172a;
 
-    --topnav-bg: var(--panel);
-    --topnav-border: var(--line);
-    --topnav-text: var(--text);
-    --topnav-text-muted: var(--muted);
+    --topnav-bg: var(--baton-bg-elevated);
+    --topnav-border: var(--baton-border);
+    --topnav-text: var(--baton-text);
+    --topnav-text-muted: var(--baton-text-muted);
     --topnav-tab-hover: rgba(99, 102, 241, 0.08);
     --topnav-tab-active: rgba(99, 102, 241, 0.12);
   }
@@ -81,14 +83,15 @@
    Explicit Theme Overrides
    ============================================ */
 html[data-theme="light"], :root[data-theme="light"] {
-  --bg: #f8fafc;
-  --panel: #ffffff;
-  --panel-2: #f1f5f9;
-  --line: #e2e8f0;
+  --baton-bg: #f8fafc;
+  --baton-bg-elevated: #ffffff;
+  --baton-bg-overlay: rgba(248, 250, 252, 0.92);
+  --baton-border: #e2e8f0;
+  --baton-border-subtle: #f1f5f9;
 
-  --text: #0f172a;
-  --muted: #64748b;
-  --dim: #94a3b8;
+  --baton-text: #0f172a;
+  --baton-text-muted: #64748b;
+  --baton-text-dim: #94a3b8;
 
   --chip-bg: rgba(255, 255, 255, 0.88);
   --chip-border: rgba(226, 232, 240, 0.7);
@@ -97,14 +100,15 @@ html[data-theme="light"], :root[data-theme="light"] {
 }
 
 html[data-theme="dark"], :root[data-theme="dark"] {
-  --bg: #0b0f1a;
-  --panel: #121620;
-  --panel-2: #1a1f2e;
-  --line: #252b3b;
+  --baton-bg: #0b0f1a;
+  --baton-bg-elevated: #121620;
+  --baton-bg-overlay: rgba(11, 15, 26, 0.92);
+  --baton-border: #252b3b;
+  --baton-border-subtle: #1a1f2e;
 
-  --text: #f0f2f7;
-  --muted: #8892a8;
-  --dim: #5a6478;
+  --baton-text: #f0f2f7;
+  --baton-text-muted: #8892a8;
+  --baton-text-dim: #5a6478;
 
   --chip-bg: rgba(18, 22, 32, 0.85);
   --chip-border: rgba(37, 43, 59, 0.6);
@@ -113,7 +117,7 @@ html[data-theme="dark"], :root[data-theme="dark"] {
 }
 
 /* ============================================
-   Chip Component
+   Chip Component (data-appearance override)
    ============================================ */
 .baton-chip {
   position: relative;
@@ -179,14 +183,16 @@ html[data-theme="dark"], :root[data-theme="dark"] {
   place-items: center;
 }
 
-.baton-chip__count.running { background: var(--ok); }
-.baton-chip__count.starting { background: var(--warn); color: #0b0f1a; }
-.baton-chip__count.failed { background: var(--err); }
+/* Status colors for chip count */
+.baton-chip__count.running { background: var(--baton-status-1); }
+.baton-chip__count.starting { background: var(--baton-status-2); color: #0b0f1a; }
+.baton-chip__count.failed { background: var(--baton-status-3); }
 
-.baton-chip__mark.running { color: var(--ok); }
-.baton-chip__mark.starting { color: var(--warn); }
-.baton-chip__mark.failed { color: var(--err); }
-.baton-chip__mark.idle { color: var(--idle); }
+/* Status colors for chip mark */
+.baton-chip__mark.running { color: var(--baton-status-1); }
+.baton-chip__mark.starting { color: var(--baton-status-2); }
+.baton-chip__mark.failed { color: var(--baton-status-3); }
+.baton-chip__mark.idle { color: var(--baton-status-5); }
 
 /* ============================================
    Topnav Component (Linear-density header)
@@ -247,7 +253,7 @@ html[data-theme="dark"], :root[data-theme="dark"] {
 .baton-topnav__tab.active,
 .baton-topnav__tab[aria-pressed="true"] {
   background: var(--topnav-tab-active);
-  color: var(--accent);
+  color: var(--baton-accent);
 }
 
 .baton-topnav__action {
@@ -272,7 +278,7 @@ html[data-theme="dark"], :root[data-theme="dark"] {
 
 .baton-topnav__action.danger:hover {
   background: rgba(248, 113, 113, 0.15);
-  color: var(--err);
+  color: var(--baton-status-3);
 }
 
 .baton-topnav__action .ico {
@@ -284,7 +290,7 @@ html[data-theme="dark"], :root[data-theme="dark"] {
   padding: 6px 14px;
   border-radius: 999px;
   border: none;
-  background: var(--accent-grad);
+  background: var(--baton-accent-grad);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -301,4 +307,25 @@ html[data-theme="dark"], :root[data-theme="dark"] {
 .baton-topnav__run:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ============================================
+   Pages Component (marketing)
+   ============================================ */
+.baton-pages {
+  --pages-bg: var(--baton-bg);
+  --pages-text: var(--baton-text);
+  --pages-muted: var(--baton-text-muted);
+  --pages-accent: var(--baton-accent);
+  --pages-accent-2: var(--baton-accent-2);
+  --pages-border: var(--baton-border);
+}
+
+@media (prefers-color-scheme: light) {
+  .baton-pages:not([data-theme="dark"]) {
+    --pages-bg: #f8fafc;
+    --pages-text: #0f172a;
+    --pages-muted: #64748b;
+    --pages-border: #e2e8f0;
+  }
 }
