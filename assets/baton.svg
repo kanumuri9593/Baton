@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Baton">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Baton">
   <title>Baton</title>
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -6,15 +6,20 @@
       <stop offset="100%" stop-color="#06b6d4"/>
     </linearGradient>
   </defs>
+  
   <!-- Squircle background -->
-  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
-  <!-- Signal arcs (three broadcast lines) -->
-  <g fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7">
-    <path d="M44 16 Q52 24 44 32"/>
-    <path d="M48 12 Q60 24 48 36"/>
-    <path d="M52 8 Q68 24 52 40"/>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  
+  <!-- Three signal arcs - elegant curved Wi-Fi style in upper-left -->
+  <g fill="none" stroke="#fff" stroke-width="15" stroke-linecap="round">
+    <path d="M 195 115 C 145 145, 125 195, 125 255"/>
+    <path d="M 225 75 C 155 115, 115 185, 115 295"/>
+    <path d="M 255 40 C 165 85, 105 175, 105 335"/>
   </g>
-  <!-- Conductor's baton -->
-  <line x1="16" y1="52" x2="48" y2="20" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="14" cy="54" r="5" fill="#fff"/>
+  
+  <!-- Baton - diagonal shaft from lower-left to upper-right -->
+  <line x1="150" y1="385" x2="385" y2="140" stroke="#fff" stroke-width="18" stroke-linecap="round"/>
+  
+  <!-- Pommel - round ball at lower-left end -->
+  <circle cx="138" cy="397" r="34" fill="#fff"/>
 </svg>
