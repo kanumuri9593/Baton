@@ -9,6 +9,16 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+function getVersion(): string {
+  if (process.env.BATON_VERSION) return process.env.BATON_VERSION;
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const rel of ['../package.json', '../../package.json']) {
+    const p = join(here, rel);
+    if (existsSync(p)) return JSON.parse(readFileSync(p, 'utf8')).version;
+  }
+  return 'unknown';
+}
+
 /**
  * MCP surface over the daemon.
  *
@@ -17,10 +27,7 @@ import { fileURLToPath } from 'node:url';
  * clicking anything. Every tool returns structured text so failures (a Dart
  * compile error, a dead device) are legible rather than scraped.
  */
-const pkg = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'), 'utf8'),
-) as { version: string };
-const server = new McpServer({ name: 'baton', version: pkg.version });
+const server = new McpServer({ name: 'baton', version: getVersion() });
 
 let client: DaemonClient | undefined;
 async function daemon(): Promise<DaemonClient> {

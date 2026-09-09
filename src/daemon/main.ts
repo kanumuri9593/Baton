@@ -1,17 +1,24 @@
 #!/usr/bin/env node
 import { LaunchDaemon } from './server.ts';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const pkg = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'), 'utf8'),
-);
+function getVersion(): string {
+  if (process.env.BATON_VERSION) return process.env.BATON_VERSION;
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const rel of ['../package.json', '../../package.json']) {
+    const p = join(here, rel);
+    if (existsSync(p)) return JSON.parse(readFileSync(p, 'utf8')).version;
+  }
+  return 'unknown';
+}
 
-const daemon = new LaunchDaemon(pkg.version);
+const version = getVersion();
+const daemon = new LaunchDaemon(version);
 const handshake = await daemon.listen(Number(process.env.BATON_PORT ?? 0));
 
-console.log(`baton daemon ${pkg.version} listening on http://127.0.0.1:${handshake.port}`);
+console.log(`baton daemon ${version} listening on http://127.0.0.1:${handshake.port}`);
 
 const shutdown = async () => {
   await daemon.close();
