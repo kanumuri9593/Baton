@@ -11,18 +11,18 @@
 
 <p align="center">
   <a href="https://github.com/kanumuri9593/Baton/blob/master/LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0ea5e9"></a>
-  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.0"><img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-111827"></a>
+  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.1"><img alt="Version 0.2.1" src="https://img.shields.io/badge/version-0.2.1-111827"></a>
   <a href="https://nodejs.org/"><img alt="Node 24+" src="https://img.shields.io/badge/node-24%2B-339933"></a>
   <a href="https://modelcontextprotocol.io/"><img alt="MCP server" src="https://img.shields.io/badge/MCP-baton--mcp-7c3aed"></a>
   <a href="https://github.com/kanumuri9593/Baton/issues/new?labels=feedback&title=Feedback"><img alt="Ask for feedback" src="https://img.shields.io/badge/feedback-welcome-f59e0b"></a>
 </p>
 
 ```bash
-npm install -g github:kanumuri9593/Baton
+npm install -g baton-run
 baton hud
 ```
 
-**Baton 0.2.0** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
+**Baton 0.2.1** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
 
 If the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — this replaces that, and adds the half an IDE can't give you: your agent can press the same buttons. Pick a **branch** (or an agent's worktree) and Baton runs it from a copy, so VS Code never has to stash or switch.
 
@@ -42,20 +42,21 @@ baton hud                                   # floating panel + menu-bar item
 
 | Way | Command |
 |---|---|
+| **npm** (recommended) | `npm install -g baton-run` |
+| **One-shot CLI** | `npx -y baton-run baton list` |
+| **One-shot MCP** | `npx -y baton-run baton-mcp` |
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
-| **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
-| **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
-| **npm** (after publish; package `baton-run`) | `npm install -g baton-run` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install` |
 | **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. No App Store download; the panel is compiled from this repo on first use. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
 
-Requires **Node.js 24+**. TypeScript runs natively — there is no build step. macOS, Linux, and Windows.
+Requires **Node.js 24+**. macOS, Linux, and Windows.
 
 Pin a release:
 
 ```bash
-npm install -g github:kanumuri9593/Baton#v0.2.0
+npm install -g baton-run@0.2.1
+npm install -g github:kanumuri9593/Baton#v0.2.1
 ```
 
 ---
@@ -89,7 +90,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=github:kanumuri9593/Baton", "baton-mcp"]
+      "args": ["-y", "baton-run", "baton-mcp"]
     }
   }
 }
@@ -289,7 +290,7 @@ See the [coverage and setup guide](docs/launch-guide.md#local-backend-tracing-us
 
 ## Status
 
-**0.2.0** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one HUD, one of them launched onto a simulator booted from the HUD itself.
+**0.2.1** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one HUD, one of them launched onto a simulator booted from the HUD itself.
 
 The Flutter adapter is the most complete. Web and React Native adapters cover run/restart/logs/URL detection; contributions extending them are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

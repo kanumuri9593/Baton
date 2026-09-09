@@ -22,6 +22,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run build
+
       - run: npm run typecheck
 
       # TODO: Restore `npm test` as a publish gate once cross-platform test
