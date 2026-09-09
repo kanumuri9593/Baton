@@ -58,6 +58,24 @@ Pin a release:
 npm install -g github:kanumuri9593/Baton#v0.2.1
 ```
 
+### The HUD
+
+There is **no App Store download** — the HUD is `baton hud`:
+
+- **macOS**: native floating panel + menu-bar item. First run compiles ~250 lines of AppKit from `hud/` (needs Xcode or Command Line Tools).
+- **Linux / Windows**: chromeless browser window.
+
+First launch may take a few seconds while the panel compiles.
+
+### Troubleshooting
+
+**ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING** — If you installed an old `baton-run@0.2.0` that tried to import `.ts` files directly:
+
+```bash
+npm uninstall -g baton-run
+npm install -g github:kanumuri9593/Baton   # or wait for baton-run@0.2.1+ on npm
+```
+
 ---
 
 ## Give it to your agent
