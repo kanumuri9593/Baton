@@ -52,7 +52,7 @@ test('clampInspectorWidth will not starve the sessions column', () => {
 
 test('clampInspectorWidth accounts for an open project rail', () => {
   const viewport = 1400;
-  const chrome = CHIP_COL + 228;
+  const chrome = 228;
   const leftover = viewport - chrome - GUTTER;
   const width = clampInspectorWidth(viewport, 400, chrome);
   assert.equal(width, 400);

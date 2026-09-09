@@ -39,8 +39,8 @@ function infoPlist(includeIcon: boolean): string {
   <key>CFBundleIdentifier</key><string>dev.baton.hud</string>
   <key>CFBundleExecutable</key><string>BatonHUD</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.2.2</string>
-  <key>CFBundleVersion</key><string>7</string>
+  <key>CFBundleShortVersionString</key><string>0.2.3</string>
+  <key>CFBundleVersion</key><string>8</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
 ${icon}  <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
   <key>NSAppTransportSecurity</key>

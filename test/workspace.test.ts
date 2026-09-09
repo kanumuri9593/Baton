@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  isLive, liveIds, packSessions, projectTitle, sessionsForRoot,
+  compactMark, isLive, liveIds, packSessions, projectTitle, sessionsForRoot,
 } from '../src/hud/assets/workspace.js';
 
 test('packSessions keeps a workflow together across project roots', () => {
@@ -35,4 +35,13 @@ test('sessionsForRoot and projectTitle follow the folder name', () => {
     { id: '2', root: '/b' },
   ];
   assert.deepEqual(sessionsForRoot(rows, '/b').map((s) => s.id), ['2']);
+});
+
+test('compactMark uses a workspace letter and platform glyphs', () => {
+  assert.deepEqual(compactMark({ workflow: 'Two servers' }), { kind: 'workspace', letter: 'T' });
+  assert.equal(compactMark({ targets: [{ kind: 'ios' }] }).kind, 'ios');
+  assert.equal(compactMark({ targets: [{ kind: 'android' }] }).kind, 'android');
+  assert.equal(compactMark({ targets: [{ kind: 'web-dev' }] }).kind, 'web');
+  assert.equal(compactMark({ targets: [{ kind: 'flutter' }] }).kind, 'ios');
+  assert.equal(compactMark({ targets: [] }).kind, 'folder');
 });

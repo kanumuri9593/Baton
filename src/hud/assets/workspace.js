@@ -72,3 +72,40 @@ export function packSessions(sessions) {
 export function sessionsForRoot(sessions, root) {
   return sessions.filter((session) => session.root === root);
 }
+
+/**
+ * Glyph for the collapsed project strip: a platform, a web globe, or a
+ * workspace letter. Flutter without a native sibling counts as iOS because
+ * that is the usual local simulator.
+ *
+ * @param {{
+ *   workflow?: string,
+ *   targets?: { kind?: string }[],
+ *   sessions?: { kind?: string, workflow?: string }[],
+ * }} item
+ * @returns {{ kind: 'ios' | 'android' | 'web' | 'workspace' | 'folder', letter?: string }}
+ */
+export function compactMark(item) {
+  const workflow = String(item?.workflow || '').trim();
+  if (workflow) {
+    const ch = workflow.charAt(0);
+    return { kind: 'workspace', letter: /[a-z]/i.test(ch) ? ch.toUpperCase() : 'W' };
+  }
+  const kinds = new Set();
+  for (const target of item?.targets || []) {
+    if (target?.kind) kinds.add(target.kind);
+  }
+  for (const session of item?.sessions || []) {
+    if (session?.kind) kinds.add(session.kind);
+  }
+  const ios = kinds.has('ios') || kinds.has('flutter');
+  const android = kinds.has('android');
+  const web = kinds.has('web-dev') || kinds.has('react-native');
+  if (android && !ios && !web) return { kind: 'android' };
+  if (web && !ios && !android) return { kind: 'web' };
+  if (ios && !android && !web) return { kind: 'ios' };
+  if (android && !web) return { kind: 'android' };
+  if (web) return { kind: 'web' };
+  if (ios) return { kind: 'ios' };
+  return { kind: 'folder' };
+}

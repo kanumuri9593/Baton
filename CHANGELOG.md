@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 — 2026-09-09
+
+- Folded the project list into the existing logo strip. There is no second
+  side nav; collapse uses the same expand control.
+- Collapsed rows show an iOS, Android, or web glyph, or the first letter of a
+  workspace name.
+- Centered stop, close, and inspect icons in their buttons.
+
 ## 0.2.2 — 2026-09-09
 
 - Moved project switching into a collapsible side rail. Each project expands to

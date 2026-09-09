@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://github.com/kanumuri9593/Baton/blob/master/LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0ea5e9"></a>
-  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.2"><img alt="Version 0.2.2" src="https://img.shields.io/badge/version-0.2.2-111827"></a>
+  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.3"><img alt="Version 0.2.3" src="https://img.shields.io/badge/version-0.2.3-111827"></a>
   <a href="https://nodejs.org/"><img alt="Node 24+" src="https://img.shields.io/badge/node-24%2B-339933"></a>
   <a href="https://modelcontextprotocol.io/"><img alt="MCP server" src="https://img.shields.io/badge/MCP-baton--mcp-7c3aed"></a>
   <a href="https://github.com/kanumuri9593/Baton/issues/new?labels=feedback&title=Feedback"><img alt="Ask for feedback" src="https://img.shields.io/badge/feedback-welcome-f59e0b"></a>
@@ -26,7 +26,7 @@ npm install -g github:kanumuri9593/Baton
 baton app
 ```
 
-**Baton 0.2.2** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
+**Baton 0.2.3** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
 
 If the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — this replaces that, and adds the half an IDE can't give you: your agent can press the same buttons. Pick a **branch** (or an agent's worktree) and Baton runs it from a copy, so VS Code never has to stash or switch.
 
@@ -59,7 +59,7 @@ Requires **Node.js 24+**. macOS, Linux, and Windows.
 Pin a release:
 
 ```bash
-npm install -g github:kanumuri9593/Baton#v0.2.2
+npm install -g github:kanumuri9593/Baton#v0.2.3
 ```
 
 ### The Baton app
@@ -314,7 +314,7 @@ See the [coverage and setup guide](docs/launch-guide.md#local-backend-tracing-us
 
 ## Status
 
-**0.2.2** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one control panel, one of them launched onto a simulator booted from Baton itself.
+**0.2.3** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one control panel, one of them launched onto a simulator booted from Baton itself.
 
 The Flutter adapter is the most complete. Web and React Native adapters cover run/restart/logs/URL detection; contributions extending them are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

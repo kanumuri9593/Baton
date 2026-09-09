@@ -81,9 +81,11 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
   }
 
   assert.match(core, /removeProject/);
-  assert.match(core, /railToggle/);
-  assert.match(core, /Stop every live run/);
-  assert.match(core, /packSessions/);
+  assert.match(core, /chipExpand/);
+  assert.match(core, /Show project names/);
+  assert.match(core, /compactMark/);
+  assert.match(core, /kinds\.has\('android'\)/,
+    'project marks must not wait on inspector.js — that module can load after the first paint');
   const inspector = read('inspector.js');
   assert.match(inspector, /BatonWorkspace/);
   assert.match(inspector, /workspace\.js/);
@@ -102,20 +104,23 @@ test('session actions are named SVG icons, not unicode glyphs', () => {
   for (const glyph of ['⟳', '⟲', '▤', '⇅']) {
     assert.ok(!core.includes(`'${glyph}'`), `core.js must not use ${glyph} as a button label`);
   }
-  for (const name of ['run', 'reload', 'restart', 'stop', 'logs', 'network', 'expand', 'minimize']) {
+  for (const name of ['run', 'reload', 'restart', 'stop', 'logs', 'network', 'expand', 'minimize', 'ios', 'android', 'web']) {
     assert.match(icons, new RegExp('\\b' + name + '\\s*:'), `icons.js must define ${name}`);
   }
 });
 
-test('the page has a chip, a peek strip, a project rail, and an inspector pane', () => {
+test('the page has a chip, a peek strip, projects in that chip, and an inspector pane', () => {
   const html = renderHud('tok123');
   assert.match(html, /id="chip"/);
   assert.match(html, /id="chipMark"/);
   assert.match(html, /id="chipTile"/);
   assert.match(html, /id="peek"/);
-  assert.match(html, /id="rail"/);
-  assert.match(html, /id="railToggle"/);
-  assert.match(html, /data-rail/);
+  assert.match(html, /id="tabs"/);
+  assert.ok(!html.includes('id="rail"'), 'projects belong in the existing left strip, not a second nav');
+  const css = readFileSync(HUD_ASSETS.get('hud.css')!.path, 'utf8');
+  assert.match(css, /button\.icon \{[\s\S]*?place-items: center/, 'stop and close must sit in the middle of their hit targets');
+  assert.match(css, /data-rail="closed"\] #chip \{ align-items: center/,
+    'the collapsed strip is one centred column, not a logo bar plus a second list');
   assert.match(html, /id="inspector"/);
   assert.match(html, /id="splitOuter"/);
   assert.match(html, /data-density/);
@@ -150,7 +155,7 @@ test('the compact HUD is a floating logo that clicks to open and drags to move',
   const css = readFileSync(HUD_ASSETS.get('hud.css')!.path, 'utf8');
   const swift = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
   assert.match(html, /id="chipFace" role="button" tabindex="0"/);
-  assert.match(core, /face\.onclick = toggle/);
+  assert.match(core, /face\.onclick = \(\) => \{/);
   assert.ok(!core.includes("chip.addEventListener('mouseenter'"), 'opening must not depend on hover timing');
   assert.match(css, /body\[data-density="chip"\] #chipExpand \{ display: none; \}/,
     'the old side button must not be clipped inside the compact chip');

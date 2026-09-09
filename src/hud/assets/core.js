@@ -61,6 +61,7 @@ function iconEl(name) {
 function iconButton(name, title, enabled, onClick, cls) {
   const b = document.createElement('button');
   b.className = 'icon ' + (cls || '');
+  b.type = 'button';
   b.title = title;
   b.disabled = !enabled;
   b.appendChild(iconEl(name));
@@ -133,7 +134,6 @@ const SPLIT_KEY = 'baton.hud.splits';
 const RAIL_KEY = 'baton.rail.v1';
 const SPLIT_CHIP = 52;
 const SPLIT_RAIL_OPEN = 228;
-const SPLIT_RAIL_CLOSED = 40;
 const SPLIT_GUTTER = 8;
 const SPLIT_MIN_MAIN = 240;
 const SPLIT_MIN_INSPECTOR = 280;
@@ -216,7 +216,7 @@ function wireGutter(el, onDelta, onEnd) {
 
 const addons = [];
 function inspectorChrome() {
-  return SPLIT_CHIP + (railState.open ? SPLIT_RAIL_OPEN : SPLIT_RAIL_CLOSED);
+  return railState.open ? SPLIT_RAIL_OPEN : SPLIT_CHIP;
 }
 
 window.baton = {
@@ -298,12 +298,12 @@ function saveRailState() {
 
 function paintRailChrome() {
   document.body.dataset.rail = railState.open ? 'open' : 'closed';
-  const toggle = $('railToggle');
-  if (!toggle) return;
-  toggle.setAttribute('aria-expanded', String(railState.open));
-  toggle.title = railState.open ? 'Hide project list' : 'Show project list';
-  fillIcon(toggle, 'chevron');
-  toggle.classList.toggle('open', railState.open);
+  document.body.style.setProperty('--rail-w', (railState.open ? SPLIT_RAIL_OPEN : SPLIT_CHIP) + 'px');
+  const expand = $('chipExpand');
+  if (!expand || document.body.dataset.density !== 'inspector') return;
+  expand.setAttribute('aria-expanded', String(railState.open));
+  expand.title = railState.open ? 'Show project icons only' : 'Show project names';
+  fillIcon(expand, railState.open ? 'minimize' : 'expand');
 }
 
 function sectionOpen(id) {
@@ -317,11 +317,36 @@ function toggleSection(id, event) {
   renderTabs();
 }
 
+function compactMark(item) {
+  const workflow = String(item?.workflow || '').trim();
+  if (workflow) {
+    const ch = workflow.charAt(0);
+    return { kind: 'workspace', letter: /[a-z]/i.test(ch) ? ch.toUpperCase() : 'W' };
+  }
+  const kinds = new Set();
+  for (const target of item?.targets || []) {
+    if (target?.kind) kinds.add(target.kind);
+  }
+  for (const session of item?.sessions || []) {
+    if (session?.kind) kinds.add(session.kind);
+  }
+  const ios = kinds.has('ios') || kinds.has('flutter');
+  const android = kinds.has('android');
+  const web = kinds.has('web-dev') || kinds.has('react-native');
+  if (android && !ios && !web) return { kind: 'android' };
+  if (web && !ios && !android) return { kind: 'web' };
+  if (ios && !android && !web) return { kind: 'ios' };
+  if (android && !web) return { kind: 'android' };
+  if (web) return { kind: 'web' };
+  if (ios) return { kind: 'ios' };
+  return { kind: 'folder' };
+}
+
 function workspaceApi() {
   return window.BatonWorkspace || {
     isLive: (s) => s.status === 'running' || s.status === 'starting',
     liveIds: (list) => list.filter((s) => s.status === 'running' || s.status === 'starting').map((s) => s.id),
-    projectTitle: basename,
+    compactMark,
     packSessions: fallbackPacks,
     sessionsForRoot: (list, root) => list.filter((s) => s.root === root),
   };
@@ -380,6 +405,7 @@ function renderTabs() {
         id: 'wf:' + name,
         title: name,
         subtitle: members.length + ' run' + (members.length === 1 ? '' : 's'),
+        mark: api.compactMark({ workflow: name, sessions: members }),
         on: selectedRoot === null,
         count: api.liveIds(members).length,
         sessions: members,
@@ -396,6 +422,7 @@ function renderTabs() {
   if (projects.length > 1) {
     tabs.appendChild(railRow({
       title: 'All',
+      mark: { kind: 'grid' },
       on: selectedRoot === null,
       count: countFor(null),
       onSelect: () => select(null),
@@ -408,6 +435,7 @@ function renderTabs() {
       id: 'p:' + project.root,
       title: project.name,
       subtitle: project.root + (project.error ? '\n' + project.error : ''),
+      mark: api.compactMark({ targets: project.targets, sessions: members }),
       on: selectedRoot === project.root,
       count: countFor(project.root),
       sessions: members,
@@ -422,6 +450,7 @@ function renderTabs() {
 
   const add = railRow({
     title: 'Add project',
+    mark: { kind: 'plus' },
     on: false,
     count: 0,
     onSelect: () => {
@@ -436,13 +465,29 @@ function renderTabs() {
   tabs.appendChild(add);
 }
 
-function railRow({ title, on, count, onSelect }) {
+function railMark(mark, live) {
+  const el = document.createElement('span');
+  const kind = mark?.kind || 'folder';
+  el.className = 'rail-mark kind-' + kind;
+  if (kind === 'workspace') el.textContent = mark.letter || 'W';
+  else el.appendChild(iconEl(kind === 'grid' ? 'grid' : kind === 'plus' ? 'plus' : kind));
+  if (live) {
+    const dot = document.createElement('span');
+    dot.className = 'live';
+    el.appendChild(dot);
+  }
+  return el;
+}
+
+function railRow({ title, on, count, onSelect, mark }) {
   const el = document.createElement('div');
   el.className = 'rail-item' + (on ? ' on' : '');
   el.onclick = onSelect;
-  const twist = document.createElement('span');
-  twist.style.width = '22px';
-  el.appendChild(twist);
+  const spacer = document.createElement('span');
+  spacer.className = 'rail-twist';
+  spacer.setAttribute('aria-hidden', 'true');
+  el.appendChild(spacer);
+  el.appendChild(railMark(mark || { kind: 'folder' }, count > 0));
   const text = document.createElement('span');
   text.className = 'name';
   text.textContent = title;
@@ -459,7 +504,7 @@ function railRow({ title, on, count, onSelect }) {
   return el;
 }
 
-function railGroup({ id, title, subtitle, on, count, sessions, warn, onSelect, onStop, onRemove }) {
+function railGroup({ id, title, subtitle, on, count, sessions, warn, onSelect, onStop, onRemove, mark }) {
   const wrap = document.createElement('div');
   const open = sectionOpen(id);
   const head = document.createElement('div');
@@ -476,6 +521,7 @@ function railGroup({ id, title, subtitle, on, count, sessions, warn, onSelect, o
   twist.appendChild(iconEl('chevron'));
   twist.onclick = (event) => toggleSection(id, event);
   head.appendChild(twist);
+  head.appendChild(railMark(mark || { kind: 'folder' }, count > 0));
 
   const text = document.createElement('span');
   text.className = 'name';
@@ -1232,10 +1278,13 @@ function densitySize(name) {
 function paintDensity(name) {
   document.body.dataset.density = name;
   const expand = $('chipExpand');
-  if (expand) {
-    expand.title = name === 'inspector' ? 'Minimize to chip' : 'Expand inspector';
-    fillIcon(expand, name === 'inspector' ? 'minimize' : 'expand');
+  if (!expand) return;
+  if (name === 'inspector') {
+    paintRailChrome();
+    return;
   }
+  expand.title = 'Expand inspector';
+  fillIcon(expand, 'expand');
 }
 
 function setDensity(name, persist) {
@@ -1343,29 +1392,32 @@ function wireChip() {
   if (!chip || !face || !expand) return;
   fillIcon(expand, 'expand');
 
-  const toggle = () => {
+  const togglePanel = () => {
     const open = document.body.dataset.density === 'inspector';
     setDensity(open ? 'chip' : 'inspector', true);
   };
-  expand.onclick = (e) => { e.stopPropagation(); toggle(); };
-  face.onclick = toggle;
+  const toggleRail = () => {
+    if (document.body.dataset.density !== 'inspector') {
+      setDensity('inspector', true);
+      return;
+    }
+    railState.open = !railState.open;
+    saveRailState();
+    paintRailChrome();
+    hook('density', 'inspector');
+  };
+  expand.onclick = (e) => { e.stopPropagation(); toggleRail(); };
+  face.onclick = () => {
+    if (document.body.dataset.density === 'inspector') toggleRail();
+    else togglePanel();
+  };
   face.onkeydown = (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
-    toggle();
+    face.onclick();
   };
 
   $('peekSession').onchange = () => setActiveSession($('peekSession').value);
-
-  const railToggle = $('railToggle');
-  if (railToggle) {
-    railToggle.onclick = () => {
-      railState.open = !railState.open;
-      saveRailState();
-      paintRailChrome();
-      hook('density', document.body.dataset.density);
-    };
-  }
   paintRailChrome();
 }
 

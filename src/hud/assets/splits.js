@@ -48,7 +48,7 @@ export function serializeSplits(splits) {
  * @param {boolean} railOpen
  */
 export function inspectorChrome(railOpen) {
-  return CHIP_COL + (railOpen ? RAIL_OPEN : RAIL_CLOSED);
+  return railOpen ? RAIL_OPEN : CHIP_COL;
 }
 
 /**

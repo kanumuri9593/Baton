@@ -5,3 +5,8 @@ export type PackKind = 'workflow' | 'project';
 export type SessionPack<T = object> = { kind: PackKind; id: string; title: string; sessions: T[] };
 export function packSessions<T extends { workflow?: string; root?: string }>(sessions: T[]): SessionPack<T>[];
 export function sessionsForRoot<T extends { root?: string }>(sessions: T[], root: string): T[];
+export function compactMark(item: {
+  workflow?: string;
+  targets?: { kind?: string }[];
+  sessions?: { kind?: string; workflow?: string }[];
+}): { kind: 'ios' | 'android' | 'web' | 'workspace' | 'folder'; letter?: string };

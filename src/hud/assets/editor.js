@@ -808,13 +808,10 @@
     openProject,
 
     chip(project, element) {
-      const gear = iconEl('inspect');
-      gear.classList.add('x');
-      gear.title = 'Edit ' + project.name + '’s launch.json';
-      gear.onclick = (e) => {
+      const gear = iconButton('inspect', 'Edit ' + project.name + '’s launch.json', true, (e) => {
         e.stopPropagation();
         openEditor(project.root);
-      };
+      });
       element.appendChild(gear);
     },
   });
