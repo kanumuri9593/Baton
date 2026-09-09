@@ -1,6 +1,6 @@
 {
   "name": "baton-run",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Baton: MCP server, CLI, and floating HUD so coding agents can run, hot-reload, boot simulators, and screenshot Flutter, Next.js, Vite, and React Native apps.",
   "author": "kanumuri9593",
   "type": "module",
