@@ -4,9 +4,9 @@ Baton connects a person choosing an environment to an agent collecting evidence 
 
 ## First launch, without terminal expertise
 
-Open the HUD with `baton hud`. Use **+** to select your app folder. Choose a named environment, a checkout, and a device. **Run** starts it. **Start new** in the device menu boots a simulator first.
+Open the control panel with `baton app`. Use **+** to select your app folder. Choose a named environment, a checkout, and a device. **Run** starts it. **Start new** in the device menu boots a simulator first.
 
-The guidance card shows the selected folder, source file, entrypoint, build mode and missing configuration files. Launch files refresh every three seconds while the HUD is visible, when the window regains focus, and through **Refresh**. An external rename or deletion replaces an invalid selection with an available target. Running sessions keep their original configuration until relaunched.
+The guidance card shows the selected folder, source file, entrypoint, build mode and missing configuration files. Launch files refresh every three seconds while the control panel is visible, when the window regains focus, and through **Refresh**. An external rename or deletion replaces an invalid selection with an available target. Running sessions keep their original configuration until relaunched.
 
 In **All**, the selected target determines which project's branches and devices appear. Branch/worktree targets are re-read from the chosen checkout when launched. The current picker still shows the source folder's targets; a branch-only target can be launched by name through the CLI. Branch comparison is a sequence of independent runs, not a side-by-side visual diff.
 
@@ -19,7 +19,7 @@ cd examples/flutter-lab
 flutter create --project-name baton_lab --platforms=ios,android,web .
 flutter pub get
 baton doctor
-baton hud
+baton app
 ```
 
 Choose **Local lab**, then a simulator. The screen must say **Local lab**. Tap **Complete delivery** and verify that the status changes to **Delivery complete**. A hot reload should retain that state. Relaunch with **Test lab** and check that the environment label changes to **Test**.

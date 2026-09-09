@@ -68,7 +68,7 @@ test('run --branch does not move HEAD and forget deletes the owned copy', async 
   assert.equal(snapshot.checkout?.kind, 'owned');
   assert.equal(snapshot.checkout?.ref, 'feat/x');
   assert.notEqual(snapshot.checkout?.cwd, repo);
-  assert.equal(readFileSync(join(snapshot.checkout.cwd, 'README.md'), 'utf8'), 'feat\n');
+  assert.equal(readFileSync(join(snapshot.checkout.cwd, 'README.md'), 'utf8').trim(), 'feat');
   const copy = snapshot.checkout.cwd;
 
   await waitStopped(snapshot.id);

@@ -1,8 +1,6 @@
 # Baton for coding agents
 
-Baton is an MCP server, CLI, and floating HUD. Install it once on the machine that runs the apps. Any MCP-compatible client can then list targets, run them, hot-reload, read logs, boot simulators, and capture screenshots.
-
-**Compatible MCP clients:** Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Zed, Claude Desktop, and any other tool that implements the [Model Context Protocol](https://modelcontextprotocol.io/).
+Baton is an MCP server, CLI, and local control panel. Install it once on the machine that runs the apps. Then any MCP-compatible client can list targets, run them, hot-reload, read logs, boot simulators, and capture screenshots.
 
 Requires **Node.js 24+**. The daemon listens on loopback only.
 
@@ -18,19 +16,13 @@ After v0.2.1 is published to npm:
 npm install -g baton-run
 ```
 
-The commands are `baton`, `baton-daemon`, and `baton-mcp`. The HUD is `baton hud` (native panel on macOS, browser window elsewhere). There is no separate App Store binary.
+The commands are `baton`, `baton-daemon`, and `baton-mcp`. Open the app with `baton app` (native panel on macOS, browser window elsewhere). `baton hud` remains a compatibility alias. There is no separate App Store binary.
 
 ## MCP (preferred)
 
 Point the client at `baton-mcp`. The first tool call starts the daemon if needed.
 
-**Claude Code**
-
-```bash
-claude mcp add baton -- baton-mcp
-```
-
-**Cursor / Windsurf / Claude Desktop / Codex / Gemini CLI** — add to the client's MCP config:
+Add `baton-mcp` to any client's MCP server configuration:
 
 ```json
 {

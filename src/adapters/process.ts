@@ -22,6 +22,24 @@ export type ProcessSessionOptions = {
 
 const DEFAULT_CAPABILITIES: readonly Capability[] = ['restartProcess', 'stop'];
 
+function commandForSpawn(command: string): { command: string; shell: boolean } {
+  if (process.platform !== 'win32') return { command, shell: false };
+
+  // Node itself is a native executable. Using cmd.exe here corrupts complex
+  // arguments such as `node -e <script>` and makes quoting input-dependent.
+  if (/^node(?:\.exe)?$/i.test(command)) {
+    return { command: process.execPath, shell: false };
+  }
+
+  // Package-manager launchers installed by Node are Windows command shims.
+  // Only those shims need cmd.exe; native executables should be spawned
+  // directly so arguments remain an exact array.
+  if (/^(?:npm|npx|pnpm|yarn)$/i.test(command)) {
+    return { command: `${command}.cmd`, shell: true };
+  }
+  return { command, shell: /\.(?:cmd|bat)$/i.test(command) };
+}
+
 /**
  * A supervised child process with no framework-specific control channel.
  *
@@ -72,12 +90,12 @@ export class ProcessSession extends BaseSession {
       ready: () => this.grantCapability('network'),
       row: (row) => this.emit('network', { ...row, sessionId: this.id }),
     }) : undefined;
-    const child = spawnFn(this.options.command, this.options.args, {
+    const executable = commandForSpawn(this.options.command);
+    const child = spawnFn(executable.command, this.options.args, {
       cwd: this.options.cwd,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
-      // On Windows, dev servers are usually .cmd shims that need a shell.
-      shell: process.platform === 'win32',
+      shell: executable.shell,
     });
     this.child = child;
     this.pid = child.pid;

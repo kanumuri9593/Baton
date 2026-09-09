@@ -82,9 +82,9 @@ test('creating an owned copy leaves the source HEAD and copies secrets not build
   const checkout = store.resolve(repo, { branch: 'feat/x' });
   assert.equal(checkout.kind, 'owned');
   assert.equal(git(repo, ['rev-parse', '--abbrev-ref', 'HEAD']), 'main');
-  assert.equal(readFileSync(join(checkout.cwd, 'README.md'), 'utf8'), 'feat\n');
-  assert.equal(readFileSync(join(checkout.cwd, 'secrets.local.json'), 'utf8'), 'KEEP-ME\n');
-  assert.equal(readFileSync(join(checkout.cwd, '.env'), 'utf8'), 'TOKEN=local\n');
+  assert.equal(readFileSync(join(checkout.cwd, 'README.md'), 'utf8').trim(), 'feat');
+  assert.equal(readFileSync(join(checkout.cwd, 'secrets.local.json'), 'utf8').trim(), 'KEEP-ME');
+  assert.equal(readFileSync(join(checkout.cwd, '.env'), 'utf8').trim(), 'TOKEN=local');
   assert.equal(existsSync(join(checkout.cwd, 'build', 'cache.bin')), false);
   assert.notEqual(checkout.cwd, repo);
 });
@@ -102,7 +102,7 @@ test('a branch already checked out in the source still gets a detached owned cop
   const checkout = store.resolve(repo, { branch: 'main' });
   assert.equal(checkout.kind, 'owned');
   assert.notEqual(checkout.cwd, repo);
-  assert.equal(readFileSync(join(checkout.cwd, 'README.md'), 'utf8'), 'main\n');
+  assert.equal(readFileSync(join(checkout.cwd, 'README.md'), 'utf8').trim(), 'main');
   assert.equal(git(repo, ['rev-parse', '--abbrev-ref', 'HEAD']), 'main');
 });
 
@@ -116,8 +116,8 @@ test('picking an existing worktree path attaches and forget does not delete it',
   assert.equal(checkout.kind, 'attached');
   assert.equal(checkout.cwd, wt);
   // Missing .env is filled from the source; the agent's secret is not overwritten.
-  assert.equal(readFileSync(join(wt, '.env'), 'utf8'), 'TOKEN=local\n');
-  assert.equal(readFileSync(join(wt, 'secrets.local.json'), 'utf8'), 'AGENT\n');
+  assert.equal(readFileSync(join(wt, '.env'), 'utf8').trim(), 'TOKEN=local');
+  assert.equal(readFileSync(join(wt, 'secrets.local.json'), 'utf8').trim(), 'AGENT');
 
   assert.equal(store.release(checkout, false), false);
   assert.equal(existsSync(wt), true);

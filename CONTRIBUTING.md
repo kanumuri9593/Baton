@@ -10,7 +10,11 @@ npm test
 npm run typecheck
 ```
 
-Node 24+ is required — TypeScript runs natively, so there is no build step. Only *erasable* TypeScript syntax is allowed: no `enum`, no `namespace`, no constructor parameter properties. `npm run typecheck` enforces this.
+Node 24+ is required. Development tests run the TypeScript sources directly,
+while the npm package ships compiled JavaScript from `dist/`. Run `npm run build`
+before testing package behavior. Only *erasable* TypeScript syntax is allowed in
+source: no `enum`, no `namespace`, and no constructor parameter properties.
+`npm run typecheck` enforces this.
 
 ## Adding a framework adapter
 

@@ -22,14 +22,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build
-
-      - run: npm run typecheck
-
-      # TODO: Restore `npm test` as a publish gate once cross-platform test
-      # failures on Ubuntu/Windows are fixed. Currently gating on typecheck
-      # and pack verification only to unblock the first publish.
-      # See: https://github.com/kanumuri9593/Baton/actions/workflows/ci.yml
+      - run: npm run release:check
       - name: Verify package builds correctly
         run: npm pack --dry-run
 

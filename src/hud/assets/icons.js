@@ -43,5 +43,9 @@
     close: wrap('<path d="M4 4l8 8M12 4l-8 8"/>'),
     up: wrap('<path d="M8 12.4V4M4.6 7.4 8 4l3.4 3.4"/>'),
     folder: wrap('<path d="M2.5 4.2h4.2l1.2 1.6H13.5v7.6H2.5Z"/>'),
+    settings: wrap(
+      '<circle cx="8" cy="8" r="2.2"/>' +
+      '<path d="M8 2.2v1.2M8 12.6v1.2M2.2 8h1.2M12.6 8h1.2M3.9 3.9l.9.9M11.2 11.2l.9.9M12.1 3.9l-.9.9M4.8 11.2l-.9.9"/>',
+    ),
   };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

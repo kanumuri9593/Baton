@@ -217,8 +217,9 @@ test('projects lists every remembered project with what it can run', async () =>
 });
 
 test('adding a directory that is not a project is refused, with the path', async () => {
+  const emptyDir = mkdtempSync(join(tmpdir(), 'baton-not-project-'));
   await assert.rejects(
-    () => daemon.handle({ method: 'addProject', params: { path: '/usr/share/dict' } }),
+    () => daemon.handle({ method: 'addProject', params: { path: emptyDir } }),
     /does not look like a project/,
   );
   await assert.rejects(

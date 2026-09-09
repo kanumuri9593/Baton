@@ -29,3 +29,13 @@ test('the baton shim prints usage', () => {
   });
   assert.match(out, /baton —/);
 });
+
+test('the published build contains every control-panel asset', () => {
+  const source = join(root, 'src', 'hud', 'assets');
+  const built = join(root, 'dist', 'hud', 'assets');
+  for (const name of ['index.html', 'hud.css', 'icons.js', 'core.js', 'settings.js',
+    'filters.js', 'diagnostics.js', 'network.js', 'editor.js', 'inspector.js']) {
+    assert.equal(existsSync(join(source, name)), true, `source asset ${name} is missing`);
+    assert.equal(existsSync(join(built, name)), true, `published asset ${name} is missing`);
+  }
+});

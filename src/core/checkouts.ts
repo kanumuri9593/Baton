@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import {
   copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync,
-  rmSync, symlinkSync, writeFileSync,
+  rmSync, statSync, symlinkSync, writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -75,7 +75,7 @@ type Worktree = { path: string; branch?: string };
 function parseWorktreeList(text: string): Worktree[] {
   const trees: Worktree[] = [];
   let current: Worktree | undefined;
-  for (const line of text.split('\n')) {
+  for (const line of text.split(/\r?\n/)) {
     if (line.startsWith('worktree ')) {
       current = { path: line.slice('worktree '.length) };
       trees.push(current);
@@ -91,10 +91,18 @@ function parseWorktreeList(text: string): Worktree[] {
 }
 
 function samePath(a: string, b: string): boolean {
+  const comparable = (path: string) => process.platform === 'win32' ? path.toLowerCase() : path;
   try {
-    return realpathSync(a) === realpathSync(b);
+    const left = statSync(a, { bigint: true });
+    const right = statSync(b, { bigint: true });
+    if (left.dev === right.dev && left.ino === right.ino) return true;
   } catch {
-    return resolve(a) === resolve(b);
+    // Fall through to lexical path normalization for paths not on disk.
+  }
+  try {
+    return comparable(realpathSync(a)) === comparable(realpathSync(b));
+  } catch {
+    return comparable(resolve(a)) === comparable(resolve(b));
   }
 }
 
@@ -291,11 +299,14 @@ export class CheckoutStore {
     if (samePath(path, sourceRoot)) {
       return { kind: 'inplace', sourceRoot, cwd: sourceRoot, label: 'This checkout' };
     }
-    if (!this.#isRepo(path) || this.#commonDir(path) !== this.#commonDir(sourceRoot)) {
+    const tree = this.#worktrees(sourceRoot).find((candidate) => samePath(candidate.path, path));
+    // Git's own worktree inventory is the authority here. Comparing
+    // --git-common-dir strings is unreliable on Windows, where the same path
+    // can be reported using short (8.3), long, or differently cased forms.
+    if (!this.#isRepo(path) || !tree) {
       throw new Error(`${path} is not a worktree of ${sourceRoot}`);
     }
     copyLocalConfig(sourceRoot, path, false);
-    const tree = this.#worktrees(sourceRoot).find((t) => samePath(t.path, path));
     return {
       kind: 'attached',
       sourceRoot,
@@ -354,16 +365,6 @@ export class CheckoutStore {
     }
   }
 
-  #commonDir(cwd: string): string {
-    const raw = this.#git(['rev-parse', '--git-common-dir'], cwd);
-    const resolved = resolve(cwd, raw);
-    try {
-      return realpathSync(resolved);
-    } catch {
-      return resolved;
-    }
-  }
-
   #worktrees(sourceRoot: string): Worktree[] {
     try {
       return parseWorktreeList(this.#git(['worktree', 'list', '--porcelain'], sourceRoot));
@@ -375,7 +376,7 @@ export class CheckoutStore {
   #refs(sourceRoot: string, kind: 'heads' | 'remotes'): string[] {
     try {
       const text = this.#git(['for-each-ref', '--format=%(refname:short)', `refs/${kind}`], sourceRoot);
-      return text ? text.split('\n').filter(Boolean) : [];
+      return text ? text.split(/\r?\n/).filter(Boolean) : [];
     } catch {
       return [];
     }
