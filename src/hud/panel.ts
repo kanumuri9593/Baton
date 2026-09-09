@@ -40,8 +40,8 @@ function infoPlist(includeIcon: boolean): string {
   <key>CFBundleIdentifier</key><string>dev.baton.hud</string>
   <key>CFBundleExecutable</key><string>BatonHUD</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.2.4</string>
-  <key>CFBundleVersion</key><string>9</string>
+  <key>CFBundleShortVersionString</key><string>0.2.5</string>
+  <key>CFBundleVersion</key><string>10</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
 ${icon}  <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
   <key>NSAppTransportSecurity</key>
@@ -69,8 +69,9 @@ function ensureAppIcon(): void {
   if (!stale) return;
   try {
     execFileSync(process.execPath, [script], { stdio: 'inherit' });
-  } catch {
-    // No Chromium, or iconutil failed. CFBundleIconFile is omitted in that case.
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`baton: could not render app icons: ${message}`);
   }
 }
 

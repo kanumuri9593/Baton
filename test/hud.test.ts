@@ -246,6 +246,8 @@ test('reopening the macOS app starts the daemon and never shows a blank panel', 
     'HUD dock relaunch must spawn compiled index.js from a global install');
   assert.match(builder, /existsSync\(script\)/,
     'first launch must skip a missing render-icons.mjs instead of throwing');
+  assert.match(builder, /could not render app icons/,
+    'icon rasteriser failures must be printed instead of swallowed silently');
 });
 
 test('the generated HUD app is a regular Mac app with a Dock icon', () => {

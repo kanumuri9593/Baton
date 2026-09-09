@@ -65,6 +65,12 @@ function parseArgs(argv) {
  * full size then downsampled, which is what keeps a 16px icon legible.
  */
 function renderPng(chromium, source, mime, size, outPath, work) {
+  if (typeof mime !== 'string') {
+    throw new TypeError(`mime must be a string. Received ${typeof mime}`);
+  }
+  if (typeof outPath !== 'string' || typeof work !== 'string') {
+    throw new TypeError('outPath and work must be strings');
+  }
   const page = join(work, 'render.html');
   const encoded = Buffer.from(source).toString('base64');
 
@@ -176,7 +182,7 @@ try {
     // 18px @1x and 36px @2x for Retina displays
     for (const size of [18, 36]) {
       const out = join(ROOT, 'assets', `baton-menubar-${size}.png`);
-      renderPng(chromium, menubarSource, size, out, work);
+      renderPng(chromium, menubarSource, 'image/svg+xml', size, out, work);
       console.log(`  ${size.toString().padStart(4)}px  ${out}  (menu bar)`);
     }
   }

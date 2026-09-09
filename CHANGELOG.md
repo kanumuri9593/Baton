@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5 — 2026-09-09
+
+- HUD icon rasteriser passes a MIME type when drawing menu-bar template PNGs, so
+  first launch no longer throws `TypeError: path argument ... undefined` and
+  then swallows it. Menu-bar 18px/@2x files and `baton.icns` complete together.
+
 ## 0.2.4 — 2026-09-09
 
 - Global git installs compile with the package's TypeScript dependency, so
