@@ -292,11 +292,14 @@ export class CheckoutStore {
     if (samePath(path, sourceRoot)) {
       return { kind: 'inplace', sourceRoot, cwd: sourceRoot, label: 'This checkout' };
     }
-    if (!this.#isRepo(path) || !samePath(this.#commonDir(path), this.#commonDir(sourceRoot))) {
+    const tree = this.#worktrees(sourceRoot).find((candidate) => samePath(candidate.path, path));
+    // Git's own worktree inventory is the authority here. Comparing
+    // --git-common-dir strings is unreliable on Windows, where the same path
+    // can be reported using short (8.3), long, or differently cased forms.
+    if (!this.#isRepo(path) || !tree) {
       throw new Error(`${path} is not a worktree of ${sourceRoot}`);
     }
     copyLocalConfig(sourceRoot, path, false);
-    const tree = this.#worktrees(sourceRoot).find((t) => samePath(t.path, path));
     return {
       kind: 'attached',
       sourceRoot,
@@ -352,16 +355,6 @@ export class CheckoutStore {
       return true;
     } catch {
       return false;
-    }
-  }
-
-  #commonDir(cwd: string): string {
-    const raw = this.#git(['rev-parse', '--git-common-dir'], cwd);
-    const resolved = resolve(cwd, raw);
-    try {
-      return realpathSync(resolved);
-    } catch {
-      return resolved;
     }
   }
 
