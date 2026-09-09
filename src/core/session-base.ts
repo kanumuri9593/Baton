@@ -31,6 +31,8 @@ export abstract class BaseSession extends EventEmitter implements Session {
   root?: string;
   /** Set by the registry when a run is not This checkout. */
   checkout?: SessionCheckout;
+  /** Set when this session was started as a workflow step. */
+  workflow?: string;
 
   #logs: LogLine[] = [];
   #capabilities: Set<Capability>;
@@ -112,6 +114,7 @@ export abstract class BaseSession extends EventEmitter implements Session {
       ...(this.checkout && this.checkout.kind !== 'inplace'
         ? { checkout: this.checkout }
         : {}),
+      ...(this.workflow ? { workflow: this.workflow } : {}),
     };
   }
 }

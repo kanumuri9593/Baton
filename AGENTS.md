@@ -10,8 +10,6 @@ Requires **Node.js 24+**. The daemon listens on loopback only.
 npm install -g github:kanumuri9593/Baton
 ```
 
-After v0.2.1 is published to npm:
-
 ```bash
 npm install -g baton-run
 ```

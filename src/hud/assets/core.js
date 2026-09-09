@@ -125,12 +125,15 @@ function connect() {
  *
  * The network inspector and the launch.json editor are separate scripts so each
  * owns its file rather than growing this one. They hook in here: `row` decorates
- * a session row as it is built, `chip` decorates a project tab, `event` sees
- * every pushed message, and `openProject` (if any addon offers one) takes over
- * the "+" tab with something better than a bare path box.
+ * a session row as it is built, `chip` decorates a project row in the side
+ * rail, `event` sees every pushed message, and `openProject` (if any addon
+ * offers one) takes over the "+" row with something better than a bare path box.
  */
 const SPLIT_KEY = 'baton.hud.splits';
+const RAIL_KEY = 'baton.rail.v1';
 const SPLIT_CHIP = 52;
+const SPLIT_RAIL_OPEN = 228;
+const SPLIT_RAIL_CLOSED = 40;
 const SPLIT_GUTTER = 8;
 const SPLIT_MIN_MAIN = 240;
 const SPLIT_MIN_INSPECTOR = 280;
@@ -159,8 +162,8 @@ function saveSplits(splits) {
   catch { /* private mode */ }
 }
 
-function clampInspectorWidth(viewport, stored) {
-  const leftover = viewport - SPLIT_CHIP - SPLIT_GUTTER;
+function clampInspectorWidth(viewport, stored, chrome) {
+  const leftover = viewport - (chrome ?? SPLIT_CHIP) - SPLIT_GUTTER;
   if (leftover <= 0) return 0;
   const floor = Math.min(SPLIT_MIN_INSPECTOR, leftover);
   const ceiling = Math.max(floor, leftover - SPLIT_MIN_MAIN);
@@ -212,10 +215,15 @@ function wireGutter(el, onDelta, onEnd) {
 }
 
 const addons = [];
+function inspectorChrome() {
+  return SPLIT_CHIP + (railState.open ? SPLIT_RAIL_OPEN : SPLIT_RAIL_CLOSED);
+}
+
 window.baton = {
   call, toast, esc, humanSize, iconEl, iconButton,
   extend(addon) { addons.push(addon); render(); },
   loadSplits, saveSplits, clampInspectorWidth, clampDetailWidth, wireGutter,
+  inspectorChrome,
 
   // --- project-level state, for addons that work on projects rather than
   // sessions. Read-only accessors rather than the arrays themselves, so an
@@ -266,66 +274,272 @@ async function loadProjects() {
   } catch (err) { toast(err.message, true); }
 }
 
+const RAIL_DEFAULT = { open: true, collapsed: {} };
+
+function loadRailState() {
+  try {
+    const data = JSON.parse(localStorage.getItem(RAIL_KEY) || '');
+    if (!data || typeof data !== 'object') return { open: true, collapsed: {} };
+    return {
+      open: data.open !== false,
+      collapsed: data.collapsed && typeof data.collapsed === 'object' ? data.collapsed : {},
+    };
+  } catch {
+    return { open: true, collapsed: {} };
+  }
+}
+
+let railState = loadRailState();
+
+function saveRailState() {
+  try { localStorage.setItem(RAIL_KEY, JSON.stringify(railState)); }
+  catch { /* private mode */ }
+}
+
+function paintRailChrome() {
+  document.body.dataset.rail = railState.open ? 'open' : 'closed';
+  const toggle = $('railToggle');
+  if (!toggle) return;
+  toggle.setAttribute('aria-expanded', String(railState.open));
+  toggle.title = railState.open ? 'Hide project list' : 'Show project list';
+  fillIcon(toggle, 'chevron');
+  toggle.classList.toggle('open', railState.open);
+}
+
+function sectionOpen(id) {
+  return railState.collapsed[id] !== true;
+}
+
+function toggleSection(id, event) {
+  if (event) event.stopPropagation();
+  railState.collapsed[id] = sectionOpen(id);
+  saveRailState();
+  renderTabs();
+}
+
+function workspaceApi() {
+  return window.BatonWorkspace || {
+    isLive: (s) => s.status === 'running' || s.status === 'starting',
+    liveIds: (list) => list.filter((s) => s.status === 'running' || s.status === 'starting').map((s) => s.id),
+    projectTitle: basename,
+    packSessions: fallbackPacks,
+    sessionsForRoot: (list, root) => list.filter((s) => s.root === root),
+  };
+}
+
+function fallbackPacks(list) {
+  const groups = new Map();
+  for (const s of list) {
+    const key = s.workflow || s.root || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+  return [...groups.entries()].map(([id, group]) => ({
+    kind: group[0]?.workflow ? 'workflow' : 'project',
+    id, title: group[0]?.workflow || basename(id), sessions: group,
+  }));
+}
+
+function allSessions() {
+  return [...sessions.values()];
+}
+
+async function removeProject(root) {
+  try {
+    await call('removeProject', { root });
+    if (selectedRoot === root) {
+      selectedRoot = null;
+      rememberSelectedRoot(null);
+    }
+    loadProjects();
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+function stopSessions(list) {
+  const ids = workspaceApi().liveIds(list);
+  if (!ids.length) return toast('nothing running here');
+  return act('stop', { ids });
+}
+
 function renderTabs() {
+  paintRailChrome();
   tabs.innerHTML = '';
+  const api = workspaceApi();
+  const known = allSessions();
+  const workflows = [...new Set(known.map((s) => s.workflow).filter(Boolean))];
+
+  if (workflows.length) {
+    tabs.appendChild(Object.assign(document.createElement('div'), {
+      className: 'rail-section', textContent: 'Workspaces',
+    }));
+    for (const name of workflows) {
+      const members = known.filter((s) => s.workflow === name);
+      tabs.appendChild(railGroup({
+        id: 'wf:' + name,
+        title: name,
+        subtitle: members.length + ' run' + (members.length === 1 ? '' : 's'),
+        on: selectedRoot === null,
+        count: api.liveIds(members).length,
+        sessions: members,
+        onSelect: () => select(null),
+        onStop: () => stopSessions(members),
+      }));
+    }
+  }
+
+  tabs.appendChild(Object.assign(document.createElement('div'), {
+    className: 'rail-section', textContent: 'Projects',
+  }));
 
   if (projects.length > 1) {
-    tabs.appendChild(chip('All', selectedRoot === null, countFor(null), () => select(null)));
+    tabs.appendChild(railRow({
+      title: 'All',
+      on: selectedRoot === null,
+      count: countFor(null),
+      onSelect: () => select(null),
+    }));
   }
-  for (const project of projects) {
-    const on = selectedRoot === project.root;
-    const el = chip(project.name, on, countFor(project.root), () => select(project.root));
-    el.title = project.root + (project.error ? '\n⚠ ' + project.error : '');
-    if (project.error) el.style.borderColor = 'var(--warn)';
 
-    // Removing is only offered for the project you are looking at, so a
-    // mis-click on a crowded strip cannot quietly drop a different one.
-    if (on && projects.length > 1) {
-      const x = document.createElement('span');
-      x.className = 'x';
-      x.textContent = '×';
-        x.title = 'Remove ' + project.name + ' from this list. Baton-owned branch copies are deleted; agent worktrees stay.';
-      x.onclick = async (e) => {
-        e.stopPropagation();
-        await call('removeProject', { root: project.root }).catch(() => {});
-        selectedRoot = null;
-        rememberSelectedRoot(null);
-        loadProjects();
-      };
-      el.appendChild(x);
-    }
-    hook('chip', project, el);
+  for (const project of projects) {
+    const members = api.sessionsForRoot(known, project.root);
+    const el = railGroup({
+      id: 'p:' + project.root,
+      title: project.name,
+      subtitle: project.root + (project.error ? '\n' + project.error : ''),
+      on: selectedRoot === project.root,
+      count: countFor(project.root),
+      sessions: members,
+      warn: Boolean(project.error),
+      onSelect: () => select(project.root),
+      onStop: () => stopSessions(members),
+      onRemove: () => removeProject(project.root),
+    });
+    hook('chip', project, el.querySelector('.rail-tools'));
     tabs.appendChild(el);
   }
 
-  const add = chip('+', false, 0, () => {
-    // A browser cannot open a native folder picker, so editor.js offers one
-    // built out of the daemon's own directory listing. The inline path box
-    // stays as the fallback for when that script is not loaded.
-    const opener = addons.find((a) => a.openProject);
-    if (opener) return opener.openProject();
-    const row = $('addRow');
-    row.hidden = !row.hidden;
-    if (!row.hidden) $('addPath').focus();
+  const add = railRow({
+    title: 'Add project',
+    on: false,
+    count: 0,
+    onSelect: () => {
+      const opener = addons.find((a) => a.openProject);
+      if (opener) return opener.openProject();
+      const row = $('addRow');
+      row.hidden = !row.hidden;
+      if (!row.hidden) $('addPath').focus();
+    },
   });
   add.title = 'Open another project';
   tabs.appendChild(add);
 }
 
-function chip(label, on, count, onClick) {
+function railRow({ title, on, count, onSelect }) {
   const el = document.createElement('div');
-  el.className = 'chip' + (on ? ' on' : '');
-  el.onclick = onClick;
+  el.className = 'rail-item' + (on ? ' on' : '');
+  el.onclick = onSelect;
+  const twist = document.createElement('span');
+  twist.style.width = '22px';
+  el.appendChild(twist);
   const text = document.createElement('span');
-  text.textContent = label;
+  text.className = 'name';
+  text.textContent = title;
   el.appendChild(text);
+  const tools = document.createElement('div');
+  tools.className = 'rail-tools';
   if (count > 0) {
     const badge = document.createElement('span');
-    badge.className = 'badge';
+    badge.className = 'rail-badge';
     badge.textContent = String(count);
-    el.appendChild(badge);
+    tools.appendChild(badge);
   }
+  el.appendChild(tools);
   return el;
+}
+
+function railGroup({ id, title, subtitle, on, count, sessions, warn, onSelect, onStop, onRemove }) {
+  const wrap = document.createElement('div');
+  const open = sectionOpen(id);
+  const head = document.createElement('div');
+  head.className = 'rail-item' + (on ? ' on' : '') + (open ? ' open' : '');
+  head.title = subtitle || title;
+  if (warn) head.style.borderColor = 'var(--warn)';
+  head.onclick = onSelect;
+
+  const twist = document.createElement('button');
+  twist.type = 'button';
+  twist.className = 'rail-twist' + (open ? ' open' : '');
+  twist.title = open ? 'Collapse' : 'Expand';
+  twist.setAttribute('aria-expanded', String(open));
+  twist.appendChild(iconEl('chevron'));
+  twist.onclick = (event) => toggleSection(id, event);
+  head.appendChild(twist);
+
+  const text = document.createElement('span');
+  text.className = 'name';
+  text.textContent = title;
+  head.appendChild(text);
+
+  const tools = document.createElement('div');
+  tools.className = 'rail-tools';
+  if (count > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'rail-badge';
+    badge.textContent = String(count);
+    tools.appendChild(badge);
+  }
+  if (onStop) {
+    tools.appendChild(iconButton('stop', 'Stop every live run in ' + title, count > 0,
+      (event) => { event.stopPropagation(); onStop(); }, 'danger'));
+  }
+  if (onRemove) {
+    tools.appendChild(iconButton('close',
+      'Remove ' + title + ' from this list. Baton-owned branch copies are deleted; agent worktrees stay.',
+      true,
+      (event) => { event.stopPropagation(); onRemove(); }, 'danger'));
+  }
+  head.appendChild(tools);
+  wrap.appendChild(head);
+
+  if (open && sessions && sessions.length) {
+    const kids = document.createElement('div');
+    kids.className = 'rail-children';
+    for (const s of sessions) kids.appendChild(railSession(s));
+    wrap.appendChild(kids);
+  }
+  return wrap;
+}
+
+function railSession(s) {
+  const row = document.createElement('div');
+  row.className = 'rail-session';
+  row.onclick = () => setActiveSession(s.id);
+  const dot = document.createElement('span');
+  dot.className = 'dot ' + s.status;
+  row.appendChild(dot);
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = s.name;
+  name.title = s.workflow ? s.workflow + ' · ' + s.name : s.name;
+  row.appendChild(name);
+  const live = s.status === 'running' || s.status === 'starting';
+  if (live) {
+    row.appendChild(iconButton('stop', 'Stop ' + s.name, true,
+      (event) => { event.stopPropagation(); act('stop', { session: s.id }); }, 'danger'));
+  } else {
+    row.appendChild(iconButton('close', 'Dismiss ' + s.name, true,
+      async (event) => {
+        event.stopPropagation();
+        try {
+          await call('forget', { session: s.id });
+          sessions.delete(s.id);
+          render();
+        } catch (err) { toast(err.message, true); }
+      }, 'danger'));
+  }
+  return row;
 }
 
 const countFor = (root) =>
@@ -799,27 +1013,45 @@ function render() {
   }
 
   list.innerHTML = '';
-  // Group by project only when more than one is in view; a single project
-  // would just get a redundant heading.
-  const groups = new Map();
-  for (const s of all) {
-    const key = s.root ?? '';
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(s);
-  }
-  const labelled = selectedRoot === null && groups.size > 1;
   const hog = heaviestId(all);
-  for (const [root, group] of groups) {
-    if (labelled) {
-      const title = document.createElement('div');
-      title.className = 'group-title';
-      title.textContent = basename(root) || 'unknown project';
-      title.title = root;
-      list.appendChild(title);
-    }
-    for (const s of group) list.appendChild(renderRow(s, hog));
+  const packs = workspaceApi().packSessions(all);
+  const labelled = packs.length > 1;
+  for (const pack of packs) {
+    if (labelled) list.appendChild(renderPack(pack, hog));
+    else for (const s of pack.sessions) list.appendChild(renderRow(s, hog));
   }
   paintPeek();
+}
+
+function renderPack(pack, hog) {
+  const box = document.createElement('div');
+  box.className = 'pack';
+  const head = document.createElement('div');
+  head.className = 'pack-head';
+  const kind = document.createElement('span');
+  kind.className = 'pack-kind' + (pack.kind === 'workflow' ? ' workflow' : '');
+  kind.textContent = pack.kind === 'workflow' ? 'workspace' : 'project';
+  const title = document.createElement('span');
+  title.className = 'name';
+  title.textContent = pack.title;
+  title.title = pack.id;
+  head.appendChild(kind);
+  head.appendChild(title);
+  const spacer = document.createElement('span');
+  spacer.className = 'spacer';
+  head.appendChild(spacer);
+  const live = workspaceApi().liveIds(pack.sessions).length;
+  if (live) {
+    const badge = document.createElement('span');
+    badge.className = 'rail-badge';
+    badge.textContent = String(live);
+    head.appendChild(badge);
+  }
+  head.appendChild(iconButton('stop', 'Stop every live run in ' + pack.title, live > 0,
+    () => stopSessions(pack.sessions), 'danger'));
+  box.appendChild(head);
+  for (const s of pack.sessions) box.appendChild(renderRow(s, hog));
+  return box;
 }
 
 function heaviestId(list) {
@@ -849,6 +1081,13 @@ function renderRow(s, hog) {
     '<span class="dot ' + s.status + '"></span>' +
     '<span class="name" title="' + esc(s.name) + '">' + esc(s.name) + '</span>' +
     '<span class="tag">' + esc(s.kind) + '</span><span class="spacer"></span>';
+  if (s.workflow) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = s.workflow;
+    tag.title = 'Started as a step of this workspace';
+    top.insertBefore(tag, top.querySelector('.spacer'));
+  }
   top.querySelector('.name').onclick = () => setActiveSession(s.id);
   if (s.id === activeSessionId) row.classList.add('active');
 
@@ -1117,6 +1356,17 @@ function wireChip() {
   };
 
   $('peekSession').onchange = () => setActiveSession($('peekSession').value);
+
+  const railToggle = $('railToggle');
+  if (railToggle) {
+    railToggle.onclick = () => {
+      railState.open = !railState.open;
+      saveRailState();
+      paintRailChrome();
+      hook('density', document.body.dataset.density);
+    };
+  }
+  paintRailChrome();
 }
 
 function restoreDensity() {

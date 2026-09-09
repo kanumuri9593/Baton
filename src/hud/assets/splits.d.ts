@@ -1,5 +1,7 @@
 export const SPLIT_KEY: string;
 export const CHIP_COL: number;
+export const RAIL_OPEN: number;
+export const RAIL_CLOSED: number;
 export const GUTTER: number;
 export const MIN_MAIN: number;
 export const MIN_INSPECTOR: number;
@@ -8,7 +10,8 @@ export const DEFAULT_INSPECTOR_RATIO: number;
 export type Splits = { inspector: number | null; detail: number | null };
 export function parseSplits(raw: unknown): Splits;
 export function serializeSplits(splits: Splits): string;
-export function clampInspectorWidth(viewport: number, stored: number | null): number;
+export function inspectorChrome(railOpen: boolean): number;
+export function clampInspectorWidth(viewport: number, stored: number | null, chrome?: number): number;
 export function clampDetailWidth(inner: number, stored: number | null): number;
 export function loadSplits(store?: { getItem(key: string): string | null }): Splits;
 export function saveSplits(splits: Splits, store?: { setItem(key: string, value: string): void }): void;

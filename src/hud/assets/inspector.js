@@ -7,11 +7,14 @@
  * in filters.js so the tests and this page cannot drift apart.
  */
 import { matchLog, matchNetwork } from '/assets/filters.js';
+import * as workspace from '/assets/workspace.js';
+
+window.BatonWorkspace = workspace;
 
 (function () {
   const {
     call, toast, esc, humanSize, iconButton, extend, hydrateLogs, logBuffer, setDensity,
-    loadSplits, saveSplits, clampInspectorWidth, clampDetailWidth, wireGutter,
+    loadSplits, saveSplits, clampInspectorWidth, clampDetailWidth, wireGutter, inspectorChrome,
   } = window.baton;
 
   const insp = document.getElementById('inspector');
@@ -235,7 +238,8 @@ import { matchLog, matchNetwork } from '/assets/filters.js';
 
   function applyOuter() {
     if (document.body.dataset.density !== 'inspector') return;
-    const width = clampInspectorWidth(document.body.clientWidth, splits.inspector);
+    const chrome = inspectorChrome ? inspectorChrome() : 52;
+    const width = clampInspectorWidth(document.body.clientWidth, splits.inspector, chrome);
     document.body.style.setProperty('--insp-w', width + 'px');
   }
 
@@ -417,9 +421,10 @@ import { matchLog, matchNetwork } from '/assets/filters.js';
   if (outer) {
     wireGutter(outer, (delta) => {
       document.body.classList.add('splitting');
+      const chrome = inspectorChrome ? inspectorChrome() : 52;
       const current = parsePx(document.body.style.getPropertyValue('--insp-w'))
-        || clampInspectorWidth(document.body.clientWidth, splits.inspector);
-      splits.inspector = clampInspectorWidth(document.body.clientWidth, current + delta);
+        || clampInspectorWidth(document.body.clientWidth, splits.inspector, chrome);
+      splits.inspector = clampInspectorWidth(document.body.clientWidth, current + delta, chrome);
       applyOuter();
     }, persistSplits);
   }

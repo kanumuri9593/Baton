@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 — 2026-09-09
 
+- Moved project switching into a collapsible side rail. Each project expands to
+  its runs, and each run can be stopped or dismissed on its own.
+- Workflow launches show as a workspace group so several projects started
+  together stay visible as one unit, with per-step stop.
 - Added a persistent Settings surface with system/light/dark themes, reduced
   motion, startup view, last-project restoration, and Stop-all confirmation.
 - Added native macOS preferences for keeping the expanded control panel on top

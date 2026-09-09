@@ -42,8 +42,8 @@
     <section class="hero wrap">
       <div class="hero-grid">
         <div>
-          <div class="kicker stage-copy"><i></i> Runtime instrument · v0.2.1 preview</div>
-          <h1 class="stage-copy">Pass the <em>runtime</em>.</h1>
+          <div class="kicker stage-copy"><i></i> Runtime instrument · v0.2.2 preview</div>
+          <h1 class="stage-copy">Pass the<span class="headline-gap" aria-hidden="true"></span><em>runtime</em>.</h1>
           <p class="lede stage-copy">Baton is a loopback control plane for people and coding agents. Run the app, hot-reload it, boot the simulator, and keep the proof — without an IDE holding the mouse.</p>
           <div class="actions stage-cta">
             <a class="btn btn-primary" href="install.html">Install instructions</a>
@@ -78,11 +78,31 @@
           <p>Baton launches and reports evidence. It does not tap the UI or judge a screenshot. Capture success means an image was written — you or the agent still have to look.</p>
         </div>
         <div class="loop" data-reveal>
-          <div class="loop-step"><span class="idx">01</span><code>inspect_project</code><span>targets, devices, blockers</span></div>
-          <div class="loop-step"><span class="idx">02</span><code>run_target</code> / <code>run_workflow</code><span>start from a copy if you asked</span></div>
-          <div class="loop-step"><span class="idx">03</span><code>wait_for</code><span>ready, not a sleep</span></div>
-          <div class="loop-step"><span class="idx">04</span><code>screenshot</code> / <code>read_logs</code><span>structured evidence</span></div>
-          <div class="loop-step"><span class="idx">05</span><code>hot_reload</code><span>87ms on a 3,692-library Flutter app</span></div>
+          <div class="loop-step">
+            <span class="idx">01</span>
+            <div class="loop-cmd"><code>inspect_project</code></div>
+            <span class="loop-note">targets, devices, blockers</span>
+          </div>
+          <div class="loop-step">
+            <span class="idx">02</span>
+            <div class="loop-cmd"><code>run_target</code> / <code>run_workflow</code></div>
+            <span class="loop-note">start from a copy if you asked</span>
+          </div>
+          <div class="loop-step">
+            <span class="idx">03</span>
+            <div class="loop-cmd"><code>wait_for</code></div>
+            <span class="loop-note">ready, not a sleep</span>
+          </div>
+          <div class="loop-step">
+            <span class="idx">04</span>
+            <div class="loop-cmd"><code>screenshot</code> / <code>read_logs</code></div>
+            <span class="loop-note">structured evidence</span>
+          </div>
+          <div class="loop-step">
+            <span class="idx">05</span>
+            <div class="loop-cmd"><code>hot_reload</code></div>
+            <span class="loop-note">87ms on a 3,692-library Flutter app</span>
+          </div>
         </div>
         <p class="footnote">Failed reloads return the compiler error, not “DevFS synchronization failed.” MCP cannot yet boot simulators — use <code>baton boot "iPhone 17 Pro"</code> or a device that is already running.</p>
       </div>
@@ -97,11 +117,35 @@
           </div>
           <p>A Vite session does not claim Flutter’s stateful hot reload. The control panel greys the button; agents get a refusal instead of a silent no-op.</p>
         </div>
-        <div class="panel" style="padding: 8px 24px 18px" data-reveal>
-          <div class="cap-row"><div><div class="cap-name">Flutter / Dart</div><div class="cap-note">Daemon protocol, DevTools, debug flags, screenshots</div></div><span class="pill">stateful reload</span></div>
-          <div class="cap-row"><div><div class="cap-name">Next.js, Vite, Nuxt, Astro, Remix, Angular, CRA</div><div class="cap-note">HMR on save; Baton restarts the server when you ask</div></div><span class="pill warn">HMR + restart</span></div>
-          <div class="cap-row"><div><div class="cap-name">React Native / Expo</div><div class="cap-note">Fast Refresh; reload broadcast to Metro clients</div></div><span class="pill warn">Fast Refresh</span></div>
-          <div class="cap-row"><div><div class="cap-name">Anything in launch.json or package.json</div><div class="cap-note">Kill and respawn, logs, session identity</div></div><span class="pill warn">process</span></div>
+        <div class="panel cap-list" data-reveal>
+          <div class="cap-row">
+            <div>
+              <div class="cap-name">Flutter / Dart</div>
+              <div class="cap-note">Daemon protocol, DevTools, debug flags, screenshots</div>
+            </div>
+            <span class="pill">stateful reload</span>
+          </div>
+          <div class="cap-row">
+            <div>
+              <div class="cap-name">Next.js, Vite, Nuxt, Astro, Remix, Angular, CRA</div>
+              <div class="cap-note">HMR on save; Baton restarts the server when you ask</div>
+            </div>
+            <span class="pill warn">HMR + restart</span>
+          </div>
+          <div class="cap-row">
+            <div>
+              <div class="cap-name">React Native / Expo</div>
+              <div class="cap-note">Fast Refresh; reload broadcast to Metro clients</div>
+            </div>
+            <span class="pill warn">Fast Refresh</span>
+          </div>
+          <div class="cap-row">
+            <div>
+              <div class="cap-name">Anything in launch.json or package.json</div>
+              <div class="cap-note">Kill and respawn, logs, session identity</div>
+            </div>
+            <span class="pill warn">process</span>
+          </div>
         </div>
       </div>
     </section>
@@ -189,7 +233,7 @@ baton app</pre>
 }</pre>
           </div>
         </div>
-        <p class="footnote"><code>npm install -g baton-run</code> after 0.2.1 is on npm. Pin with <code>github:kanumuri9593/Baton#v0.2.1</code>. <a href="install.html">Full install, MCP, CLI, app, and troubleshooting →</a></p>
+        <p class="footnote"><code>npm install -g baton-run</code>. Pin with <code>github:kanumuri9593/Baton#v0.2.2</code>. <a href="install.html">Full install, MCP, CLI, app, and troubleshooting →</a></p>
       </div>
     </section>
 

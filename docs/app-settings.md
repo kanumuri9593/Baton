@@ -15,9 +15,7 @@ Open the control panel with `baton app`, then choose **Settings** or press
 | Restore last project | On | macOS app and browser control panel |
 | Confirm Stop all | On | Browser/app toolbar; the native menu always confirms |
 
-Theme, motion, layout, and project preferences are stored locally by the
-control panel. Native window and login preferences are stored in macOS
-`UserDefaults`. Baton does not sync preferences or send them to a service.
+The control panel lists projects in a collapsible side rail. Restore last project returns you to that rail selection. Theme, motion, layout, and project preferences are stored locally by the control panel. Native window and login preferences are stored in macOS UserDefaults. Baton does not sync preferences or send them to a service.
 
 ## Keyboard controls
 

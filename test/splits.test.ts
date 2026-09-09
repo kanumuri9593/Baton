@@ -50,6 +50,15 @@ test('clampInspectorWidth will not starve the sessions column', () => {
   assert.equal(width, leftover - MIN_MAIN);
 });
 
+test('clampInspectorWidth accounts for an open project rail', () => {
+  const viewport = 1400;
+  const chrome = CHIP_COL + 228;
+  const leftover = viewport - chrome - GUTTER;
+  const width = clampInspectorWidth(viewport, 400, chrome);
+  assert.equal(width, 400);
+  assert.ok(leftover - width >= MIN_MAIN);
+});
+
 test('clampDetailWidth is 50/50 by default and respects the list floor', () => {
   const inner = 600;
   assert.equal(clampDetailWidth(inner, null), Math.round((inner - GUTTER) / 2));

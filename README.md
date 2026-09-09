@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://github.com/kanumuri9593/Baton/blob/master/LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0ea5e9"></a>
-  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.1"><img alt="Version 0.2.1" src="https://img.shields.io/badge/version-0.2.1-111827"></a>
+  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.2"><img alt="Version 0.2.2" src="https://img.shields.io/badge/version-0.2.2-111827"></a>
   <a href="https://nodejs.org/"><img alt="Node 24+" src="https://img.shields.io/badge/node-24%2B-339933"></a>
   <a href="https://modelcontextprotocol.io/"><img alt="MCP server" src="https://img.shields.io/badge/MCP-baton--mcp-7c3aed"></a>
   <a href="https://github.com/kanumuri9593/Baton/issues/new?labels=feedback&title=Feedback"><img alt="Ask for feedback" src="https://img.shields.io/badge/feedback-welcome-f59e0b"></a>
@@ -26,7 +26,7 @@ npm install -g github:kanumuri9593/Baton
 baton app
 ```
 
-**Baton 0.2.1** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
+**Baton 0.2.2** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
 
 If the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — this replaces that, and adds the half an IDE can't give you: your agent can press the same buttons. Pick a **branch** (or an agent's worktree) and Baton runs it from a copy, so VS Code never has to stash or switch.
 
@@ -49,7 +49,7 @@ baton app                                   # floating launcher + full control p
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
 | **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
 | **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
-| **npm** (after v0.2.1 is published) | `npm install -g baton-run` |
+| **npm** | `npm install -g baton-run` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
 | **Baton app** | After install: `baton app` — native floating launcher + control panel on macOS; app-style browser window on Linux/Windows. `baton hud` remains an alias. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
@@ -59,7 +59,7 @@ Requires **Node.js 24+**. macOS, Linux, and Windows.
 Pin a release:
 
 ```bash
-npm install -g github:kanumuri9593/Baton#v0.2.1
+npm install -g github:kanumuri9593/Baton#v0.2.2
 ```
 
 ### The Baton app
@@ -77,7 +77,7 @@ First launch may take a few seconds while the panel compiles.
 
 ```bash
 npm uninstall -g baton-run
-npm install -g github:kanumuri9593/Baton   # or wait for baton-run@0.2.1+ on npm
+npm install -g baton-run
 ```
 
 ---
@@ -226,7 +226,7 @@ baton add ~/code/api
 baton projects
 ```
 
-The control panel then shows a tab per project with a live count, plus **All** — every session from every project in one list, grouped and labelled. Reload-all while looking at one project reloads only that project. Session ids are project-scoped (`storefront/npm-dev`, `api/npm-dev`), so two projects can both have an `npm dev` without colliding.
+The control panel then shows a side rail per project with a live count, plus **All** — every session from every project in one list, grouped by workspace when several were launched together. Each project and each session has its own stop and remove controls. Reload-all while looking at one project reloads only that project. Session ids are project-scoped (`storefront/npm-dev`, `api/npm-dev`), so two projects can both have an `npm dev` without colliding.
 
 ### A branch without switching git
 
@@ -259,7 +259,7 @@ Configs often reference gitignored files — per-developer secrets, local overri
 baton app
 ```
 
-One compact row per session: status, ⟳ ⟲ ■, logs, and links to the app URL and DevTools. Above it, a tab per project and a picker for target and device. `r` hot-reloads everything in view, `R` hot-restarts.
+One compact row per session: status, reload / restart / stop, logs, and links to the app URL and DevTools. Projects sit in a collapsible side rail instead of a top tab strip. `r` hot-reloads everything in view, `R` hot-restarts.
 
 On **macOS** this opens a native floating launcher and a menu-bar item:
 
@@ -314,7 +314,7 @@ See the [coverage and setup guide](docs/launch-guide.md#local-backend-tracing-us
 
 ## Status
 
-**0.2.1** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one control panel, one of them launched onto a simulator booted from Baton itself.
+**0.2.2** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one control panel, one of them launched onto a simulator booted from Baton itself.
 
 The Flutter adapter is the most complete. Web and React Native adapters cover run/restart/logs/URL detection; contributions extending them are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -253,7 +253,9 @@ export class LaunchDaemon {
       case 'diagnose': return diagnose(this.registry.list(), this.network.store, p);
       case 'workflowRun': {
         return runWorkflow({
-          run: (step) => this.handle({ method: 'run', params: step }) as Promise<SessionSnapshot>,
+          run: (step, workflowName) => this.handle({
+            method: 'run', params: { ...step, workflow: workflowName },
+          }) as Promise<SessionSnapshot>,
           wait: async (session, step) => {
             const started = Date.now();
             const ready = await this.handle({ method: 'wait', params: { session, until: 'running', timeoutMs: step.timeoutMs } }) as RpcMethods['wait']['result'];
@@ -529,6 +531,7 @@ export class LaunchDaemon {
           deviceId: params.deviceId,
           projectRoot: root,
           checkout,
+          workflow: params.workflow,
         });
         return session.snapshot() satisfies RpcMethods['run']['result'];
       }

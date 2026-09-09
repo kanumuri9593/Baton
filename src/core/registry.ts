@@ -16,6 +16,8 @@ export type RunOptions = {
   projectRoot?: string;
   /** When set and not inplace, the process runs from `checkout.cwd`. */
   checkout?: SessionCheckout;
+  /** Workflow name when this run is one step of a multi-project plan. */
+  workflow?: string;
 };
 
 /**
@@ -75,6 +77,7 @@ export class SessionRegistry extends EventEmitter {
     if (options.checkout && options.checkout.kind !== 'inplace') {
       session.checkout = options.checkout;
     }
+    if (options.workflow) session.workflow = options.workflow;
     session.start();
     this.emit('change', session.snapshot());
     return session;

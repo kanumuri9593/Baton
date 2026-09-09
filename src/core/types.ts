@@ -53,6 +53,11 @@ export type SessionSnapshot = {
    * the project the HUD grouped this under.
    */
   checkout?: SessionCheckout;
+  /**
+   * Workflow that launched this session, when it was started as one step of
+   * `run_workflow` / `baton workflow`. Omitted for ordinary single-target runs.
+   */
+  workflow?: string;
 };
 
 /** A session's git checkout: in-place, an attached worktree, or a Baton-owned copy. */
@@ -127,6 +132,8 @@ export interface Session {
   root?: string;
   /** Set by the registry when a run is not This checkout. */
   checkout?: SessionCheckout;
+  /** Set when this session was started as a workflow step. */
+  workflow?: string;
 
   start(): void;
   hotReload(reason?: string): Promise<OperationResult>;

@@ -8,6 +8,8 @@
 
 export const SPLIT_KEY = 'baton.hud.splits';
 export const CHIP_COL = 52;
+export const RAIL_OPEN = 228;
+export const RAIL_CLOSED = 40;
 export const GUTTER = 8;
 export const MIN_MAIN = 240;
 export const MIN_INSPECTOR = 280;
@@ -41,11 +43,21 @@ export function serializeSplits(splits) {
 /**
  * Inspector column width in CSS pixels for the expanded HUD.
  *
+ * Left chrome that is not the sessions column or the inspector.
+ *
+ * @param {boolean} railOpen
+ */
+export function inspectorChrome(railOpen) {
+  return CHIP_COL + (railOpen ? RAIL_OPEN : RAIL_CLOSED);
+}
+
+/**
  * @param {number} viewport
  * @param {number | null} stored
+ * @param {number} [chrome]
  */
-export function clampInspectorWidth(viewport, stored) {
-  const leftover = viewport - CHIP_COL - GUTTER;
+export function clampInspectorWidth(viewport, stored, chrome = CHIP_COL) {
+  const leftover = viewport - chrome - GUTTER;
   if (leftover <= 0) return 0;
   const floor = Math.min(MIN_INSPECTOR, leftover);
   const ceiling = Math.max(floor, leftover - MIN_MAIN);

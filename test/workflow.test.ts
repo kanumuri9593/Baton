@@ -7,11 +7,17 @@ const plan = {name:'Demo',steps:[{name:'API',cwd:resolve('api'),target:'api'},{n
 
 test('workflow launches in readiness order and returns only compact results', async () => {
   const order: string[] = [];
+  const names: string[] = [];
   const result = await runWorkflow({
-    run: async (s) => {order.push('run '+s.name); return {id:s.name, env:'BATON_SECRET_SHOULD_NOT_LEAK', logs:['long output']} as unknown as SessionSnapshot;},
+    run: async (s, workflowName) => {
+      order.push('run '+s.name);
+      names.push(workflowName);
+      return {id:s.name, env:'BATON_SECRET_SHOULD_NOT_LEAK', logs:['long output']} as unknown as SessionSnapshot;
+    },
     wait: async (id) => {order.push('wait '+id); return {url:'http://localhost:1234'};},
   }, plan);
   assert.deepEqual(order,['run API','wait API','run Web','wait Web']);
+  assert.deepEqual(names,['Demo','Demo']);
   assert.ok(result.ok);
   assert.ok(!JSON.stringify(result).includes('BATON_SECRET_SHOULD_NOT_LEAK'));
   assert.equal(result.steps[1].url,'http://localhost:1234');

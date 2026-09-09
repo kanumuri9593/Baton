@@ -101,3 +101,11 @@ test('the same target from two checkouts of one project both run', async () => {
   assert.equal(other.snapshot().checkout?.ref, 'origin/main');
   assert.equal(here.snapshot().checkout, undefined);
 });
+
+test('a workflow name rides on the snapshot so the HUD can pack those runs', async () => {
+  const project = tmpProject('api');
+  const session = await registry.run(namedTarget(project), {
+    projectRoot: project, workflow: 'Two servers',
+  });
+  assert.equal(session.snapshot().workflow, 'Two servers');
+});

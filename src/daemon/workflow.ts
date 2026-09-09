@@ -41,7 +41,7 @@ export function parseWorkflow(input: unknown, base?: string): Workflow {
 }
 
 export type WorkflowHost = {
-  run(step: Workflow['steps'][number]): Promise<SessionSnapshot>;
+  run(step: Workflow['steps'][number], workflowName: string): Promise<SessionSnapshot>;
   wait(id: string, step: Workflow['steps'][number]): Promise<{ url?: string }>;
 };
 
@@ -57,7 +57,7 @@ export async function runWorkflow(host: WorkflowHost, input: unknown): Promise<W
     const start = Date.now();
     let session: SessionSnapshot | undefined;
     try {
-      session = await host.run(step);
+      session = await host.run(step, workflow.name);
       const ready = await host.wait(session.id, step);
       result.steps.push({ name: step.name, root: step.cwd, session: session.id, status: 'ready', url: ready.url ?? session.url, elapsedMs: Date.now() - start });
     } catch (error) {

@@ -7,8 +7,9 @@
 <link rel="icon" href="%%FAVICON%%">
 <link rel="stylesheet" href="/assets/hud.css">
 <link rel="modulepreload" href="/assets/filters.js">
+<link rel="modulepreload" href="/assets/workspace.js">
 </head>
-<body data-density="chip">
+<body data-density="chip" data-rail="open">
 <aside id="chip" title="Baton — click to open or drag to move">
   <div class="chip-face" id="chipFace" role="button" tabindex="0" title="Open Baton" data-state="idle">
     <span class="chip-tile" id="chipTile" aria-hidden="true">%%CHIP_TILE%%</span>
@@ -23,6 +24,14 @@
   <button class="icon" id="chipExpand" title="Expand inspector"></button>
 </aside>
 
+<aside id="rail" aria-label="Projects and workspaces">
+  <div class="rail-bar">
+    <button class="icon" id="railToggle" type="button" aria-expanded="true" title="Hide project list"></button>
+    <span class="rail-label" id="railLabel">Projects</span>
+  </div>
+  <nav id="tabs"></nav>
+</aside>
+
 <div id="hudMain">
 <header>
   <div class="brand">%%MARK%%<div>Baton<small id="status">connecting…</small></div></div>
@@ -35,8 +44,6 @@
   <button class="icon" id="restartAll" title="Hot restart every running session (R)"></button>
   <button class="icon danger" id="stopAll" title="Stop every running session"></button>
 </header>
-
-<nav id="tabs"></nav>
 
 <div class="history" id="historyPanel" hidden>
   <div class="history-list" id="historyList"></div>

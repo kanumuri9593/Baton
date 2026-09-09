@@ -80,7 +80,13 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
     assert.ok(core.includes(hook), `core.js must still call the "${hook}" hook`);
   }
 
+  assert.match(core, /removeProject/);
+  assert.match(core, /railToggle/);
+  assert.match(core, /Stop every live run/);
+  assert.match(core, /packSessions/);
   const inspector = read('inspector.js');
+  assert.match(inspector, /BatonWorkspace/);
+  assert.match(inspector, /workspace\.js/);
   assert.ok(inspector.includes('extend('), 'inspector.js must register as an add-on');
   assert.match(inspector, /matchLog/, 'inspector.js must use the shared log filter');
   assert.match(inspector, /matchNetwork/, 'inspector.js must use the shared network filter');
@@ -101,12 +107,15 @@ test('session actions are named SVG icons, not unicode glyphs', () => {
   }
 });
 
-test('the page has a chip, a peek strip, and an inspector pane', () => {
+test('the page has a chip, a peek strip, a project rail, and an inspector pane', () => {
   const html = renderHud('tok123');
   assert.match(html, /id="chip"/);
   assert.match(html, /id="chipMark"/);
   assert.match(html, /id="chipTile"/);
   assert.match(html, /id="peek"/);
+  assert.match(html, /id="rail"/);
+  assert.match(html, /id="railToggle"/);
+  assert.match(html, /data-rail/);
   assert.match(html, /id="inspector"/);
   assert.match(html, /id="splitOuter"/);
   assert.match(html, /data-density/);

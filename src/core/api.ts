@@ -222,7 +222,7 @@ export type RpcMethods = {
     result: CheckoutListEntry[];
   };
   run: {
-    params: { cwd?: string; target: string; deviceId?: string; force?: boolean; branch?: string; checkout?: string };
+    params: { cwd?: string; target: string; deviceId?: string; force?: boolean; branch?: string; checkout?: string; workflow?: string };
     result: SessionSnapshot;
   };
   reload: {
