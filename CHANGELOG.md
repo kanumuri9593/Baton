@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-09-09
+
+First npm publish of `baton-run`.
+
+- **Fix:** Bin shims now import compiled JS from `dist/` instead of raw `.ts` from `src/`, fixing `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` when installed via npm on Node 24+
+- Build step added: `npm run build` compiles TypeScript to `dist/` before publish
+- Install via `npm install -g baton-run` now works correctly
+
 ## 0.2.0 — 2026-09-08
 
 Public developer preview.

@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-import '../src/daemon/main.ts';
+import '../dist/daemon/main.js';

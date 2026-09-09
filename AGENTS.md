@@ -7,13 +7,13 @@ Requires **Node.js 24+**. The daemon listens on loopback only.
 ## Install
 
 ```bash
-npm install -g github:kanumuri9593/Baton
+npm install -g baton-run
 ```
 
-When `baton-run` is published to npm:
+From GitHub (alternative):
 
 ```bash
-npm install -g baton-run
+npm install -g github:kanumuri9593/Baton
 ```
 
 The commands are `baton`, `baton-daemon`, and `baton-mcp`. The HUD is `baton hud` (native panel on macOS, browser window elsewhere). There is no separate App Store binary.
@@ -47,7 +47,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=github:kanumuri9593/Baton", "baton-mcp"]
+      "args": ["-y", "baton-run", "baton-mcp"]
     }
   }
 }

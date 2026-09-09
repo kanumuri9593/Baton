@@ -1,6 +1,6 @@
 {
   "name": "baton-run",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Baton: MCP server, CLI, and floating HUD so coding agents can run, hot-reload, boot simulators, and screenshot Flutter, Next.js, Vite, and React Native apps.",
   "author": "kanumuri9593",
   "type": "module",
@@ -13,6 +13,10 @@
     "baton-mcp": "bin/baton-mcp.js"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build",
     "test": "node --test --test-timeout=20000 \"test/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "daemon": "node src/daemon/main.ts",
@@ -74,7 +78,7 @@
   "homepage": "https://github.com/kanumuri9593/Baton#readme",
   "files": [
     "bin",
-    "src",
+    "dist",
     "hud",
     "assets",
     "README.md",
