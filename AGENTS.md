@@ -10,7 +10,7 @@ Requires **Node.js 24+**. The daemon listens on loopback only.
 npm install -g github:kanumuri9593/Baton
 ```
 
-When the package is on npm:
+When `baton-run` is published to npm:
 
 ```bash
 npm install -g baton-run
@@ -60,6 +60,8 @@ Without a global install:
 Typical loop: `inspect_project` → `run_target` or `run_workflow` → `wait_for` → exercise the app with browser/device tools → `screenshot` / `read_logs` / `diagnose` → edit → `hot_reload`.
 
 Baton launches and reports evidence. It does not tap the UI or judge screenshots. Treat capture success as “an image was written”, not visual correctness.
+
+**Current limitations:** MCP cannot boot simulators or emulators. Use CLI `baton boot "iPhone 17 Pro"` or target a device that is already running. `run_target` waits only briefly for a device to appear; if none is available, it fails. A `boot_device` MCP tool is planned.
 
 ## CLI fallback
 

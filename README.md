@@ -42,10 +42,10 @@ baton hud                                   # floating panel + menu-bar item
 
 | Way | Command |
 |---|---|
-| **GitHub (works today)** | `npm install -g github:kanumuri9593/Baton` |
-| **npm** (package name `baton-run`; the name `baton` is taken) | `npm install -g baton-run` |
+| **GitHub** | `npm install -g github:kanumuri9593/Baton` |
 | **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
 | **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
+| **npm** (after publish; package `baton-run`) | `npm install -g baton-run` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install` |
 | **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. No App Store download; the panel is compiled from this repo on first use. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
