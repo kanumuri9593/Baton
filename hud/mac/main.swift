@@ -312,73 +312,95 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         return image
     }
 
-    /// Same geometry and palette as `assets/baton.svg`: gradient tile, three
-    /// lanes cut by the sweep, then the baton on top.
+    /// Concept B: indigo→cyan gradient squircle with white baton and signal arcs.
     private static func drawDockTile(in rect: NSRect) {
         let size = rect.width
         let scale = size / 64
-        let radius = size * 15 / 64
+        let radius = size * 12 / 64  // Squircle corner radius
         NSColor.clear.setFill()
         rect.fill(using: .copy)
 
         NSGraphicsContext.current?.saveGraphicsState()
         let tile = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
         tile.addClip()
+        
+        // Indigo (#6366f1) → Cyan (#06b6d4) diagonal gradient
         NSGradient(colors: [
-            NSColor(calibratedRed: 123 / 255, green: 124 / 255, blue: 1, alpha: 1), // #7b7cff
-            NSColor(calibratedRed: 79 / 255, green: 125 / 255, blue: 1, alpha: 1),
-            NSColor(calibratedRed: 37 / 255, green: 198 / 255, blue: 189 / 255, alpha: 1),
+            NSColor(calibratedRed: 99 / 255, green: 102 / 255, blue: 241 / 255, alpha: 1),  // #6366f1
+            NSColor(calibratedRed: 6 / 255, green: 182 / 255, blue: 212 / 255, alpha: 1),   // #06b6d4
         ])?.draw(from: NSPoint(x: 0, y: size), to: NSPoint(x: size, y: 0), options: [])
 
         let point = { (x: CGFloat, y: CGFloat) in
             NSPoint(x: x * scale, y: (64 - y) * scale)
         }
 
-        if let ctx = NSGraphicsContext.current?.cgContext {
-            ctx.saveGState()
-            ctx.beginTransparencyLayer(auxiliaryInfo: nil)
-            NSColor.white.withAlphaComponent(0.62).setStroke()
-            let lanes = NSBezierPath()
-            lanes.lineWidth = 6 * scale
-            lanes.lineCapStyle = .round
-            lanes.move(to: point(13, 20)); lanes.line(to: point(44, 20))
-            lanes.move(to: point(13, 32)); lanes.line(to: point(52, 32))
-            lanes.move(to: point(31, 44)); lanes.line(to: point(49, 44))
-            lanes.stroke()
+        // Three signal arcs in upper-left quadrant (Wi-Fi/broadcast style)
+        NSColor.white.setStroke()
+        let arc1 = NSBezierPath()
+        arc1.lineWidth = 2.3 * scale
+        arc1.lineCapStyle = .round
+        arc1.move(to: point(24.5, 14.4))
+        arc1.curve(to: point(16.2, 31.5),
+                   controlPoint1: point(18, 18),
+                   controlPoint2: point(16.2, 24))
+        arc1.stroke()
 
-            ctx.setBlendMode(.destinationOut)
-            let sweep = NSBezierPath()
-            sweep.lineWidth = 13.5 * scale
-            sweep.lineCapStyle = .round
-            sweep.move(to: point(14.5, 50.5))
-            sweep.line(to: point(54, 10))
-            NSColor.black.setStroke()
-            sweep.stroke()
-            ctx.endTransparencyLayer()
-            ctx.restoreGState()
-        }
+        let arc2 = NSBezierPath()
+        arc2.lineWidth = 2.3 * scale
+        arc2.lineCapStyle = .round
+        arc2.move(to: point(29, 9.4))
+        arc2.curve(to: point(14.4, 36.2),
+                   controlPoint1: point(19, 13),
+                   controlPoint2: point(14.4, 24))
+        arc2.stroke()
 
+        let arc3 = NSBezierPath()
+        arc3.lineWidth = 2.3 * scale
+        arc3.lineCapStyle = .round
+        arc3.move(to: point(33.5, 5))
+        arc3.curve(to: point(13, 41.5),
+                   controlPoint1: point(20, 8),
+                   controlPoint2: point(13, 23))
+        arc3.stroke()
+
+        // White baton: lower-left pommel to upper-right tip
+        NSColor.white.setStroke()
         NSColor.white.setFill()
-        HUDController.fillBaton(size: size)
+        let shaft = NSBezierPath()
+        shaft.lineWidth = 2.8 * scale
+        shaft.lineCapStyle = .round
+        shaft.move(to: point(19, 49))
+        shaft.line(to: point(48, 17.5))
+        shaft.stroke()
+
+        // Round pommel
+        let pommel = point(17, 51)
+        let pommelRadius = 5.3 * scale
+        NSBezierPath(ovalIn: NSRect(x: pommel.x - pommelRadius, y: pommel.y - pommelRadius,
+                                    width: pommelRadius * 2, height: pommelRadius * 2)).fill()
+
         NSGraphicsContext.current?.restoreGraphicsState()
     }
 
+    /// Draw the Concept B baton: diagonal from lower-left pommel to upper-right tip.
     private static func fillBaton(size: CGFloat) {
         let scale = size / 64
         let point = { (x: CGFloat, y: CGFloat) in
             NSPoint(x: x * scale, y: (64 - y) * scale)
         }
 
+        // Baton shaft: lower-left to upper-right diagonal
         let shaft = NSBezierPath()
-        shaft.move(to: point(16.86, 52.8))
-        shaft.line(to: point(54, 10))
-        shaft.line(to: point(12.14, 48.2))
-        shaft.close()
-        shaft.fill()
+        shaft.lineWidth = 3.5 * scale
+        shaft.lineCapStyle = .round
+        shaft.move(to: point(14, 52))
+        shaft.line(to: point(52, 14))
+        shaft.stroke()
 
-        let grip = point(14.5, 50.5)
-        let radius = 4.6 * scale
-        NSBezierPath(ovalIn: NSRect(x: grip.x - radius, y: grip.y - radius,
+        // Round pommel at lower-left
+        let pommel = point(12, 54)
+        let radius = 5.5 * scale
+        NSBezierPath(ovalIn: NSRect(x: pommel.x - radius, y: pommel.y - radius,
                                     width: radius * 2, height: radius * 2)).fill()
     }
 
@@ -711,12 +733,14 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         <meta name="color-scheme" content="dark">
         <style>
         *{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;
-        background:#15171c;color:#f4f5f7;font:13px -apple-system;text-align:center;padding:22px}
-        .mark{font-size:20px;color:#7b7cff;margin-bottom:10px}h1{font-size:15px;margin:0 0 7px}
-        p{color:#9299a8;line-height:1.4;margin:0;max-width:235px}.spinner{width:16px;height:16px;
-        border:2px solid #363a45;border-top-color:#7b7cff;border-radius:50%;margin:15px auto 0;
+        background:#0c0d12;color:#f0f2f7;font:13px -apple-system;text-align:center;padding:22px}
+        .mark{font-size:20px;background:linear-gradient(135deg,#6366f1,#06b6d4);-webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;margin-bottom:10px}h1{font-size:15px;margin:0 0 7px}
+        p{color:#8892a8;line-height:1.4;margin:0;max-width:235px}.spinner{width:16px;height:16px;
+        border:2px solid #282d3a;border-top-color:#6366f1;border-radius:50%;margin:15px auto 0;
         animation:s .8s linear infinite}button{margin-top:15px;border:0;border-radius:7px;padding:7px 13px;
-        color:white;background:#6668e8;font:600 12px -apple-system}@keyframes s{to{transform:rotate(360deg)}}
+        color:white;background:linear-gradient(135deg,#6366f1,#06b6d4);font:600 12px -apple-system}
+        @keyframes s{to{transform:rotate(360deg)}}
         </style><div><div class="mark">●</div><h1>\(htmlEscaped(title))</h1>
         <p>\(htmlEscaped(detail))</p>\(action)</div>
         """, baseURL: nil)
