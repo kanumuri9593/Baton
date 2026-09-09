@@ -168,6 +168,18 @@ try {
     buildIcns(options.out, icns, render);
     console.log(`  icns    ${icns}`);
   }
+
+  // Render the menu bar template icon (Design Concept B, monochrome)
+  const menubarSvg = join(ROOT, 'assets', 'baton-menubar.svg');
+  if (existsSync(menubarSvg)) {
+    const menubarSource = readFileSync(menubarSvg, 'utf8');
+    // 18px @1x and 36px @2x for Retina displays
+    for (const size of [18, 36]) {
+      const out = join(ROOT, 'assets', `baton-menubar-${size}.png`);
+      renderPng(chromium, menubarSource, size, out, work);
+      console.log(`  ${size.toString().padStart(4)}px  ${out}  (menu bar)`);
+    }
+  }
 } finally {
   rmSync(work, { recursive: true, force: true });
 }

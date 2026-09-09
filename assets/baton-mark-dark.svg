@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Baton mark">
+  <title>Baton</title>
+  <g fill="none" stroke="#0b0f1a" stroke-linecap="round">
+    <path d="M26.717 27.243 A9.500 9.500 0 0 1 37.373 17.980" stroke-width="2.4"/>
+    <path d="M22.069 28.647 A14.200 14.200 0 0 1 39.410 13.573" stroke-width="2.4"/>
+    <path d="M17.662 31.015 A18.900 18.900 0 0 1 42.368 9.539" stroke-width="2.4"/>
+    <line x1="15.461" y1="45.451" x2="48.743" y2="16.518" stroke-width="2.85"/>
+  </g>
+  <circle cx="49.800" cy="15.600" r="4.0" fill="#0b0f1a"/>
+</svg>

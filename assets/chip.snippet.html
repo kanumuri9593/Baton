@@ -1,0 +1,22 @@
+<!-- Baton Chip Component (Adaptive) -->
+<aside id="chip" class="baton-chip baton-chip--icon" data-appearance="system" title="Baton — click to open or drag to move">
+  <div class="chip-face" id="chipFace" role="button" tabindex="0" title="Open Baton">
+    <span class="baton-chip__mark" id="chipMark">
+      <!-- SVG mark inserted here (uses currentColor) -->
+    </span>
+    <span class="baton-chip__count" id="chipCount"></span>
+  </div>
+</aside>
+
+<!--
+  Status classes for .baton-chip__mark:
+    .running  → green (--ok)
+    .starting → yellow (--warn)
+    .failed   → red (--err)
+    .idle     → gray (--idle)
+  
+  Status classes for .baton-chip__count:
+    .running  → green background
+    .starting → yellow background
+    .failed   → red background
+-->

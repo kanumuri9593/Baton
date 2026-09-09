@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="Baton">
+  <title>Baton</title>
+  <!-- Adaptive glyph: currentColor for light/dark theming -->
+  <g fill="none" stroke="currentColor" stroke-linecap="round">
+    <path d="M6.679 6.811 A2.375 2.375 0 0 1 9.343 4.494" stroke-width="1.2"/>
+    <path d="M5.517 7.162 A3.550 3.550 0 0 1 9.853 3.393" stroke-width="1.2"/>
+    <path d="M4.416 7.754 A4.725 4.725 0 0 1 10.592 2.385" stroke-width="1.2"/>
+    <line x1="3.865" y1="11.363" x2="12.186" y2="4.129" stroke-width="1.42"/>
+  </g>
+  <circle cx="12.450" cy="3.900" r="1.0" fill="currentColor"/>
+</svg>
