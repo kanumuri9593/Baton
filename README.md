@@ -18,7 +18,7 @@
 </p>
 
 ```bash
-npm install -g github:kanumuri9593/Baton
+npm install -g baton-run
 baton hud
 ```
 
@@ -42,20 +42,20 @@ baton hud                                   # floating panel + menu-bar item
 
 | Way | Command |
 |---|---|
-| **GitHub (works today)** | `npm install -g github:kanumuri9593/Baton` |
 | **npm** (package name `baton-run`; the name `baton` is taken) | `npm install -g baton-run` |
-| **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
-| **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
+| **One-shot CLI** | `npx baton list` |
+| **One-shot MCP** | `npx baton-mcp` |
+| **GitHub** | `npm install -g github:kanumuri9593/Baton` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install` |
 | **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. No App Store download; the panel is compiled from this repo on first use. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
 
 Requires **Node.js 24+**. TypeScript runs natively — there is no build step. macOS, Linux, and Windows.
 
-Pin a release:
+Pin a version:
 
 ```bash
-npm install -g github:kanumuri9593/Baton#v0.2.0
+npm install -g baton-run@0.2.0
 ```
 
 ---
@@ -89,7 +89,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=github:kanumuri9593/Baton", "baton-mcp"]
+      "args": ["-y", "baton-mcp"]
     }
   }
 }
