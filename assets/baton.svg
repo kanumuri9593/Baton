@@ -1,21 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Baton">
   <title>Baton</title>
   <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7b7cff"/>
-      <stop offset=".5" stop-color="#4f7dff"/>
-      <stop offset="1" stop-color="#25c6bd"/>
+    <linearGradient id="tile-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
     </linearGradient>
-    <!-- The lanes run behind the baton, so they are cut where it sweeps across. -->
-    <mask id="sweep">
+    <linearGradient id="baton-shaft" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+      <feOffset dx="0" dy="1"/>
+      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"/>
+      <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.15 0"/>
+      <feBlend in2="SourceGraphic"/>
+    </filter>
+    <mask id="lane-mask">
       <rect width="64" height="64" fill="#fff"/>
-      <path d="M14.5 50.5 L54 10" stroke="#000" stroke-width="13.5" stroke-linecap="round"/>
+      <path d="M15 51 L52 11" stroke="#000" stroke-width="10" stroke-linecap="round"/>
     </mask>
   </defs>
-  <rect width="64" height="64" rx="15" fill="url(#tile)"/>
-  <g mask="url(#sweep)" stroke="#fff" stroke-opacity=".62" stroke-width="6" stroke-linecap="round">
-    <path d="M13 20 H44"/><path d="M13 32 H52"/><path d="M31 44 H49"/>
+  <!-- Rounded square tile -->
+  <rect width="64" height="64" rx="14" fill="url(#tile-bg)"/>
+  <!-- Three lanes representing running processes -->
+  <g mask="url(#lane-mask)" stroke="#fff" stroke-opacity="0.5" stroke-width="4" stroke-linecap="round">
+    <path d="M12 20 H42"/>
+    <path d="M12 32 H50"/>
+    <path d="M28 44 H50"/>
   </g>
-  <path d="M16.86 52.8 L54 10 L12.14 48.2 Z" fill="#fff"/>
-  <circle cx="14.5" cy="50.5" r="4.6" fill="#fff"/>
+  <!-- Conductor's baton - the primary mark -->
+  <g filter="url(#glow)">
+    <path d="M15 51 L52 11" stroke="url(#baton-shaft)" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="14" cy="52" rx="5" ry="4" fill="#fff" transform="rotate(-8 14 52)"/>
+  </g>
 </svg>
