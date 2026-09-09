@@ -51,7 +51,7 @@ Requires **Node.js 24+**. macOS, Linux, and Windows.
 | Method | Command |
 |---|---|
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
-| **npm** (after v0.2.1 is published) | `npm install -g baton-run` |
+| **npm** (404 until published) | `npm install -g baton-run` — not yet on registry |
 | **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
 | **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
