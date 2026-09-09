@@ -974,27 +974,69 @@ function setActiveSession(id) {
 
 const DENSITY_KEY = 'baton.density';
 const DENSITY_SIZE = {
-  chip: { width: 58, height: 58 },
+  chip: { width: 64, height: 64 },
   peek: { width: 348, height: 76 },
   inspector: { width: 980, height: 680 },
 };
+let densityTimer = 0;
 
-function setDensity(name, persist) {
-  if (name !== 'chip' && name !== 'peek' && name !== 'inspector') return;
+function densitySize(name) {
+  if (name !== 'inspector') return DENSITY_SIZE[name];
+  const availableWidth = Number(screen.availWidth) || DENSITY_SIZE.inspector.width;
+  const availableHeight = Number(screen.availHeight) || DENSITY_SIZE.inspector.height;
+  return {
+    width: Math.min(980, Math.max(620, availableWidth - 48)),
+    height: Math.min(680, Math.max(520, availableHeight - 64)),
+  };
+}
+
+function paintDensity(name) {
   document.body.dataset.density = name;
   const expand = $('chipExpand');
   if (expand) {
     expand.title = name === 'inspector' ? 'Minimize to chip' : 'Expand inspector';
     fillIcon(expand, name === 'inspector' ? 'minimize' : 'expand');
   }
+}
+
+function setDensity(name, persist) {
+  if (name !== 'chip' && name !== 'peek' && name !== 'inspector') return;
+  clearTimeout(densityTimer);
   if (persist && name !== 'peek') {
     try { localStorage.setItem(DENSITY_KEY, name); } catch { /* private mode */ }
   }
-  const size = DENSITY_SIZE[name];
   const handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.batonHud;
-  if (handler) handler.postMessage({
-    type: 'resize', width: size.width, height: size.height, pin: 'trailing', density: name,
-  });
+  if (!handler) {
+    paintDensity(name);
+    hook('density', name);
+    return;
+  }
+
+  const sendResize = () => {
+    const size = densitySize(name);
+    handler.postMessage({ type: 'resize', width: size.width, height: size.height, pin: 'trailing', density: name });
+  };
+  const current = document.body.dataset.density;
+  if (name === 'inspector' && current !== 'inspector') {
+    // Grow the native window around the anchored chip, then reveal the dense UI.
+    document.body.dataset.transition = 'opening';
+    sendResize();
+    densityTimer = setTimeout(() => {
+      paintDensity(name);
+      delete document.body.dataset.transition;
+    }, 170);
+  } else if (name === 'chip' && current === 'inspector') {
+    // Fade controls first; the chip then stays planted while the window shrinks.
+    document.body.dataset.transition = 'closing';
+    densityTimer = setTimeout(() => {
+      paintDensity(name);
+      sendResize();
+      delete document.body.dataset.transition;
+    }, 90);
+  } else {
+    paintDensity(name);
+    sendResize();
+  }
   hook('density', name);
 }
 
@@ -1004,10 +1046,11 @@ function paintPeek() {
   const starting = live.some((s) => s.status === 'starting');
   const count = $('chipCount');
   const mark = $('chipMark');
+  const face = $('chipFace');
+  const state = failed ? 'failed' : starting ? 'starting' : live.length ? 'running' : 'idle';
   if (count) count.textContent = live.length ? String(live.length) : '';
-  if (mark) {
-    mark.className = 'chip-mark' + (failed ? ' failed' : starting ? ' starting' : live.length ? ' running' : '');
-  }
+  if (mark) mark.className = 'chip-mark' + (state === 'idle' ? '' : ' ' + state);
+  if (face) face.dataset.state = state;
 
   const all = [...sessions.values()].sort((a, b) => a.startedAt - b.startedAt);
   if (!activeSessionId || !sessions.has(activeSessionId)) {

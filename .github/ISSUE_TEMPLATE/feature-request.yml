@@ -1,0 +1,36 @@
+name: Feature request
+description: Ask for an adapter, MCP tool, app behavior, or documentation gap
+title: "Request: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of request
+      options:
+        - Framework adapter
+        - MCP tool
+        - CLI command
+        - Baton app / control panel
+        - Devices / simulators
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: want
+    attributes:
+      label: What should Baton do?
+      description: The job you want to stop doing by hand or by scraping a terminal.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What happens today?
+      description: Include the client (Cursor, Claude, Codex, …), OS, and whether you used MCP, CLI, or baton app.
+  - type: input
+    id: framework
+    attributes:
+      label: Framework or runtime
+      placeholder: Flutter, Vite, Expo, Rails, …

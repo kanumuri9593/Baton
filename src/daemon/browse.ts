@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { isProjectRoot } from '../config/detect.ts';
+import { isNativeProjectSelection, isProjectRoot } from '../config/detect.ts';
 
 /**
  * Browsing the filesystem from the HUD.
@@ -23,6 +23,8 @@ import { isProjectRoot } from '../config/detect.ts';
 export type BrowseEntry = {
   name: string;
   path: string;
+  /** Files can be opened as projects; only directories can be browsed into. */
+  isDirectory: boolean;
   /** Looks like a project root by the same markers `findProjectRoot` walks for. */
   isProject: boolean;
   /** Already has a `.vscode/launch.json` or `.claude/launch.json`. */
@@ -84,18 +86,19 @@ export function browseDirs(path?: string): BrowseResult {
   }
 
   const entries = dirents
-    // Dot-directories are configuration, not places to open a project from.
-    .filter((d) => !d.name.startsWith('.') && isDirectory(target, d))
-    .map((d) => d.name)
-    .sort((a, b) => a.localeCompare(b))
+    // Alongside directories, show only project files Baton knows how to resolve.
+    .filter((d) => !d.name.startsWith('.') && (isDirectory(target, d) || (d.isFile() && isNativeProjectSelection(d.name))))
+    .map((d) => ({ name: d.name, isDirectory: isDirectory(target, d) }))
+    .sort((a, b) => a.name.localeCompare(b.name))
     .slice(0, MAX_ENTRIES)
-    .map((name) => {
+    .map(({ name, isDirectory }) => {
       const full = join(target, name);
       return {
         name,
         path: full,
-        isProject: safely(() => isProjectRoot(full), false),
-        hasLaunchJson: safely(() => hasLaunchJson(full), false),
+        isDirectory,
+        isProject: safely(() => isProjectRoot(full) || isNativeProjectSelection(full), false),
+        hasLaunchJson: isDirectory && safely(() => hasLaunchJson(full), false),
       };
     });
 

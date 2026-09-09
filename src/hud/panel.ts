@@ -1,7 +1,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync,
+  closeSync, copyFileSync, existsSync, mkdirSync, openSync, readFileSync, statSync, writeFileSync,
 } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { logDir, stateDir } from '../core/paths.ts';
@@ -28,7 +28,9 @@ function appPath(): string {
   return join(stateDir(), 'BatonHUD.app');
 }
 
-const INFO_PLIST = `<?xml version="1.0" encoding="UTF-8"?>
+function infoPlist(includeIcon: boolean): string {
+  const icon = includeIcon ? '  <key>CFBundleIconFile</key><string>baton</string>\n' : '';
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -38,15 +40,37 @@ const INFO_PLIST = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleExecutable</key><string>BatonHUD</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.2.1</string>
-  <key>CFBundleVersion</key><string>4</string>
+  <key>CFBundleVersion</key><string>6</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
-  <key>CFBundleIconFile</key><string>baton</string>
-  <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
+${icon}  <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
   <key>NSAppTransportSecurity</key>
   <dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict>
 </plist>
 `;
+}
+
+function appIconPath(): string {
+  return join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
+}
+
+/**
+ * Rasterise the 1024px production master into `baton.icns` when stale.
+ * Failures are silent: the Swift host still draws a vector Dock tile.
+ */
+function ensureAppIcon(): void {
+  const icns = appIconPath();
+  const sources = [join(dirname(icns), 'baton-app-icon.png'), join(dirname(icns), 'baton.svg')];
+  const script = join(dirname(icns), '..', 'scripts', 'render-icons.mjs');
+  const stale = !existsSync(icns)
+    || sources.some((source) => existsSync(source) && statSync(source).mtimeMs > statSync(icns).mtimeMs);
+  if (!stale) return;
+  try {
+    execFileSync(process.execPath, [script], { stdio: 'inherit' });
+  } catch {
+    // No Chromium, or iconutil failed. CFBundleIconFile is omitted in that case.
+  }
+}
 
 /** Whether a Swift toolchain is present, without throwing if it is not. */
 export function hasSwift(): boolean {
@@ -78,7 +102,9 @@ export function buildPanelApp(onBuild?: () => void): string {
   const app = appPath();
   const binary = join(app, 'Contents', 'MacOS', 'BatonHUD');
   const stamp = join(app, 'Contents', 'Resources', 'source.sha');
-  const icns = join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
+  ensureAppIcon();
+  const icns = appIconPath();
+  const plist = infoPlist(existsSync(icns));
   // A GUI app does not inherit the terminal's npm PATH reliably. Bundle the
   // exact Node + daemon entry paths that built it so reopening from the Dock can
   // bring Baton back after an intentional Quit shut the daemon down.
@@ -92,7 +118,7 @@ export function buildPanelApp(onBuild?: () => void): string {
     arguments: ['daemon', 'start'],
     log: daemonLog,
   }, null, 2);
-  const hash = createHash('sha256').update(readFileSync(source)).update(INFO_PLIST).update(launcher);
+  const hash = createHash('sha256').update(readFileSync(source)).update(plist).update(launcher);
   if (existsSync(icns)) hash.update(readFileSync(icns));
   const digest = hash.digest('hex');
 
@@ -102,7 +128,7 @@ export function buildPanelApp(onBuild?: () => void): string {
   onBuild?.();
   mkdirSync(dirname(binary), { recursive: true });
   mkdirSync(dirname(stamp), { recursive: true });
-  writeFileSync(join(app, 'Contents', 'Info.plist'), INFO_PLIST);
+  writeFileSync(join(app, 'Contents', 'Info.plist'), plist);
   writeFileSync(join(dirname(stamp), 'launcher.json'), launcher);
   // Swift opens this for append. Ensure a first-ever launch has a file to open.
   closeSync(openSync(daemonLog, 'a'));

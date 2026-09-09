@@ -3,6 +3,8 @@ dist/
 *.log
 *.tgz
 .DS_Store
+output/
+Untitled/
 
 # Generated from assets/baton.svg by `npm run icons` -- never edit by hand.
 assets/png/

@@ -2,10 +2,8 @@
 /**
  * Rasterise the icon for the places that cannot take an SVG.
  *
- * `assets/baton.svg` is the only source of truth; everything here is generated
- * and gitignored, so the icon can never be edited in two places. Run it when
- * you need PNGs: an npm listing, a GitHub social preview, a Finder icon, an app
- * store, a favicon for something that predates SVG support.
+ * `assets/baton-app-icon.png` is the production app-icon master. The companion
+ * SVG is the crisp, vector-friendly version used by the HUD and README.
  *
  *   node scripts/render-icons.mjs [--sizes 64,512] [--out assets/png]
  *
@@ -66,9 +64,9 @@ function parseArgs(argv) {
  * never tainted and no file access flag is needed, and it is rasterised once at
  * full size then downsampled, which is what keeps a 16px icon legible.
  */
-function renderPng(chromium, svgSource, size, outPath, work) {
+function renderPng(chromium, source, mime, size, outPath, work) {
   const page = join(work, 'render.html');
-  const encoded = Buffer.from(svgSource).toString('base64');
+  const encoded = Buffer.from(source).toString('base64');
 
   writeFileSync(page, `<!doctype html><meta charset="utf-8"><body>
 <script>
@@ -89,7 +87,7 @@ image.onload = () => {
   document.body.id = out.toDataURL('image/png');
 };
 image.onerror = () => { document.body.id = 'ERROR'; };
-image.src = 'data:image/svg+xml;base64,${encoded}';
+image.src = 'data:${mime};base64,${encoded}';
 <\/script></body>`);
 
   const result = spawnSync(chromium, [
@@ -130,27 +128,44 @@ if (!chromium) {
   process.exit(1);
 }
 
-const svg = join(ROOT, 'assets', 'baton.svg');
-if (!existsSync(svg)) {
-  console.error(`missing ${svg}`);
+const rasterMaster = join(ROOT, 'assets', 'baton-app-icon.png');
+const vectorFallback = join(ROOT, 'assets', 'baton.svg');
+const tinyGlyph = join(ROOT, 'assets', 'baton-favicon.svg');
+const master = existsSync(rasterMaster) ? rasterMaster : vectorFallback;
+if (!existsSync(master)) {
+  console.error(`missing ${rasterMaster} and ${vectorFallback}`);
   process.exit(1);
 }
 
-const svgSource = readFileSync(svg, 'utf8');
+function sourceFor(size) {
+  // Photographic detail is valuable in the Dock but collapses at status-icon
+  // sizes. Feed every raster slot artwork designed for its actual pixel size.
+  const path = size <= 32 && existsSync(tinyGlyph)
+    ? tinyGlyph
+    : size <= 64 ? vectorFallback : master;
+  return {
+    source: readFileSync(path),
+    mime: path.endsWith('.png') ? 'image/png' : 'image/svg+xml',
+  };
+}
 
 const work = join(tmpdir(), `baton-icons-${process.pid}`);
 mkdirSync(work, { recursive: true });
 mkdirSync(options.out, { recursive: true });
 
 try {
+  const render = (size, out) => {
+    const selected = sourceFor(size);
+    renderPng(chromium, selected.source, selected.mime, size, out, work);
+  };
   for (const size of options.sizes) {
     const out = join(options.out, `baton-${size}.png`);
-    renderPng(chromium, svgSource, size, out, work);
+    render(size, out);
     console.log(`  ${size.toString().padStart(4)}px  ${out}`);
   }
   if (options.icns) {
     const icns = join(ROOT, 'assets', 'baton.icns');
-    buildIcns(options.out, icns, (size, out) => renderPng(chromium, svgSource, size, out, work));
+    buildIcns(options.out, icns, render);
     console.log(`  icns    ${icns}`);
   }
 } finally {

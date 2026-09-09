@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { detectTargets, isProjectRoot, type DetectionDiagnostic } from './detect.ts';
@@ -8,12 +8,21 @@ import { validate } from './validate.ts';
 export function inspectProject(root: string) {
   const diagnostics: DetectionDiagnostic[] = [];
   const detected = detectTargets(root, diagnostics);
-  const sources = ['.vscode/launch.json', '.claude/launch.json', 'package.json', 'pubspec.yaml']
+  const sources = ['.vscode/launch.json', '.claude/launch.json', 'package.json', 'pubspec.yaml',
+    'settings.gradle', 'settings.gradle.kts', 'build.gradle', 'build.gradle.kts', 'gradlew', 'gradlew.bat']
     .filter((file) => existsSync(join(root, file)));
+  try {
+    sources.push(...readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && /\.(?:xcodeproj|xcworkspace)$/.test(entry.name))
+      .map((entry) => entry.name));
+  } catch { /* the missing/unreadable root is diagnosed below */ }
   const hash = createHash('sha256');
   for (const file of sources) {
     hash.update(file);
-    try { hash.update(readFileSync(join(root, file))); }
+    try {
+      const path = join(root, file);
+      if (statSync(path).isFile()) hash.update(readFileSync(path));
+    }
     catch { diagnostics.push({ file, message: 'Cannot read this source. Check file permissions.' }); }
   }
   const guidanceFiles = ['AGENTS.md', 'CLAUDE.md', 'README.md', '.baton/SKILL.md']
@@ -45,6 +54,8 @@ export function inspectProject(root: string) {
     issues: target.config ? validate(target.config) : [],
     validation: target.kind === 'flutter'
       ? ['Wait for running', 'Review logs and network errors', 'Capture a simulator screenshot', 'Review the screen against the expected flow']
+      : target.kind === 'ios' || target.kind === 'android'
+        ? ['Wait for the native build/install to finish', 'Review compiler and deployment logs', 'Restart the process to run an incremental rebuild']
       : ['Wait for running', 'Review logs', 'Open the app URL if available', 'Exercise the flow in a browser or device'],
   }));
   return {

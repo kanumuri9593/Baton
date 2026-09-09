@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Install Baton</title>
+  <meta name="description" content="Install Baton from GitHub, wire baton-mcp, open the app, and recover from the Node 24 type-stripping error.">
+  <link rel="icon" href="assets/baton-favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav" data-nav>
+    <div class="nav-inner">
+      <a class="brand" href="./"><img src="assets/baton.svg" alt=""> Baton</a>
+      <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav-links">
+        <a href="index.html#proof">Loop</a>
+        <a href="index.html#frameworks">Frameworks</a>
+        <a href="roi.html">ROI</a>
+        <a href="install.html" aria-current="page">Install</a>
+        <a href="docs.html">Docs</a>
+        <a href="request.html">Request</a>
+        <a class="nav-cta" href="install.html">Get Baton</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="wrap">
+    <header class="page-hero">
+      <p class="eyebrow">Instructions</p>
+      <h1>Install on the machine that runs the apps.</h1>
+      <p class="lede">Then any MCP client on that machine can list targets, run them, and read evidence. The daemon binds 127.0.0.1 only.</p>
+    </header>
+
+    <section class="section" style="border-top:0;padding-top:0">
+      <p class="eyebrow">1 · Package</p>
+      <h2>GitHub install</h2>
+      <p class="prose" style="margin:16px 0 20px">Requires Node.js 24+. macOS, Linux, and Windows. Commands are <code>baton</code>, <code>baton-daemon</code>, and <code>baton-mcp</code>.</p>
+      <div class="code">
+        <header>
+          <span>Current public path</span>
+          <button class="copy-btn" type="button" data-copy="npm install -g github:kanumuri9593/Baton">Copy</button>
+        </header>
+        <pre>npm install -g github:kanumuri9593/Baton
+baton app</pre>
+      </div>
+      <div class="code" style="margin-top:14px">
+        <header>
+          <span>Pin a release</span>
+          <button class="copy-btn" type="button" data-copy="npm install -g github:kanumuri9593/Baton#v0.2.1">Copy</button>
+        </header>
+        <pre>npm install -g github:kanumuri9593/Baton#v0.2.1</pre>
+      </div>
+      <p class="footnote">After v0.2.1 is published to npm: <code>npm install -g baton-run</code>. One-shot without a global install: <code>npx -y --package=github:kanumuri9593/Baton baton list</code>.</p>
+    </section>
+
+    <section class="section">
+      <p class="eyebrow">2 · MCP</p>
+      <h2>Point the client at baton-mcp</h2>
+      <p class="prose" style="margin:16px 0 20px">The first tool call starts the daemon if needed. Use this with any client that accepts an MCP server configuration.</p>
+      <div class="install-grid">
+        <div class="code">
+          <header>
+            <span>Global install</span>
+            <button class="copy-btn" type="button" data-copy='{"mcpServers":{"baton":{"command":"baton-mcp"}}}'>Copy</button>
+          </header>
+          <pre>{
+  "mcpServers": {
+    "baton": { "command": "baton-mcp" }
+  }
+}</pre>
+        </div>
+        <div class="code">
+          <header>
+            <span>npx</span>
+            <button class="copy-btn" type="button" data-copy='{"mcpServers":{"baton":{"command":"npx","args":["-y","--package=github:kanumuri9593/Baton","baton-mcp"]}}}'>Copy</button>
+          </header>
+          <pre>{
+  "mcpServers": {
+    "baton": {
+      "command": "npx",
+      "args": ["-y", "--package=github:kanumuri9593/Baton", "baton-mcp"]
+    }
+  }
+}</pre>
+        </div>
+      </div>
+      <p class="footnote">MCP cannot boot simulators yet. Use the CLI <code>baton boot "iPhone 17 Pro"</code>, or run against a device that is already up. <code>run_target</code> waits only briefly for a device.</p>
+    </section>
+
+    <section class="section">
+      <p class="eyebrow">3 · App and CLI</p>
+      <h2>People get a panel. Scripts get an exit code.</h2>
+      <div class="doc-grid" style="margin-top:24px">
+        <article class="card">
+          <h3>baton app</h3>
+          <p>macOS compiles a small AppKit host from <code>hud/</code> on first launch (Xcode or Command Line Tools). Linux and Windows open an app-style browser window. <code>baton hud</code> remains an alias. No App Store download.</p>
+        </article>
+        <article class="card">
+          <h3>Useful commands</h3>
+          <p><code>baton list</code> · <code>baton run "&lt;target&gt;" --branch origin/main</code> · <code>baton reload --all</code> · <code>baton logs "&lt;session&gt;" -n 80</code> · <code>baton doctor --json</code> · <code>baton diagnose</code></p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="eyebrow">4 · Troubleshooting</p>
+      <h2>ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING</h2>
+      <p class="prose" style="margin:16px 0 20px">An old <code>baton-run@0.2.0</code> tried to import TypeScript directly. Remove it, then install from GitHub.</p>
+      <div class="code">
+        <header>
+          <span>Repair</span>
+          <button class="copy-btn" type="button" data-copy="npm uninstall -g baton-run && npm install -g github:kanumuri9593/Baton">Copy</button>
+        </header>
+        <pre>npm uninstall -g baton-run
+npm install -g github:kanumuri9593/Baton</pre>
+      </div>
+      <p class="footnote">Do not put secrets in launch files that will be committed. Do not expose the daemon port.</p>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="wrap footer-end">
+      <a href="./">Home</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/kanumuri9593/Baton">GitHub</a>
+    </div>
+  </footer>
+  <script type="module" src="assets/site.js"></script>
+</body>
+</html>

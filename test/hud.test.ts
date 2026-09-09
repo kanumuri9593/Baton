@@ -18,9 +18,11 @@ test('renderHud injects the token and leaves no placeholder behind', () => {
   const html = renderHud('tok123');
   assert.ok(html.includes('tok123'), 'the token must reach the page');
   assert.ok(!html.includes('%%TOKEN%%'), 'the placeholder must be fully replaced');
-  assert.ok(!html.includes('%%MARK%%') && !html.includes('%%CHIP_MARK%%') && !html.includes('%%FAVICON%%'),
+  assert.ok(!html.includes('%%MARK%%') && !html.includes('%%CHIP_MARK%%')
+    && !html.includes('%%CHIP_TILE%%') && !html.includes('%%FAVICON%%'),
     'brand placeholders must be fully replaced');
-  assert.match(html, /id="chip-sweep"/);
+  assert.match(html, /id="chip-tile-field"/);
+  assert.match(html, /id="brand-field"/);
 });
 
 test('the HUD launcher includes a checkout picker next to device', () => {
@@ -103,6 +105,7 @@ test('the page has a chip, a peek strip, and an inspector pane', () => {
   const html = renderHud('tok123');
   assert.match(html, /id="chip"/);
   assert.match(html, /id="chipMark"/);
+  assert.match(html, /id="chipTile"/);
   assert.match(html, /id="peek"/);
   assert.match(html, /id="inspector"/);
   assert.match(html, /id="splitOuter"/);
@@ -142,7 +145,11 @@ test('the compact HUD is a floating logo that clicks to open and drags to move',
   assert.ok(!core.includes("chip.addEventListener('mouseenter'"), 'opening must not depend on hover timing');
   assert.match(css, /body\[data-density="chip"\] #chipExpand \{ display: none; \}/,
     'the old side button must not be clipped inside the compact chip');
-  assert.match(core, /chip: \{ width: 58, height: 58 \}/);
+  assert.match(core, /chip: \{ width: 64, height: 64 \}/);
+  assert.match(css, /body\.panel\[data-density="chip"\] \.chip-tile/,
+    'the compact launcher must fill with the app tile, not a nested 28px mark');
+  assert.match(css, /width: 64px; min-width: 64px; height: 64px; min-height: 64px/,
+    'flex layout must not collapse the 64px tile back to its old 36px inner control');
   assert.match(core, /live\.length \? String\(live\.length\) : ''/,
     'an idle floating logo must not carry a meaningless zero');
   assert.match(swift, /class CompactChipSurface/);
@@ -155,6 +162,8 @@ test('the macOS panel pins resize to the trailing edge', () => {
   const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
   assert.match(source, /batonHud/);
   assert.match(source, /pinTrailing/);
+  assert.ok(source.indexOf('applyChrome(density)') < source.indexOf('self?.pinTrailing(body)'),
+    'compact chrome must be applied before sizing or the title bar turns 64×64 into a capsule');
   assert.match(source, /WKScriptMessageHandler/);
   assert.match(source, /miniaturizable/);
   assert.match(source, /applicationShouldHandleReopen/);
@@ -225,7 +234,7 @@ test('the generated HUD app is a regular Mac app with a Dock icon', () => {
   const source = readFileSync(join(import.meta.dirname, '../src/hud/panel.ts'), 'utf8');
   assert.ok(!source.includes('LSUIElement'), 'LSUIElement would hide the Dock tile');
   assert.match(source, /CFBundleIconFile/);
-  assert.match(source, /baton\.icns/, 'rebuild must copy the generated icns into the app');
+  assert.match(source, /ensureAppIcon|render-icons/, 'the HUD app must generate baton.icns before copying it');
   assert.match(
     source,
     /\.update\(readFileSync\(icns\)\)/,
@@ -236,12 +245,18 @@ test('the generated HUD app is a regular Mac app with a Dock icon', () => {
 test('the macOS app persists preferences and exposes native settings', () => {
   const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
   const builder = readFileSync(join(import.meta.dirname, '../src/hud/panel.ts'), 'utf8');
+  const settings = readFileSync(HUD_ASSETS.get('settings.js')!.path, 'utf8');
   assert.match(source, /websiteDataStore = \.default\(\)/,
     'WebKit preferences must survive an app restart');
   assert.match(source, /UserDefaults\.standard/);
   assert.match(source, /SMAppService\.mainApp/);
   assert.match(source, /Settings…/);
   assert.match(source, /Stop every running session\?/);
+  assert.match(source, /setAppearance/);
+  assert.match(source, /NSAppearance\(named: \.aqua\)/);
+  assert.match(source, /NSAppearance\(named: \.darkAqua\)/);
+  assert.match(settings, /type: 'setAppearance'/,
+    'web and native title-bar appearance must switch together');
   assert.match(builder, /CFBundleDisplayName<\/key><string>Baton<\/string>/);
 });
 
@@ -250,8 +265,9 @@ test('the Dock tile is the full Baton mark at retina resolution', () => {
   assert.match(source, /url\(forResource: "baton", withExtension: "icns"\)/);
   assert.match(source, /NSBitmapImageRep/);
   assert.match(source, /NSGradient/);
-  assert.match(source, /#7b7cff|#7B7CFF|123 \/ 255.*124 \/ 255.*1/, 'tile gradient start from baton.svg');
-  assert.match(source, /destinationOut|CGBlendMode/, 'lanes are cut where the baton sweeps, as in the SVG mask');
+  assert.match(source, /#20235a|32 \/ 255.*35 \/ 255.*90 \/ 255/, 'fallback uses the production ink field');
+  assert.match(source, /includeSignal/, 'the dock tile draws the signal arcs from the mark');
+  assert.match(source, /appendArc/, 'signal arcs share the SVG geometry');
   assert.ok(
     !/applicationIconImage = icon/.test(source),
     'assigning the icns to applicationIconImage makes a running Dock tile use a low-res bitmap; the bundle icon is enough',

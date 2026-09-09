@@ -15,14 +15,18 @@ function asset(name: string): string {
   }
 }
 
+/** Give each inlined copy unique paint-server ids so the page can host several. */
+function prefixIds(svg: string, prefix: string): string {
+  return svg
+    .replace(/id="([^"]+)"/g, `id="${prefix}-$1"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#${prefix}-$1)`);
+}
+
 const TILE = asset('baton.svg');
 const MARK = asset('baton-mark.svg');
-/** Second copy of the mark for the chip — SVG ids must be unique on the page. */
-const CHIP_MARK = MARK
-  .replaceAll('id="sweep"', 'id="chip-sweep"')
-  .replaceAll('url(#sweep)', 'url(#chip-sweep)');
-const FAVICON = TILE
-  ? `data:image/svg+xml;base64,${Buffer.from(TILE).toString('base64')}`
+const FAVICON_SOURCE = asset('baton-favicon.svg') || TILE;
+const FAVICON = FAVICON_SOURCE
+  ? `data:image/svg+xml;base64,${Buffer.from(FAVICON_SOURCE).toString('base64')}`
   : '';
 
 /**
@@ -68,6 +72,7 @@ export function renderHud(token: string): string {
   return template
     .replaceAll('%%TOKEN%%', token)
     .replaceAll('%%FAVICON%%', FAVICON)
-    .replaceAll('%%CHIP_MARK%%', CHIP_MARK)
-    .replaceAll('%%MARK%%', MARK);
+    .replaceAll('%%CHIP_TILE%%', TILE ? prefixIds(TILE, 'chip-tile') : '')
+    .replaceAll('%%CHIP_MARK%%', MARK)
+    .replaceAll('%%MARK%%', TILE ? prefixIds(TILE, 'brand') : MARK);
 }

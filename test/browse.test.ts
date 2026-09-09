@@ -27,6 +27,18 @@ test('lists directories only, sorted, with hidden entries left out', () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+test('lists recognised native project files but not unrelated files', () => {
+  const root = scratch();
+  writeFileSync(join(root, 'settings.gradle.kts'), '');
+  writeFileSync(join(root, 'build.gradle'), '');
+  writeFileSync(join(root, 'notes.txt'), '');
+
+  const result = browseDirs(root);
+  assert.deepEqual(result.entries.map((entry) => entry.name), ['build.gradle', 'settings.gradle.kts']);
+  assert.ok(result.entries.every((entry) => !entry.isDirectory && entry.isProject));
+  rmSync(root, { recursive: true, force: true });
+});
+
 test('flags which entries are projects and which already have a launch.json', () => {
   const root = scratch();
   mkdirSync(join(root, 'plain'));

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/baton.svg" width="88" alt="Baton — conductor baton mark">
+  <img src="assets/baton.svg" width="88" alt="Baton" style="border-radius: 20px">
 </p>
 
 <h1 align="center">Baton</h1>
@@ -7,6 +7,10 @@
 <p align="center">
   <strong>The local run control plane for people and coding agents.</strong><br>
   Run, hot-reload, boot simulators, and capture evidence for Flutter, Next.js, Vite, and React Native from a terminal, the Baton app, or any MCP-compatible agent.
+</p>
+
+<p align="center">
+  <a href="https://kanumuri9593.github.io/Baton/">kanumuri9593.github.io/Baton</a>
 </p>
 
 <p align="center">
@@ -311,23 +315,23 @@ Feedback from other agent setups is the point of this release: [open an issue](h
 
 ## The icon
 
-`assets/baton.svg` is the only source of truth: a conductor's baton sweeping
-across three running lanes. Everything else is derived from it —
+The app icon is a full production asset, with a matching vector system for the
+places where a detailed bitmap would lose clarity:
 
 ```bash
 npm run icons     # PNGs at every common size, plus a macOS .icns
 ```
 
-- `assets/baton.svg` — the app tile, for anywhere with a background of its own
-- `assets/baton-mark.svg` — the bare mark; the baton takes `currentColor`, so it
-  inverts correctly on light and dark
-- `assets/baton-glyph.svg` — the baton alone, for anything under ~20px. The
-  menu-bar item draws this same geometry as an AppKit template image, which is
-  why it stays crisp and tints itself to the menu bar it is sitting in
-- `assets/baton-wordmark.svg` — mark plus wordmark
+- `assets/baton-app-icon.png` — 1024px full-bleed Dock/App Store master; macOS
+  applies the squircle, so this source deliberately has no baked-in outer mask
+- `assets/baton.svg` — vector companion used by the compact launcher and README
+- `assets/baton-favicon.svg` — simplified 16px browser-tab treatment
+- `assets/baton-mark.svg` — fieldless UI mark in `currentColor`
+- `assets/baton-glyph.svg` — baton-only menu-bar treatment
+- `assets/baton-wordmark.svg` — presentation lockup
 
-Generated PNGs and the `.icns` are gitignored, so the icon can never end up
-edited in two places.
+Generated size variants and the `.icns` are gitignored. Opening the macOS app
+regenerates the `.icns` whenever the production master changes.
 
 ## Development
 

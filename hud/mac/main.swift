@@ -119,13 +119,16 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
             button.image = HUDController.menuBarIcon(state: .offline)
-            button.imagePosition = .imageLeading
-            button.imageScaling = .scaleProportionallyDown
+            button.imagePosition = .imageOnly
+            button.imageScaling = .scaleProportionallyUpOrDown
             button.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
             button.toolTip = "Baton"
             button.target = self
             button.action = #selector(statusClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            if #available(macOS 11.0, *) {
+                button.imageHugsTitle = true
+            }
         }
         registerGlobalShortcut()
 
@@ -200,9 +203,10 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// Same geometry as `assets/baton-glyph.svg`, in a 64pt box flipped to
     /// AppKit's bottom-left origin.
     static func batonGlyph(size: CGFloat = 17, color: NSColor = .labelColor) -> NSImage {
-        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
             color.setFill()
-            HUDController.fillBaton(size: size)
+            color.setStroke()
+            HUDController.drawBaton(in: rect, includeSignal: false)
             return true
         }
         image.isTemplate = false
@@ -237,7 +241,13 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: logicalSize).fill(using: .copy)
         NSColor.black.setFill()
-        HUDController.fillBaton(size: size - 2)
+        NSColor.black.setStroke()
+        // Inset so the template is a glyph, not a filled tile macOS tints as a white box.
+        let pad: CGFloat = 1.6
+        HUDController.drawBaton(
+            in: NSRect(x: pad, y: pad, width: size - pad * 2, height: size - pad * 2),
+            includeSignal: false
+        )
 
         if state != .idle {
             let center = NSPoint(x: size - 4.5, y: 4.5)
@@ -315,73 +325,61 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         return image
     }
 
-    /// Same geometry and palette as `assets/baton.svg`: gradient tile, three
-    /// lanes cut by the sweep, then the baton on top.
+    /// Lightweight fallback for machines where the generated .icns is missing.
+    /// The production Dock asset comes from `assets/baton-app-icon.png`.
     private static func drawDockTile(in rect: NSRect) {
-        let size = rect.width
-        let scale = size / 64
-        let radius = size * 15 / 64
         NSColor.clear.setFill()
         rect.fill(using: .copy)
 
-        NSGraphicsContext.current?.saveGraphicsState()
-        let tile = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
-        tile.addClip()
         NSGradient(colors: [
-            NSColor(calibratedRed: 123 / 255, green: 124 / 255, blue: 1, alpha: 1), // #7b7cff
-            NSColor(calibratedRed: 79 / 255, green: 125 / 255, blue: 1, alpha: 1),
-            NSColor(calibratedRed: 37 / 255, green: 198 / 255, blue: 189 / 255, alpha: 1),
-        ])?.draw(from: NSPoint(x: 0, y: size), to: NSPoint(x: size, y: 0), options: [])
+            NSColor(calibratedRed: 32 / 255, green: 35 / 255, blue: 90 / 255, alpha: 1), // #20235a
+            NSColor(calibratedRed: 18 / 255, green: 22 / 255, blue: 46 / 255, alpha: 1),
+            NSColor(calibratedRed: 9 / 255, green: 12 / 255, blue: 24 / 255, alpha: 1),
+        ])?.draw(from: NSPoint(x: rect.minX, y: rect.maxY),
+                 to: NSPoint(x: rect.maxX, y: rect.minY),
+                 options: [])
 
-        let point = { (x: CGFloat, y: CGFloat) in
-            NSPoint(x: x * scale, y: (64 - y) * scale)
-        }
-
-        if let ctx = NSGraphicsContext.current?.cgContext {
-            ctx.saveGState()
-            ctx.beginTransparencyLayer(auxiliaryInfo: nil)
-            NSColor.white.withAlphaComponent(0.62).setStroke()
-            let lanes = NSBezierPath()
-            lanes.lineWidth = 6 * scale
-            lanes.lineCapStyle = .round
-            lanes.move(to: point(13, 20)); lanes.line(to: point(44, 20))
-            lanes.move(to: point(13, 32)); lanes.line(to: point(52, 32))
-            lanes.move(to: point(31, 44)); lanes.line(to: point(49, 44))
-            lanes.stroke()
-
-            ctx.setBlendMode(.destinationOut)
-            let sweep = NSBezierPath()
-            sweep.lineWidth = 13.5 * scale
-            sweep.lineCapStyle = .round
-            sweep.move(to: point(14.5, 50.5))
-            sweep.line(to: point(54, 10))
-            NSColor.black.setStroke()
-            sweep.stroke()
-            ctx.endTransparencyLayer()
-            ctx.restoreGState()
-        }
-
-        NSColor.white.setFill()
-        HUDController.fillBaton(size: size)
-        NSGraphicsContext.current?.restoreGraphicsState()
+        HUDController.drawBaton(in: rect, includeSignal: true)
     }
 
-    private static func fillBaton(size: CGFloat) {
-        let scale = size / 64
+    /// Shared path for `assets/baton-glyph.svg` / `baton-mark.svg` (signal on).
+    private static func drawBaton(in rect: NSRect, includeSignal: Bool) {
+        let scale = rect.width / 64
         let point = { (x: CGFloat, y: CGFloat) in
-            NSPoint(x: x * scale, y: (64 - y) * scale)
+            NSPoint(x: rect.minX + x * scale, y: rect.minY + (64 - y) * scale)
+        }
+
+        if includeSignal {
+            let tip = point(45.4, 22.7)
+            NSColor(calibratedRed: 146 / 255, green: 123 / 255, blue: 1, alpha: 1).setStroke()
+            for (radius, width) in [(11.3, 4.0), (17.8, 4.4)] as [(CGFloat, CGFloat)] {
+                let arc = NSBezierPath()
+                arc.lineWidth = width * scale
+                arc.lineCapStyle = .round
+                arc.appendArc(
+                    withCenter: tip,
+                    radius: radius * scale,
+                    startAngle: 130,
+                    endAngle: 198
+                )
+                arc.stroke()
+            }
+            NSColor(calibratedWhite: 1, alpha: 1).setFill()
         }
 
         let shaft = NSBezierPath()
-        shaft.move(to: point(16.86, 52.8))
-        shaft.line(to: point(54, 10))
-        shaft.line(to: point(12.14, 48.2))
+        shaft.move(to: point(12.6, 51.4))
+        shaft.curve(to: point(13.3, 45.9), controlPoint1: point(11.1, 49.9), controlPoint2: point(11.5, 47.6))
+        shaft.line(to: point(42.6, 20.1))
+        shaft.line(to: point(47.4, 24.9))
+        shaft.line(to: point(18.1, 51.1))
+        shaft.curve(to: point(12.6, 51.4), controlPoint1: point(16.2, 52.8), controlPoint2: point(14.1, 52.8))
         shaft.close()
         shaft.fill()
 
-        let grip = point(14.5, 50.5)
-        let radius = 4.6 * scale
-        NSBezierPath(ovalIn: NSRect(x: grip.x - radius, y: grip.y - radius,
+        let tip = point(45.4, 22.7)
+        let radius = 5.5 * scale
+        NSBezierPath(ovalIn: NSRect(x: tip.x - radius, y: tip.y - radius,
                                     width: radius * 2, height: radius * 2)).fill()
     }
 
@@ -398,7 +396,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         web.setValue(false, forKey: "drawsBackground")
 
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 64, height: 76),
+            contentRect: NSRect(x: 0, y: 0, width: 64, height: 64),
             styleMask: [.titled, .closable, .miniaturizable, .resizable,
                         .fullSizeContentView],
             backing: .buffered,
@@ -454,11 +452,15 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// Grow or shrink the panel while keeping its trailing edge planted, so
     /// expand opens left into the screen rather than sliding the chip.
     private func pinTrailing(_ body: [String: Any]) {
-        let width = cgFloat(body["width"], fallback: panel.frame.width)
-        let height = cgFloat(body["height"], fallback: panel.frame.height)
+        var width = cgFloat(body["width"], fallback: panel.frame.width)
+        var height = cgFloat(body["height"], fallback: panel.frame.height)
         var frame = panel.frame
         let trailing = frame.maxX
         let top = frame.maxY
+        if let vis = (panel.screen ?? NSScreen.main)?.visibleFrame {
+            width = min(width, max(52, vis.width - 24))
+            height = min(height, max(52, vis.height - 24))
+        }
         frame.size.width = max(52, width)
         frame.size.height = max(52, height)
         frame.origin.x = trailing - frame.size.width
@@ -486,19 +488,33 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
               let type = body["type"] as? String else { return }
         DispatchQueue.main.async { [weak self] in
             if type == "resize" {
-                self?.pinTrailing(body)
                 if let density = body["density"] as? String {
                     self?.applyChrome(density)
                 }
+                // Chrome changes the relationship between the window frame and
+                // its content rect. Apply it first so 64×64 means 64×64 of
+                // launcher, not 64px minus an inspector title bar.
+                self?.pinTrailing(body)
             } else if type == "getPreferences" {
                 self?.sendPreferences()
             } else if type == "setPreference",
                       let key = body["key"] as? String,
                       let value = body["value"] as? Bool {
                 self?.setPreference(key, value: value)
+            } else if type == "setAppearance",
+                      let value = body["value"] as? String {
+                self?.setAppearance(value)
             } else if type == "retryDaemon" {
                 self?.retryDaemon()
             }
+        }
+    }
+
+    private func setAppearance(_ value: String) {
+        switch value {
+        case "light": panel.appearance = NSAppearance(named: .aqua)
+        case "dark": panel.appearance = NSAppearance(named: .darkAqua)
+        default: panel.appearance = nil
         }
     }
 
@@ -807,6 +823,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private func setMenuBar(count: Int, state: MenuBarState, tooltip: String) {
         statusItem.length = count > 0 ? 42 : NSStatusItem.squareLength
         statusItem.button?.image = HUDController.menuBarIcon(state: state)
+        statusItem.button?.imagePosition = count > 0 ? .imageLeading : .imageOnly
         statusItem.button?.attributedTitle = NSAttributedString(
             string: count > 0 ? "\(count)" : "",
             attributes: [.foregroundColor: NSColor.labelColor,

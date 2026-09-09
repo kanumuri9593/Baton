@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { SessionRegistry } from '../core/registry.ts';
 import { CheckoutStore, type Checkout } from '../core/checkouts.ts';
-import { detectTargets, findProjectRoot, isProjectRoot } from '../config/detect.ts';
+import { detectTargets, findProjectRoot, isNativeProjectSelection, isProjectRoot } from '../config/detect.ts';
 import { validate, type ValidationIssue } from '../config/validate.ts';
 import { loadConfigs, type LaunchConfig } from '../config/loader.ts';
 import {
@@ -299,8 +299,11 @@ export class LaunchDaemon {
         if (!raw) throw new Error('which directory?');
         const expanded = raw.startsWith('~') ? join(homedir(), raw.slice(1)) : raw;
         const path = resolve(expanded);
-        if (!existsSync(path) || !statSync(path).isDirectory()) {
-          throw new Error(`not a directory: ${path}`);
+        if (!existsSync(path)) {
+          throw new Error(`not a directory or recognised project file: ${path}`);
+        }
+        if (!statSync(path).isDirectory() && !isNativeProjectSelection(path)) {
+          throw new Error(`not a recognised project file: ${path}`);
         }
         const root = findProjectRoot(path);
         // A project with nothing runnable yet is still worth tracking -- a dev
@@ -308,7 +311,7 @@ export class LaunchDaemon {
         // is almost always a typo, so that is what gets rejected.
         if (!isProjectRoot(root)) {
           throw new Error(
-            `${root} does not look like a project — no package.json, pubspec.yaml, .vscode or .git`,
+            `${root} does not look like a project — no Node, Flutter, Xcode, Gradle, launch config or Git marker`,
           );
         }
         const described = this.#describeProject(root);

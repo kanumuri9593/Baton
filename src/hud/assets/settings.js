@@ -43,6 +43,7 @@
   function apply() {
     document.documentElement.dataset.theme = preferences.theme;
     document.documentElement.dataset.motion = preferences.motion;
+    post({ type: 'setAppearance', value: preferences.theme });
   }
 
   function nativeHandler() {

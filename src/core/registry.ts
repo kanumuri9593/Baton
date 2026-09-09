@@ -5,6 +5,7 @@ import { FlutterSession } from '../adapters/flutter.ts';
 import { WebDevSession } from '../adapters/web-dev.ts';
 import { ReactNativeSession } from '../adapters/react-native.ts';
 import { ProcessSession } from '../adapters/process.ts';
+import { NativeBuildSession } from '../adapters/native-build.ts';
 import { DeviceRegistry } from '../daemon/devices.ts';
 import { resolveFlutter } from '../config/flutter.ts';
 import { slug } from './session-base.ts';
@@ -151,6 +152,12 @@ export class SessionRegistry extends EventEmitter {
       case 'react-native':
         return ReactNativeSession.create(target.name, {
           command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, trace: target.config?.batonTrace, ...ids,
+        });
+
+      case 'ios':
+      case 'android':
+        return NativeBuildSession.create(target.kind, target.name, {
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
         });
 
       case 'process':

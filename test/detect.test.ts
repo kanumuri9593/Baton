@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { detectTargets, detectPackageManager } from '../src/config/detect.ts';
+import { detectTargets, detectPackageManager, findProjectRoot, isProjectRoot } from '../src/config/detect.ts';
 
 function scratch(): string {
   return mkdtempSync(join(tmpdir(), 'baton-detect-'));
@@ -73,5 +73,36 @@ test('a malformed launch.json does not hide package.json targets', () => {
   }));
   const targets = detectTargets(root);
   assert.ok(targets.some((t) => t.kind === 'web-dev'));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('detects a shared Xcode scheme and prefers the workspace', () => {
+  const root = scratch();
+  mkdirSync(join(root, 'Demo.xcodeproj', 'xcshareddata', 'xcschemes'), { recursive: true });
+  mkdirSync(join(root, 'Demo.xcworkspace'), { recursive: true });
+  writeFileSync(join(root, 'Demo.xcodeproj', 'xcshareddata', 'xcschemes', 'Demo Dev.xcscheme'), '<Scheme/>');
+
+  const [target] = detectTargets(root);
+  assert.equal(target.kind, 'ios');
+  assert.equal(target.name, 'iOS Simulator · Demo Dev');
+  assert.deepEqual(target.args?.slice(0, 4), ['-workspace', 'Demo.xcworkspace', '-scheme', 'Demo Dev']);
+  assert.equal(findProjectRoot(join(root, 'Demo.xcodeproj')), root);
+  assert.equal(isProjectRoot(root), true);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test('detects Android application modules as installDebug targets', () => {
+  const root = scratch();
+  writeFileSync(join(root, 'settings.gradle.kts'), 'include(":app")');
+  writeFileSync(join(root, 'gradlew'), '#!/bin/sh');
+  mkdirSync(join(root, 'app'));
+  writeFileSync(join(root, 'app', 'build.gradle.kts'), 'plugins { id("com.android.application") }');
+
+  const [target] = detectTargets(root);
+  assert.equal(target.kind, 'android');
+  assert.equal(target.name, 'Android · app debug');
+  assert.deepEqual(target.args, [':app:installDebug']);
+  assert.equal(findProjectRoot(join(root, 'settings.gradle.kts')), root);
+  assert.equal(isProjectRoot(root), true);
   rmSync(root, { recursive: true, force: true });
 });

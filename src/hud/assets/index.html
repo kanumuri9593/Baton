@@ -10,9 +10,10 @@
 </head>
 <body data-density="chip">
 <aside id="chip" title="Baton — click to open or drag to move">
-  <div class="chip-face" id="chipFace" role="button" tabindex="0" title="Open Baton">
+  <div class="chip-face" id="chipFace" role="button" tabindex="0" title="Open Baton" data-state="idle">
+    <span class="chip-tile" id="chipTile" aria-hidden="true">%%CHIP_TILE%%</span>
     <span class="chip-mark" id="chipMark">%%CHIP_MARK%%</span>
-    <span id="chipCount">0</span>
+    <span id="chipCount"></span>
   </div>
   <div id="peek">
     <select id="peekSession" title="Active session"></select>

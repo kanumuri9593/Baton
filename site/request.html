@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Request a Baton feature</title>
+  <meta name="description" content="Request a Baton adapter, MCP tool, app behavior, or documentation fix. Opens a GitHub issue with your notes.">
+  <link rel="icon" href="assets/baton-favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav" data-nav>
+    <div class="nav-inner">
+      <a class="brand" href="./"><img src="assets/baton.svg" alt=""> Baton</a>
+      <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="nav-links">
+        <a href="index.html#proof">Loop</a>
+        <a href="index.html#frameworks">Frameworks</a>
+        <a href="roi.html">ROI</a>
+        <a href="install.html">Install</a>
+        <a href="docs.html">Docs</a>
+        <a href="request.html" aria-current="page">Request</a>
+        <a class="nav-cta" href="install.html">Get Baton</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="wrap">
+    <header class="page-hero">
+      <p class="eyebrow">Feature request</p>
+      <h1>Name the control you do not have.</h1>
+      <p class="lede">This form opens a GitHub issue in your browser. Nothing is stored on this page. You can also use the repository templates for feedback or a blank issue.</p>
+    </header>
+
+    <section class="section" style="border-top:0;padding-top:0">
+      <p class="eyebrow">Already asked</p>
+      <p style="margin:12px 0 8px;color:var(--ivory-dim)">Press a chip to fill the form.</p>
+      <div>
+        <button class="request-chip" type="button" data-request-preset data-kind="MCP tool" data-title="boot_device MCP tool" data-want="Expose simulator/emulator boot as an MCP tool so agents do not have to shell out to baton boot.">MCP boot_device</button>
+        <button class="request-chip" type="button" data-request-preset data-kind="Framework adapter" data-title="Deeper Expo adapter" data-want="Richer Expo/React Native session control beyond Fast Refresh broadcast.">Expo depth</button>
+        <button class="request-chip" type="button" data-request-preset data-kind="Framework adapter" data-title="Storybook adapter" data-want="Detect and control Storybook the way web-dev sessions are controlled today.">Storybook</button>
+        <button class="request-chip" type="button" data-request-preset data-kind="Framework adapter" data-title="Tauri / Electron adapter" data-want="Launch and reload desktop shells with honest capability flags.">Tauri / Electron</button>
+        <button class="request-chip" type="button" data-request-preset data-kind="Framework adapter" data-title="Rails / Django / Phoenix adapter" data-want="First-class server adapters with readiness and log focus.">Rails / Django / Phoenix</button>
+        <button class="request-chip" type="button" data-request-preset data-kind="Framework adapter" data-title="dotnet watch / Go Air adapter" data-want="Watch-mode runtimes with restart and structured errors.">dotnet / Go Air</button>
+        <button class="request-chip" type="button" data-request-preset data-kind="Other" data-title="Visual screenshot comparison" data-want="Optional baseline compare. Today capture success is not visual correctness.">Screenshot compare</button>
+        <button class="request-chip" type="button" data-request-preset data-kind="Other" data-title="Remote / SSH sessions" data-want="Manage runtimes on another machine without exposing the local daemon port.">Remote / SSH</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <form class="form panel" style="padding:24px" data-request-form>
+        <label>
+          Title
+          <input id="title" name="title" required maxlength="120" placeholder="boot_device MCP tool">
+        </label>
+        <label>
+          Kind
+          <select id="kind" name="kind">
+            <option>Framework adapter</option>
+            <option>MCP tool</option>
+            <option>CLI command</option>
+            <option>Baton app / control panel</option>
+            <option>Devices / simulators</option>
+            <option>Documentation</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>
+          Framework or runtime
+          <input name="framework" maxlength="80" placeholder="Flutter, Vite, Expo, Rails…">
+        </label>
+        <label>
+          What should Baton do?
+          <textarea id="want" name="want" required placeholder="The job you want to stop doing in a terminal scrape."></textarea>
+        </label>
+        <label>
+          What happens today?
+          <textarea name="today" placeholder="Client, commands you run, where it fails."></textarea>
+        </label>
+        <label>
+          MCP / agent client
+          <input name="client" maxlength="80" placeholder="Cursor, Claude Code, Codex, other">
+        </label>
+        <label>
+          OS and Node
+          <input name="env" maxlength="80" placeholder="macOS 26 / Node 24.x">
+        </label>
+        <button class="btn btn-primary" type="submit">Open GitHub issue</button>
+      </form>
+      <p class="footnote">Prefer a looser note? <a href="https://github.com/kanumuri9593/Baton/issues/new?labels=feedback&title=Feedback">Feedback template</a> · <a href="https://github.com/kanumuri9593/Baton/issues/new?template=feature-request.yml">Native GitHub form</a></p>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="wrap footer-end">
+      <a href="./">Home</a>
+      <a href="https://github.com/kanumuri9593/Baton/blob/master/CONTRIBUTING.md">Contribute an adapter</a>
+    </div>
+  </footer>
+  <script type="module" src="assets/site.js"></script>
+</body>
+</html>

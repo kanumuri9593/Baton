@@ -152,15 +152,16 @@
     if (listing.error) {
       list.appendChild(el('div', 'sheet-empty', listing.error));
     } else if (!listing.entries.length) {
-      list.appendChild(el('div', 'sheet-empty', 'no folders here'));
+      list.appendChild(el('div', 'sheet-empty', 'no projects or folders here'));
     }
     for (const entry of listing.entries) {
       const row = el('div', 'sheet-row' + (entry.isProject ? ' project' : ''));
-      row.onclick = () => browse(entry.path);
+      row.onclick = () => entry.isDirectory ? browse(entry.path) : openPath(entry.path);
       row.appendChild(iconEl('folder'));
       row.lastChild.classList.add('sheet-icon');
       row.appendChild(el('span', 'name', entry.name));
       if (entry.isProject) row.appendChild(el('span', 'tag', '▶ project'));
+      if (!entry.isDirectory) row.appendChild(el('span', 'tag', 'project file'));
       if (entry.hasLaunchJson) row.appendChild(el('span', 'tag', 'launch.json'));
       const open = button('Open', 'Track ' + entry.name + ' as a project', (e) => {
         e.stopPropagation();
