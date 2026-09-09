@@ -6,29 +6,57 @@ Requires **Node.js 24+**. The daemon listens on loopback only.
 
 ## Install
 
+**Clone and build** (works today):
+
+```bash
+git clone https://github.com/kanumuri9593/Baton.git && cd Baton
+npm install && npm run build
+npm link        # makes baton, baton-daemon, baton-mcp available globally
+```
+
+Or run directly without linking: `node bin/baton.js …`
+
+**npm** (once published — 404 until v0.2.1 ships):
+
 ```bash
 npm install -g baton-run
 ```
 
-From GitHub (alternative):
+> **Do not** use `npm install -g github:kanumuri9593/Baton` without building first — npm does not run the build step, leaving `dist/` missing.
+
+The commands are `baton`, `baton-daemon`, and `baton-mcp`.
+
+## The HUD
+
+There is **no separate App Store binary** or "Baton HUD" download. The HUD is `baton hud`:
+
+- **macOS**: native floating panel + menu-bar item. First run compiles the panel from `hud/` (needs Xcode or Command Line Tools).
+- **Linux / Windows**: chromeless browser window.
 
 ```bash
-npm install -g github:kanumuri9593/Baton
+baton hud
 ```
 
-The commands are `baton`, `baton-daemon`, and `baton-mcp`. The HUD is `baton hud` (native panel on macOS, browser window elsewhere). There is no separate App Store binary.
+### Troubleshooting: ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING
+
+If `baton` crashes with this error, you have an old `baton-run@0.2.0` that tried to import `.ts` files. Fix:
+
+```bash
+npm uninstall -g baton-run
+# Reinstall from a built clone (above), or wait for baton-run@0.2.1+ on npm
+```
 
 ## MCP (preferred)
 
 Point the client at `baton-mcp`. The first tool call starts the daemon if needed.
 
-**Claude Code**
+**Claude Code** (after `npm link` from a built clone):
 
 ```bash
 claude mcp add baton -- baton-mcp
 ```
 
-**Cursor / Windsurf / Claude Desktop / Codex / Gemini CLI** — add to the client's MCP config:
+**Cursor / Windsurf / Claude Desktop / Codex / Gemini CLI** — add to the client's MCP config (after global install via `npm link`):
 
 ```json
 {
@@ -40,7 +68,7 @@ claude mcp add baton -- baton-mcp
 }
 ```
 
-Without a global install:
+Once `baton-run` is published to npm (v0.2.1+), you can use npx without a global install:
 
 ```json
 {
@@ -52,6 +80,8 @@ Without a global install:
   }
 }
 ```
+
+> **Note:** Never use bare `npx baton-mcp` — always specify the package: `npx -y baton-run baton-mcp`.
 
 ## Tools
 

@@ -6,12 +6,21 @@ Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `b
 
 ## Install
 
-- npm (recommended): `npm install -g baton-run`
-- GitHub: `npm install -g github:kanumuri9593/Baton`
-- MCP: command `baton-mcp`
-- HUD: `baton hud`
+**Clone and build** (works today):
+```
+git clone https://github.com/kanumuri9593/Baton.git && cd Baton
+npm install && npm run build
+npm link
+```
+
+**npm** (404 until v0.2.1 is published): `npm install -g baton-run`
+
+- MCP command: `baton-mcp` (after npm link or install)
+- HUD: `baton hud` — native panel on macOS, browser window elsewhere. No App Store app.
 - Node.js 24+, MIT license, macOS / Linux / Windows
 - Repo: https://github.com/kanumuri9593/Baton
+
+**Troubleshooting:** If `baton` fails with ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING, uninstall old baton-run@0.2.0 and reinstall from a built clone.
 
 ## Agent docs
 

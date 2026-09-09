@@ -18,7 +18,9 @@
 </p>
 
 ```bash
-npm install -g baton-run
+git clone https://github.com/kanumuri9593/Baton.git && cd Baton
+npm install && npm run build
+npm link                     # or: node bin/baton.js hud
 baton hud
 ```
 
@@ -42,22 +44,45 @@ baton hud                                   # floating panel + menu-bar item
 
 | Way | Command |
 |---|---|
-| **npm** (recommended) | `npm install -g baton-run` |
-| **One-shot CLI** | `npx -y baton-run baton list` |
-| **One-shot MCP** | `npx -y baton-run baton-mcp` |
-| **GitHub** | `npm install -g github:kanumuri9593/Baton` |
-| **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install` |
-| **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. No App Store download; the panel is compiled from this repo on first use. |
-| **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
+| **Clone + build** (works today) | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` then `npm link` or run directly with `node bin/baton.js` |
+| **npm** (once published — 404 until v0.2.1 ships) | `npm install -g baton-run` |
+| **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) — extract, `npm install && npm run build`, then `npm link` |
+
+After install, verify with `baton doctor`.
+
+> **Do not** use bare `npm install -g github:kanumuri9593/Baton` — npm does not run the build step, so the `dist/` directory will be missing and all commands will fail with import errors.
 
 Requires **Node.js 24+**. macOS, Linux, and Windows.
 
-Pin a release:
+### Troubleshooting: ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING
+
+If you previously installed `baton-run@0.2.0` from npm and see:
+
+```
+Error [ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING]: TypeScript files under node_modules are not supported
+```
+
+That version shipped without a build and tried to import `.ts` files directly. Node does not type-strip under `node_modules`. Fix:
 
 ```bash
-npm install -g baton-run@0.2.1
-npm install -g github:kanumuri9593/Baton#v0.2.1
+npm uninstall -g baton-run
+# Then reinstall from a built clone (see above), or wait for baton-run@0.2.1+ on npm
 ```
+
+---
+
+## The HUD
+
+There is **no separate App Store binary** or "Baton HUD" download. The HUD is started with `baton hud` after installing from a built clone:
+
+```bash
+baton hud
+```
+
+- **macOS**: Opens a native floating panel and menu-bar item. The panel is ~250 lines of AppKit compiled from `hud/` on first run — it needs Xcode or Command Line Tools. If those are missing, it falls back to a browser window.
+- **Linux / Windows**: Opens a chromeless browser window (same page as the panel).
+
+First run may take a few seconds while the native panel compiles.
 
 ---
 
@@ -67,13 +92,13 @@ Baton is an MCP server. Agents get structured tools instead of scraping `flutter
 
 Full agent notes: **[AGENTS.md](AGENTS.md)**. Crawler-friendly summary: **[llms.txt](llms.txt)**.
 
-**Claude Code**
+**Claude Code** (after `npm link` from a built clone):
 
 ```bash
 claude mcp add baton -- baton-mcp
 ```
 
-**Cursor, Windsurf, Claude Desktop, Codex, Gemini CLI, Zed** — anything that reads an MCP config:
+**Cursor, Windsurf, Claude Desktop, Codex, Gemini CLI, Zed** — anything that reads an MCP config (after global install via `npm link`):
 
 ```json
 {
@@ -83,7 +108,7 @@ claude mcp add baton -- baton-mcp
 }
 ```
 
-Without a global install:
+Once `baton-run` is published to npm (v0.2.1+), you can use npx without a global install:
 
 ```json
 {
@@ -95,6 +120,8 @@ Without a global install:
   }
 }
 ```
+
+> **Note:** Do not use bare `npx baton-mcp` — always specify the package name explicitly with `npx -y baton-run baton-mcp`.
 
 **Tools:** `inspect_project`, `list_targets`, `list_sessions`, `list_checkouts`, `list_devices`, `run_target`, `run_workflow`, `hot_reload`, `hot_restart`, `stop_session`, `forget_session`, `wait_for`, `read_logs`, `session_summary`, `screenshot`, `set_debug_flag`, `diagnose`, `list_network_requests`, `get_network_request`, `clear_network_requests`, `read_launch_config`, `write_launch_config`, `run_proof`, `list_proofs`, `list_run_history`.
 
@@ -133,7 +160,7 @@ No IDE can offer that, because the agent isn't holding the mouse.
 
 Capabilities are reported honestly. A Vite session does not claim Flutter's stateful hot reload, so the HUD greys the button out and agents get a clear refusal instead of a silent no-op.
 
-**Runs on macOS, Linux and Windows.** Node 24+, zero build step.
+**Runs on macOS, Linux and Windows.** Node 24+. Requires `npm run build` after cloning (compiles TypeScript to `dist/`).
 
 ## Use it
 
@@ -320,6 +347,7 @@ edited in two places.
 
 ```bash
 npm install
+npm run build     # compile TypeScript to dist/ (required before running)
 npm test          # portable tests, no simulator required
 npm run typecheck
 ```
