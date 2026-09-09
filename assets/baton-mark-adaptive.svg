@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Baton mark">
   <title>Baton</title>
-  <!-- Mark uses currentColor so CSS can tint it for status colors -->
+  <!-- Adaptive mark: currentColor for light/dark theming in HUD -->
   <g fill="none" stroke="currentColor" stroke-linecap="round">
     <path d="M26.717 27.243 A9.500 9.500 0 0 1 37.373 17.980" stroke-width="2.4"/>
     <path d="M22.069 28.647 A14.200 14.200 0 0 1 39.410 13.573" stroke-width="2.4"/>

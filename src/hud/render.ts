@@ -17,8 +17,11 @@ function asset(name: string): string {
 
 const TILE = asset('baton.svg');
 const MARK = asset('baton-mark.svg');
-/** Second copy of the mark for the chip — SVG ids must be unique on the page. */
-const CHIP_MARK = MARK
+/** Adaptive glyph for chip — uses currentColor for light/dark theming */
+const ADAPTIVE_GLYPH = asset('baton-glyph-adaptive.svg');
+const ADAPTIVE_MARK = asset('baton-mark-adaptive.svg');
+/** Chip uses adaptive glyph (currentColor) for theme compatibility, falls back to mark */
+const CHIP_MARK = (ADAPTIVE_GLYPH || ADAPTIVE_MARK || MARK)
   .replaceAll('id="sweep"', 'id="chip-sweep"')
   .replaceAll('url(#sweep)', 'url(#chip-sweep)');
 const FAVICON = TILE

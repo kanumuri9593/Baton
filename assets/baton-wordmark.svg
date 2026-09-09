@@ -1,23 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 246 64" width="246" height="64" role="img" aria-label="Baton">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" width="280" height="64" role="img" aria-label="Baton">
   <title>Baton</title>
   <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7b7cff"/>
-      <stop offset=".5" stop-color="#4f7dff"/>
-      <stop offset="1" stop-color="#25c6bd"/>
+    <linearGradient id="wmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
     </linearGradient>
-    <!-- The lanes run behind the baton, so they are cut where it sweeps across. -->
-    <mask id="sweep">
-      <rect width="64" height="64" fill="#fff"/>
-      <path d="M14.5 50.5 L54 10" stroke="#000" stroke-width="13.5" stroke-linecap="round"/>
-    </mask>
   </defs>
-  <rect width="64" height="64" rx="15" fill="url(#tile)"/>
-  <g mask="url(#sweep)" stroke="#fff" stroke-opacity=".62" stroke-width="6" stroke-linecap="round">
-    <path d="M13 20 H44"/><path d="M13 32 H52"/><path d="M31 44 H49"/>
+  <!-- Icon tile -->
+  <rect width="64" height="64" rx="14.2" fill="url(#wmGrad)"/>
+  <g>
+    <path d="M26.717 27.243 A9.500 9.500 0 0 1 37.373 17.980" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M22.069 28.647 A14.200 14.200 0 0 1 39.410 13.573" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M17.662 31.015 A18.900 18.900 0 0 1 42.368 9.539" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+    <line x1="15.461" y1="45.451" x2="48.743" y2="16.518" stroke="#FFFFFF" stroke-width="2.85" stroke-linecap="round"/>
+    <circle cx="49.800" cy="15.600" r="4.0" fill="#FFFFFF"/>
   </g>
-  <path d="M16.86 52.8 L54 10 L12.14 48.2 Z" fill="#fff"/>
-  <circle cx="14.5" cy="50.5" r="4.6" fill="#fff"/>
-  <text x="80" y="43" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Inter, Roboto, sans-serif"
-        font-size="34" font-weight="650" letter-spacing="-0.5" fill="currentColor">baton</text>
+  <!-- Wordmark -->
+  <text x="80" y="43" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="34" font-weight="600" letter-spacing="-0.5" fill="currentColor">baton</text>
 </svg>

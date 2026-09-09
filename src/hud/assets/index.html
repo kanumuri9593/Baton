@@ -9,10 +9,10 @@
 <link rel="modulepreload" href="/assets/filters.js">
 </head>
 <body data-density="chip">
-<aside id="chip" title="Baton — click to open or drag to move">
+<aside id="chip" class="baton-chip baton-chip--icon" data-appearance="system" title="Baton — click to open or drag to move">
   <div class="chip-face" id="chipFace" role="button" tabindex="0" title="Open Baton">
-    <span class="chip-mark" id="chipMark">%%CHIP_MARK%%</span>
-    <span id="chipCount">0</span>
+    <span class="baton-chip__mark" id="chipMark">%%CHIP_MARK%%</span>
+    <span class="baton-chip__count" id="chipCount"></span>
   </div>
   <div id="peek">
     <select id="peekSession" title="Active session"></select>
@@ -23,16 +23,16 @@
 </aside>
 
 <div id="hudMain">
-<header>
-  <div class="brand">%%MARK%%<div>Baton<small id="status">connecting…</small></div></div>
-  <span class="spacer"></span>
-  <button id="diagnoseBtn" title="Search errors and requests across projects">Diagnose</button>
-  <button id="refreshProjects" title="Re-read project launch configurations from disk">Refresh</button>
-  <button id="historyBtn" title="Past runs, persisted on disk -- survives a daemon restart">History</button>
-  <button class="icon" id="settingsBtn" title="Settings (Command-,)" aria-label="Settings"></button>
-  <button class="icon" id="reloadAll" title="Hot reload every running session (r)"></button>
-  <button class="icon" id="restartAll" title="Hot restart every running session (R)"></button>
-  <button class="icon danger" id="stopAll" title="Stop every running session"></button>
+<header class="baton-topnav">
+  <div class="baton-topnav__brand">%%MARK%%<span>Baton</span><small id="status">connecting…</small></div>
+  <span class="baton-topnav__spacer"></span>
+  <button class="baton-topnav__tab" id="diagnoseBtn" title="Search errors and requests across projects">Diagnose</button>
+  <button class="baton-topnav__tab" id="refreshProjects" title="Re-read project launch configurations from disk">Refresh</button>
+  <button class="baton-topnav__tab" id="historyBtn" title="Past runs, persisted on disk -- survives a daemon restart">History</button>
+  <button class="baton-topnav__action" id="settingsBtn" title="Settings (Command-,)" aria-label="Settings"></button>
+  <button class="baton-topnav__action" id="reloadAll" title="Hot reload every running session (r)"></button>
+  <button class="baton-topnav__action" id="restartAll" title="Hot restart every running session (R)"></button>
+  <button class="baton-topnav__action danger" id="stopAll" title="Stop every running session"></button>
 </header>
 
 <nav id="tabs"></nav>

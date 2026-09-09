@@ -20,7 +20,8 @@ test('renderHud injects the token and leaves no placeholder behind', () => {
   assert.ok(!html.includes('%%TOKEN%%'), 'the placeholder must be fully replaced');
   assert.ok(!html.includes('%%MARK%%') && !html.includes('%%CHIP_MARK%%') && !html.includes('%%FAVICON%%'),
     'brand placeholders must be fully replaced');
-  assert.match(html, /id="chip-sweep"/);
+  assert.match(html, /id="chipMark"[^>]*>[\s\S]*stroke="currentColor"/,
+    'the compact mark must adapt to the selected appearance');
 });
 
 test('the HUD launcher includes a checkout picker next to device', () => {
@@ -142,6 +143,10 @@ test('the compact HUD is a floating logo that clicks to open and drags to move',
   assert.ok(!core.includes("chip.addEventListener('mouseenter'"), 'opening must not depend on hover timing');
   assert.match(css, /body\[data-density="chip"\] #chipExpand \{ display: none; \}/,
     'the old side button must not be clipped inside the compact chip');
+  assert.match(css, /body\.panel\[data-density="chip"\] #chip[\s\S]*opacity: \.58/,
+    'the parked side launcher should stay visually quiet');
+  assert.match(css, /#chip:hover,[\s\S]*#chip:focus-within \{ opacity: 1; \}/,
+    'the launcher should return to full opacity when the user engages with it');
   assert.match(core, /chip: \{ width: 58, height: 58 \}/);
   assert.match(core, /live\.length \? String\(live\.length\) : ''/,
     'an idle floating logo must not carry a meaningless zero');
@@ -250,8 +255,10 @@ test('the Dock tile is the full Baton mark at retina resolution', () => {
   assert.match(source, /url\(forResource: "baton", withExtension: "icns"\)/);
   assert.match(source, /NSBitmapImageRep/);
   assert.match(source, /NSGradient/);
-  assert.match(source, /#7b7cff|#7B7CFF|123 \/ 255.*124 \/ 255.*1/, 'tile gradient start from baton.svg');
-  assert.match(source, /destinationOut|CGBlendMode/, 'lanes are cut where the baton sweeps, as in the SVG mask');
+  assert.match(source, /99 \/ 255.*102 \/ 255.*241 \/ 255/, 'tile gradient start matches baton.svg');
+  assert.match(source, /6 \/ 255.*182 \/ 255.*212 \/ 255/, 'tile gradient end matches baton.svg');
+  assert.match(source, /appendArc/, 'the Dock tile includes the signal arcs from the SVG');
+  assert.match(source, /let tip = point\(49\.8, 15\.6\)/, 'the Dock tile includes the baton tip from the SVG');
   assert.ok(
     !/applicationIconImage = icon/.test(source),
     'assigning the icns to applicationIconImage makes a running Dock tile use a low-res bitmap; the bundle icon is enough',

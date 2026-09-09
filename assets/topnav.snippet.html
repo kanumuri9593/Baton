@@ -1,0 +1,37 @@
+<!-- Baton Topnav Component (Linear-density header) -->
+<header class="baton-topnav">
+  <div class="baton-topnav__brand">
+    <!-- SVG mark inserted here -->
+    <span>Baton</span>
+    <small id="status">connecting…</small>
+  </div>
+  <span class="baton-topnav__spacer"></span>
+  
+  <!-- Navigation tabs -->
+  <button class="baton-topnav__tab" id="diagnoseBtn" title="Search errors and requests">Diagnose</button>
+  <button class="baton-topnav__tab" id="refreshProjects" title="Re-read project configs">Refresh</button>
+  <button class="baton-topnav__tab" id="historyBtn" title="Past runs">History</button>
+  
+  <!-- Action buttons -->
+  <button class="baton-topnav__action" id="reloadAll" title="Hot reload (r)">
+    <span class="ico"><!-- reload icon --></span>
+  </button>
+  <button class="baton-topnav__action" id="restartAll" title="Hot restart (R)">
+    <span class="ico"><!-- restart icon --></span>
+  </button>
+  <button class="baton-topnav__action danger" id="stopAll" title="Stop all">
+    <span class="ico"><!-- stop icon --></span>
+  </button>
+  
+  <!-- Optional: Run button -->
+  <button class="baton-topnav__run" id="run">Run</button>
+</header>
+
+<!--
+  Tab states:
+    .active or [aria-pressed="true"] → highlighted
+    :hover → subtle highlight
+  
+  Action states:
+    .danger:hover → red highlight
+-->

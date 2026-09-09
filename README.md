@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/baton.svg" width="88" alt="Baton — conductor baton mark">
+  <img src="assets/baton.svg" width="88" alt="Baton">
 </p>
 
 <h1 align="center">Baton</h1>
@@ -14,7 +14,12 @@
   <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.1"><img alt="Version 0.2.1" src="https://img.shields.io/badge/version-0.2.1-111827"></a>
   <a href="https://nodejs.org/"><img alt="Node 24+" src="https://img.shields.io/badge/node-24%2B-339933"></a>
   <a href="https://modelcontextprotocol.io/"><img alt="MCP server" src="https://img.shields.io/badge/MCP-baton--mcp-7c3aed"></a>
-  <a href="https://github.com/kanumuri9593/Baton/issues/new?labels=feedback&title=Feedback"><img alt="Ask for feedback" src="https://img.shields.io/badge/feedback-welcome-f59e0b"></a>
+</p>
+
+<p align="center">
+  <a href="https://kanumuri9593.github.io/Baton/">Website</a> ·
+  <a href="docs/launch-guide.md">Documentation</a> ·
+  <a href="https://kanumuri9593.github.io/Baton/roi.html">ROI scenarios</a>
 </p>
 
 ```bash
@@ -22,13 +27,15 @@ npm install -g github:kanumuri9593/Baton
 baton app
 ```
 
-**Baton 0.2.1** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
+## The Problem
 
-If the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — this replaces that, and adds the half an IDE can't give you: your agent can press the same buttons. Pick a **branch** (or an agent's worktree) and Baton runs it from a copy, so VS Code never has to stash or switch.
+Developers increasingly ask coding agents to run `npm start`, watch a terminal, wait for a port, read logs, restart a process, or take a screenshot. Those are deterministic computer tasks, yet every terminal command, poll, and pasted log consumes model tokens, time, and money. The agent becomes an expensive shell wrapper.
+
+Meanwhile, if the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — that's what Baton replaces. And it adds what an IDE can't give you: **your agent can press the same buttons.**
 
 ```bash
 baton list                                  # what can I run here?
-baton run "iOS Simulator (DEV / dev flavor)"
+baton run "iOS Simulator (DEV)"
 baton run "iOS Simulator (DEV)" --branch origin/main
 baton reload --all                          # hot reload every session
 baton boot "iPhone 17 Pro Max"              # start a simulator that isn't running
@@ -42,10 +49,10 @@ baton app                                   # floating launcher + full control p
 
 | Way | Command |
 |---|---|
+| **npm** (publish pending) | `npm install -g baton-run` |
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
 | **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
 | **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
-| **npm** (after v0.2.1 is published) | `npm install -g baton-run` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
 | **Baton app** | After install: `baton app` — native floating launcher + control panel on macOS; app-style browser window on Linux/Windows. `baton hud` remains an alias. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
@@ -73,7 +80,7 @@ First launch may take a few seconds while the panel compiles.
 
 ```bash
 npm uninstall -g baton-run
-npm install -g github:kanumuri9593/Baton   # or wait for baton-run@0.2.1+ on npm
+npm install -g github:kanumuri9593/Baton
 ```
 
 ---
@@ -107,11 +114,25 @@ Without a global install:
 }
 ```
 
-**Tools:** `inspect_project`, `list_targets`, `list_sessions`, `list_checkouts`, `list_devices`, `run_target`, `run_workflow`, `hot_reload`, `hot_restart`, `stop_session`, `forget_session`, `wait_for`, `read_logs`, `session_summary`, `screenshot`, `set_debug_flag`, `diagnose`, `list_network_requests`, `get_network_request`, `clear_network_requests`, `read_launch_config`, `write_launch_config`, `run_proof`, `list_proofs`, `list_run_history`.
+---
 
-Typical loop: inspect → run (or `run_workflow`) → wait → use your browser/device tools on the live app → screenshot / logs / diagnose → edit → hot reload.
+## MCP Tools
 
-Failed reloads return the compiler errors, not just `DevFS synchronization failed`:
+| Tool | Description |
+|---|---|
+| `inspect_project` | Discover targets, devices, and capabilities |
+| `list_targets` | Available run configurations |
+| `run_target` / `run_workflow` | Start apps, optionally from a branch |
+| `hot_reload` / `hot_restart` | Update running sessions |
+| `wait_for` | Block until ready (no polling) |
+| `read_logs` / `session_summary` | Structured output, not terminal scraping |
+| `screenshot` | Capture evidence |
+| `diagnose` | Cross-session error search |
+| `list_devices` / `boot` | Simulator management |
+
+**Typical loop:** `inspect_project` → `run_target` → `wait_for` → exercise the app → `screenshot` / `read_logs` → edit → `hot_reload`
+
+Failed reloads return the actual compiler error, not just "DevFS synchronization failed":
 
 ```
 lib/main.dart:419:19: Error: Expected ';' after this.
@@ -121,30 +142,18 @@ That's the difference between an agent that can fix its own mistake and one that
 
 ---
 
-## Why
+## Framework Support
 
-Modern development looks like this: several terminals running coding agents, plus one IDE kept alive purely for its run button. The IDE isn't being used to write code any more. It's a launcher.
-
-That toolbar isn't privileged IDE plumbing. `flutter run --machine` speaks a documented JSON protocol on stdio — hot reload is one request on it. Baton drives that protocol directly, so the toolbar becomes a daemon that any terminal, any window, and any agent can talk to.
-
-The result is a control surface your agent shares with you:
-
-> edit a widget → `hot_reload` → `screenshot` → see whether it actually worked
-
-No IDE can offer that, because the agent isn't holding the mouse.
-
-## What it supports
-
-| Framework | Hot reload (keeps state) | Restart | Notes |
+| Framework | Hot Reload | Restart | Notes |
 |---|---|---|---|
-| **Flutter / Dart** | ✅ real, via the daemon protocol | ✅ hot restart | Devices, DevTools, debug flags, screenshots |
-| **Next.js, Vite, Nuxt, Astro, Remix, Angular, CRA** | HMR is automatic on save | ✅ reboots the dev server | Detects the real URL and readiness |
-| **React Native / Expo** | Fast Refresh is automatic | ✅ reload broadcast to dev clients | Talks to Metro's message socket |
-| **Anything else** | — | ✅ kill and respawn | Any `launch.json` or `package.json` script |
+| **Flutter / Dart** | ✅ Real (daemon protocol) | ✅ Hot restart | Devices, DevTools, debug flags, screenshots |
+| **Next.js, Vite, Nuxt, Astro, Remix** | HMR on save | ✅ Dev server | Detects real URL and readiness |
+| **React Native / Expo** | Fast Refresh | ✅ Reload broadcast | Metro message socket |
+| **Anything else** | — | ✅ Kill/respawn | Any `launch.json` or `package.json` script |
 
 Capabilities are reported honestly. A Vite session does not claim Flutter's stateful hot reload, so the control panel greys the button out and agents get a clear refusal instead of a silent no-op.
 
-**Runs on macOS, Linux and Windows.** Node 24+, zero build step.
+---
 
 ## Use it
 
@@ -249,14 +258,9 @@ Configs often reference gitignored files — per-developer secrets, local overri
 baton app
 ```
 
-One compact row per session: status, ⟳ ⟲ ■, logs, and links to the app URL and DevTools. Above it, a tab per project and a picker for target and device. `r` hot-reloads everything in view, `R` hot-restarts.
+One compact row per session: status, ⟳ ⟲ ■, logs, and links to the app URL and DevTools. `r` hot-reloads everything in view, `R` hot-restarts.
 
-On **macOS** this opens a native floating launcher and a menu-bar item:
-
-- stays above a full-screen terminal, and follows you between desktops
-- never steals focus — clicking Run leaves your cursor where it was
-- drag it anywhere by its title strip; it remembers where you put it
-- the menu-bar item shows how many sessions are live (`●3`, orange while starting, red on failure); click it to show or hide the panel, right-click for reload/restart/stop all
+On **macOS** this opens a native floating launcher and a menu-bar item.
 
 The small AppKit host serves the same page and is compiled from source on first use — no opaque binary to trust, and it rebuilds only when that source changes. It needs Xcode or the Command Line Tools; without them Baton opens in the browser instead.
 
@@ -264,17 +268,31 @@ On **Linux and Windows** (or with `baton app --browser`) the same page opens as 
 
 Settings cover system/light/dark appearance, reduced motion, startup view, last-project restoration, Stop-all confirmation, always-on-top, and launch-at-login. See the [Baton app settings](docs/app-settings.md). The older `hud` name described the first tiny floating display; it is retained only as a command and implementation compatibility alias.
 
-## How it works
+## Performance
+
+Tested against a 3,692-library production Flutter app:
+
+| Metric | Result |
+|---|---|
+| Hot reload | 87ms |
+| Hot restart | 359ms |
+| Simultaneous simulators | 3 |
+
+See [ROI Scenarios](https://kanumuri9593.github.io/Baton/roi.html) for modeled time/cost savings with transparent assumptions.
+
+---
+
+## How It Works
 
 ```
 .vscode/launch.json ─┐
 package.json  ───────┼─► detect ─► daemon ─► one session per target
-pubspec.yaml  ───────┘                │       (flutter | web-dev | react-native | process)
+pubspec.yaml  ───────┘                │
                                       │
                      WebSocket + POST /rpc on 127.0.0.1
                           ├── Baton app      (native panel on macOS, browser elsewhere)
                           ├── baton      (any terminal)
-                          └── baton-mcp  (any agent)
+                          └── baton-mcp  (any MCP client)
 ```
 
 One daemon owns every session, so a session you start in a terminal is instantly visible in the control panel and to your agent. The daemon writes `~/.baton/daemon.json` (mode 0600) with its port and a token; clients read it and authenticate. Nothing listens off-loopback.
@@ -301,7 +319,7 @@ baton diagnose <trace-id> --all    # related requests across Node projects
 
 See the [coverage and setup guide](docs/launch-guide.md#local-backend-tracing-using-opentelemetry). Baton captures evidence; browser/device interaction and visual interpretation remain explicit steps in the agent workflow.
 
-## Status
+---
 
 **0.2.1** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one control panel, one of them launched onto a simulator booted from Baton itself.
 
@@ -311,35 +329,33 @@ Feedback from other agent setups is the point of this release: [open an issue](h
 
 ## The icon
 
-`assets/baton.svg` is the only source of truth: a conductor's baton sweeping
-across three running lanes. Everything else is derived from it —
+`assets/baton.svg` is the source of truth: a conductor's baton with three
+signal arcs on an indigo-to-cyan field. Runtime and small-size variants derive
+from the same geometry.
 
 ```bash
 npm run icons     # PNGs at every common size, plus a macOS .icns
 ```
 
-- `assets/baton.svg` — the app tile, for anywhere with a background of its own
-- `assets/baton-mark.svg` — the bare mark; the baton takes `currentColor`, so it
-  inverts correctly on light and dark
-- `assets/baton-glyph.svg` — the baton alone, for anything under ~20px. The
-  menu-bar item draws this same geometry as an AppKit template image, which is
-  why it stays crisp and tints itself to the menu bar it is sitting in
-- `assets/baton-wordmark.svg` — mark plus wordmark
+- `assets/baton.svg` — the app tile (gradient squircle with white baton + arcs)
+- `assets/baton-mark.svg` — the mark with `currentColor` baton for theme adaptation
+- `assets/baton-glyph.svg` — monochrome baton for 16px / menu-bar / favicon
+- `assets/baton-wordmark.svg` — tile plus wordmark
 
-Generated PNGs and the `.icns` are gitignored, so the icon can never end up
-edited in two places.
+Generated PNGs and the `.icns` are gitignored, so the icon can never end up edited in two places.
+
+---
 
 ## Development
 
 ```bash
 npm install
+npm run build     # compile TypeScript to dist/
 npm test          # portable tests, no simulator required
 npm run typecheck
 ```
 
-Tests replay transcripts captured from a real `flutter run --machine` session, so the wire format is a regression test rather than an assumption.
-
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

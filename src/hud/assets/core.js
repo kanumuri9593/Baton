@@ -1004,9 +1004,18 @@ function paintPeek() {
   const starting = live.some((s) => s.status === 'starting');
   const count = $('chipCount');
   const mark = $('chipMark');
-  if (count) count.textContent = live.length ? String(live.length) : '';
+  const face = $('chipFace');
+  const statusClass = failed ? 'failed' : starting ? 'starting' : live.length ? 'running' : 'idle';
+  
+  if (count) {
+    count.textContent = live.length ? String(live.length) : '';
+    count.className = statusClass;
+  }
   if (mark) {
-    mark.className = 'chip-mark' + (failed ? ' failed' : starting ? ' starting' : live.length ? ' running' : '');
+    mark.className = 'chip-mark ' + statusClass;
+  }
+  if (face) {
+    face.dataset.status = statusClass;
   }
 
   const all = [...sessions.values()].sort((a, b) => a.startedAt - b.startedAt);
@@ -1112,7 +1121,6 @@ if (runBtn && !runBtn.querySelector('.ico')) {
 wireChip();
 restoreDensity();
 paintPeek();
-
 connect();
 
 /** Refresh rss/cpu without a second websocket; one `ps -p` on the daemon. */

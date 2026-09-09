@@ -96,6 +96,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private var panel: NSPanel!
     private var web: WKWebView!
     private var compactSurface: CompactChipSurface!
+    private var vibrancyView: NSVisualEffectView!
     private var handshake: Handshake?
     private var loadedPort = 0
     private var timer: Timer?
@@ -212,7 +213,10 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// The Baton follows the menu-bar tint while a small state glyph reports run
     /// status. A template image is essential here: macOS chooses the correct
     /// light or dark tint for the desktop and the active menu-bar appearance.
-    private static func menuBarIcon(state: MenuBarState, size: CGFloat = 19) -> NSImage {
+    ///
+    /// Uses bundled baton-menubar-18.png when available (Design Concept B),
+    /// falling back to vector drawing. Status badge always overlays on top.
+    private static func menuBarIcon(state: MenuBarState, size: CGFloat = 18) -> NSImage {
         let logicalSize = NSSize(width: size, height: size)
         let image = NSImage(size: logicalSize)
         let pixels = Int(ceil(size * 2))
@@ -236,12 +240,22 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: logicalSize).fill(using: .copy)
-        NSColor.black.setFill()
-        HUDController.fillBaton(size: size - 2)
 
+        // Try bundled Design menu bar PNG first, else draw vector fallback
+        if let bundled = Bundle.main.image(forResource: "baton-menubar-18") {
+            bundled.draw(in: NSRect(origin: .zero, size: logicalSize),
+                         from: .zero, operation: .sourceOver, fraction: 1.0)
+        } else {
+            NSColor.black.setFill()
+            NSColor.black.setStroke()
+            HUDController.fillBaton(size: size)
+        }
+
+        // Status badge overlay - do NOT skip this for any state
         if state != .idle {
-            let center = NSPoint(x: size - 4.5, y: 4.5)
-            let radius: CGFloat = 4.25
+            let center = NSPoint(x: size - 4.0, y: 4.0)
+            let radius: CGFloat = 3.8
+            NSColor.black.setFill()
             NSBezierPath(ovalIn: NSRect(
                 x: center.x - radius, y: center.y - radius,
                 width: radius * 2, height: radius * 2
@@ -252,33 +266,33 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
             NSGraphicsContext.current?.cgContext.setBlendMode(.clear)
             NSColor.black.setStroke()
             let symbol = NSBezierPath()
-            symbol.lineWidth = 1.15
+            symbol.lineWidth = 1.1
             symbol.lineCapStyle = .round
             symbol.lineJoinStyle = .round
             switch state {
             case .running:
-                symbol.move(to: NSPoint(x: center.x - 1.8, y: center.y))
-                symbol.line(to: NSPoint(x: center.x - 0.4, y: center.y - 1.35))
-                symbol.line(to: NSPoint(x: center.x + 2.0, y: center.y + 1.65))
+                symbol.move(to: NSPoint(x: center.x - 1.6, y: center.y))
+                symbol.line(to: NSPoint(x: center.x - 0.3, y: center.y - 1.2))
+                symbol.line(to: NSPoint(x: center.x + 1.8, y: center.y + 1.5))
             case .starting:
                 symbol.move(to: center)
-                symbol.line(to: NSPoint(x: center.x, y: center.y + 2.0))
+                symbol.line(to: NSPoint(x: center.x, y: center.y + 1.8))
                 symbol.move(to: center)
-                symbol.line(to: NSPoint(x: center.x + 1.55, y: center.y))
+                symbol.line(to: NSPoint(x: center.x + 1.4, y: center.y))
             case .failed:
-                symbol.move(to: NSPoint(x: center.x, y: center.y - 0.7))
-                symbol.line(to: NSPoint(x: center.x, y: center.y + 1.9))
+                symbol.move(to: NSPoint(x: center.x, y: center.y - 0.6))
+                symbol.line(to: NSPoint(x: center.x, y: center.y + 1.7))
             case .offline:
-                symbol.move(to: NSPoint(x: center.x - 1.8, y: center.y))
-                symbol.line(to: NSPoint(x: center.x + 1.8, y: center.y))
+                symbol.move(to: NSPoint(x: center.x - 1.6, y: center.y))
+                symbol.line(to: NSPoint(x: center.x + 1.6, y: center.y))
             case .idle:
                 break
             }
             symbol.stroke()
             if state == .failed {
                 NSColor.black.setFill()
-                NSBezierPath(ovalIn: NSRect(x: center.x - 0.6, y: center.y - 2.85,
-                                            width: 1.2, height: 1.2)).fill()
+                NSBezierPath(ovalIn: NSRect(x: center.x - 0.55, y: center.y - 2.6,
+                                            width: 1.1, height: 1.1)).fill()
             }
         }
         NSGraphicsContext.restoreGraphicsState()
@@ -315,73 +329,133 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         return image
     }
 
-    /// Same geometry and palette as `assets/baton.svg`: gradient tile, three
-    /// lanes cut by the sweep, then the baton on top.
+    /// Design Concept B: indigo→cyan gradient squircle with white baton and signal arcs.
+    /// Exact geometry from `assets/baton.svg`.
     private static func drawDockTile(in rect: NSRect) {
         let size = rect.width
         let scale = size / 64
-        let radius = size * 15 / 64
+        let radius = 14.2 * scale  // Squircle corner radius from SVG rx="14.2"
         NSColor.clear.setFill()
         rect.fill(using: .copy)
 
         NSGraphicsContext.current?.saveGraphicsState()
         let tile = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
         tile.addClip()
+        
+        // Indigo (#6366f1) → Cyan (#06b6d4) diagonal gradient
         NSGradient(colors: [
-            NSColor(calibratedRed: 123 / 255, green: 124 / 255, blue: 1, alpha: 1), // #7b7cff
-            NSColor(calibratedRed: 79 / 255, green: 125 / 255, blue: 1, alpha: 1),
-            NSColor(calibratedRed: 37 / 255, green: 198 / 255, blue: 189 / 255, alpha: 1),
+            NSColor(calibratedRed: 99 / 255, green: 102 / 255, blue: 241 / 255, alpha: 1),  // #6366f1
+            NSColor(calibratedRed: 6 / 255, green: 182 / 255, blue: 212 / 255, alpha: 1),   // #06b6d4
         ])?.draw(from: NSPoint(x: 0, y: size), to: NSPoint(x: size, y: 0), options: [])
 
         let point = { (x: CGFloat, y: CGFloat) in
             NSPoint(x: x * scale, y: (64 - y) * scale)
         }
 
-        if let ctx = NSGraphicsContext.current?.cgContext {
-            ctx.saveGState()
-            ctx.beginTransparencyLayer(auxiliaryInfo: nil)
-            NSColor.white.withAlphaComponent(0.62).setStroke()
-            let lanes = NSBezierPath()
-            lanes.lineWidth = 6 * scale
-            lanes.lineCapStyle = .round
-            lanes.move(to: point(13, 20)); lanes.line(to: point(44, 20))
-            lanes.move(to: point(13, 32)); lanes.line(to: point(52, 32))
-            lanes.move(to: point(31, 44)); lanes.line(to: point(49, 44))
-            lanes.stroke()
+        // Three signal arcs — exact SVG arc paths converted
+        NSColor.white.setStroke()
+        
+        // Arc 1: M26.717 27.243 A9.500 9.500 0 0 1 37.373 17.980
+        let arc1 = NSBezierPath()
+        arc1.lineWidth = 2.4 * scale
+        arc1.lineCapStyle = .round
+        arc1.appendArc(
+            withCenter: point(32, 22.6),
+            radius: 9.5 * scale,
+            startAngle: 135, endAngle: 225
+        )
+        arc1.stroke()
+        
+        // Arc 2: M22.069 28.647 A14.200 14.200 0 0 1 39.410 13.573
+        let arc2 = NSBezierPath()
+        arc2.lineWidth = 2.4 * scale
+        arc2.lineCapStyle = .round
+        arc2.appendArc(
+            withCenter: point(30.7, 21.1),
+            radius: 14.2 * scale,
+            startAngle: 135, endAngle: 225
+        )
+        arc2.stroke()
+        
+        // Arc 3: M17.662 31.015 A18.900 18.900 0 0 1 42.368 9.539
+        let arc3 = NSBezierPath()
+        arc3.lineWidth = 2.4 * scale
+        arc3.lineCapStyle = .round
+        arc3.appendArc(
+            withCenter: point(30, 20.3),
+            radius: 18.9 * scale,
+            startAngle: 135, endAngle: 225
+        )
+        arc3.stroke()
 
-            ctx.setBlendMode(.destinationOut)
-            let sweep = NSBezierPath()
-            sweep.lineWidth = 13.5 * scale
-            sweep.lineCapStyle = .round
-            sweep.move(to: point(14.5, 50.5))
-            sweep.line(to: point(54, 10))
-            NSColor.black.setStroke()
-            sweep.stroke()
-            ctx.endTransparencyLayer()
-            ctx.restoreGState()
-        }
-
+        // White baton shaft: line x1="15.461" y1="45.451" x2="48.743" y2="16.518"
+        NSColor.white.setStroke()
         NSColor.white.setFill()
-        HUDController.fillBaton(size: size)
+        let shaft = NSBezierPath()
+        shaft.lineWidth = 2.85 * scale
+        shaft.lineCapStyle = .round
+        shaft.move(to: point(15.461, 45.451))
+        shaft.line(to: point(48.743, 16.518))
+        shaft.stroke()
+
+        // Tip bulb at top-right: circle cx="49.800" cy="15.600" r="4.0"
+        let tip = point(49.8, 15.6)
+        let tipRadius = 4.0 * scale
+        NSBezierPath(ovalIn: NSRect(x: tip.x - tipRadius, y: tip.y - tipRadius,
+                                    width: tipRadius * 2, height: tipRadius * 2)).fill()
+
         NSGraphicsContext.current?.restoreGraphicsState()
     }
 
+    /// Draw Design Concept B baton: tip bulb at top-right, shaft diagonal, signal arcs left.
+    /// Matches `assets/baton.svg` geometry exactly.
     private static func fillBaton(size: CGFloat) {
         let scale = size / 64
         let point = { (x: CGFloat, y: CGFloat) in
             NSPoint(x: x * scale, y: (64 - y) * scale)
         }
 
-        let shaft = NSBezierPath()
-        shaft.move(to: point(16.86, 52.8))
-        shaft.line(to: point(54, 10))
-        shaft.line(to: point(12.14, 48.2))
-        shaft.close()
-        shaft.fill()
+        // Three signal arcs (Wi-Fi/broadcast style)
+        NSBezierPath.defaultLineCapStyle = .round
+        let arc1 = NSBezierPath()
+        arc1.lineWidth = 2.4 * scale
+        arc1.appendArc(
+            withCenter: point(32, 22.6),
+            radius: 9.5 * scale,
+            startAngle: 135, endAngle: 225
+        )
+        arc1.stroke()
+        
+        let arc2 = NSBezierPath()
+        arc2.lineWidth = 2.4 * scale
+        arc2.appendArc(
+            withCenter: point(30.7, 21.1),
+            radius: 14.2 * scale,
+            startAngle: 135, endAngle: 225
+        )
+        arc2.stroke()
+        
+        let arc3 = NSBezierPath()
+        arc3.lineWidth = 2.4 * scale
+        arc3.appendArc(
+            withCenter: point(30, 20.3),
+            radius: 18.9 * scale,
+            startAngle: 135, endAngle: 225
+        )
+        arc3.stroke()
 
-        let grip = point(14.5, 50.5)
-        let radius = 4.6 * scale
-        NSBezierPath(ovalIn: NSRect(x: grip.x - radius, y: grip.y - radius,
+        // Baton shaft: lower-left to upper-right diagonal
+        let shaft = NSBezierPath()
+        shaft.lineWidth = 2.85 * scale
+        shaft.lineCapStyle = .round
+        shaft.move(to: point(15.461, 45.451))
+        shaft.line(to: point(48.743, 16.518))
+        shaft.stroke()
+
+        // Tip bulb at upper-right
+        let tip = point(49.8, 15.6)
+        let radius = 4.0 * scale
+        NSBezierPath(ovalIn: NSRect(x: tip.x - radius, y: tip.y - radius,
                                     width: radius * 2, height: radius * 2)).fill()
     }
 
@@ -421,13 +495,31 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.delegate = self
 
         let content = NSView()
+        
+        // Vibrancy effect for compact chip (hudWindow style)
+        vibrancyView = NSVisualEffectView()
+        vibrancyView.translatesAutoresizingMaskIntoConstraints = false
+        vibrancyView.material = .hudWindow
+        vibrancyView.blendingMode = .behindWindow
+        vibrancyView.state = .active
+        vibrancyView.wantsLayer = true
+        vibrancyView.layer?.cornerRadius = 10
+        vibrancyView.layer?.masksToBounds = true
+        vibrancyView.isHidden = false
+        
         web.translatesAutoresizingMaskIntoConstraints = false
         compactSurface = CompactChipSurface()
         compactSurface.webView = web
         compactSurface.translatesAutoresizingMaskIntoConstraints = false
+        
+        content.addSubview(vibrancyView)
         content.addSubview(web)
         content.addSubview(compactSurface)
         NSLayoutConstraint.activate([
+            vibrancyView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            vibrancyView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            vibrancyView.topAnchor.constraint(equalTo: content.topAnchor),
+            vibrancyView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
             web.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             web.topAnchor.constraint(equalTo: content.topAnchor),
@@ -528,6 +620,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = compact
         panel.standardWindowButton(.zoomButton)?.isHidden = compact
         compactSurface?.isHidden = !compact
+        vibrancyView?.isHidden = !compact
         panel.hasShadow = true
         if wasCompact && !compact {
             showPanel()
@@ -764,12 +857,14 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         <meta name="color-scheme" content="dark">
         <style>
         *{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;
-        background:#15171c;color:#f4f5f7;font:13px -apple-system;text-align:center;padding:22px}
-        .mark{font-size:20px;color:#7b7cff;margin-bottom:10px}h1{font-size:15px;margin:0 0 7px}
-        p{color:#9299a8;line-height:1.4;margin:0;max-width:235px}.spinner{width:16px;height:16px;
-        border:2px solid #363a45;border-top-color:#7b7cff;border-radius:50%;margin:15px auto 0;
+        background:#0c0d12;color:#f0f2f7;font:13px -apple-system;text-align:center;padding:22px}
+        .mark{font-size:20px;background:linear-gradient(135deg,#6366f1,#06b6d4);-webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;margin-bottom:10px}h1{font-size:15px;margin:0 0 7px}
+        p{color:#8892a8;line-height:1.4;margin:0;max-width:235px}.spinner{width:16px;height:16px;
+        border:2px solid #282d3a;border-top-color:#6366f1;border-radius:50%;margin:15px auto 0;
         animation:s .8s linear infinite}button{margin-top:15px;border:0;border-radius:7px;padding:7px 13px;
-        color:white;background:#6668e8;font:600 12px -apple-system}@keyframes s{to{transform:rotate(360deg)}}
+        color:white;background:linear-gradient(135deg,#6366f1,#06b6d4);font:600 12px -apple-system}
+        @keyframes s{to{transform:rotate(360deg)}}
         </style><div><div class="mark">●</div><h1>\(htmlEscaped(title))</h1>
         <p>\(htmlEscaped(detail))</p>\(action)</div>
         """, baseURL: nil)
