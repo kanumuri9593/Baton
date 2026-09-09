@@ -52,3 +52,13 @@ export function worktreesDir(): string {
 export function checkoutsStorePath(): string {
   return join(stateDir(), 'checkouts.json');
 }
+
+/**
+ * Per-machine workspace provider choices, keyed by manifest path.
+ *
+ * Separate from the committed manifest because "my API points at staging" is a
+ * local decision, not one to push onto the rest of the team.
+ */
+export function workspacesStorePath(): string {
+  return join(stateDir(), 'workspaces.json');
+}
