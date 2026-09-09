@@ -110,6 +110,28 @@ test('the page has a chip, a peek strip, and an inspector pane', () => {
   assert.ok(!html.includes('id="chipDot"'), 'the chip shows the Baton mark, not a status LED');
 });
 
+test('the control panel exposes persistent, accessible preferences', () => {
+  const html = renderHud('tok123');
+  const core = readFileSync(HUD_ASSETS.get('core.js')!.path, 'utf8');
+  const settings = readFileSync(HUD_ASSETS.get('settings.js')!.path, 'utf8');
+  const css = readFileSync(HUD_ASSETS.get('hud.css')!.path, 'utf8');
+  assert.match(html, /id="settingsBtn"/);
+  assert.match(html, /role="dialog" aria-modal="true"/);
+  for (const id of ['themePreference', 'motionPreference', 'startupViewPreference',
+    'alwaysOnTopPreference', 'launchAtLoginPreference', 'restoreProjectPreference',
+    'confirmStopAllPreference']) {
+    assert.match(html, new RegExp(`id="${id}"`), `${id} must be user-configurable`);
+  }
+  assert.match(settings, /baton\.preferences\.v1/);
+  assert.match(html, /Command-,/);
+  assert.match(core, /baton\.lastProject/);
+  assert.match(core, /confirmStopAll/);
+  assert.match(css, /data-theme="system"/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.doesNotMatch(html, /<html[^>]+data-theme="dark"/,
+    'the app must follow the system theme until a user chooses otherwise');
+});
+
 test('the compact HUD is a floating logo that clicks to open and drags to move', () => {
   const html = renderHud('tok123');
   const core = readFileSync(HUD_ASSETS.get('core.js')!.path, 'utf8');
@@ -209,6 +231,18 @@ test('the generated HUD app is a regular Mac app with a Dock icon', () => {
     /\.update\(readFileSync\(icns\)\)/,
     'icns contents must participate in the rebuild stamp so a new icon is picked up',
   );
+});
+
+test('the macOS app persists preferences and exposes native settings', () => {
+  const source = readFileSync(join(import.meta.dirname, '../hud/mac/main.swift'), 'utf8');
+  const builder = readFileSync(join(import.meta.dirname, '../src/hud/panel.ts'), 'utf8');
+  assert.match(source, /websiteDataStore = \.default\(\)/,
+    'WebKit preferences must survive an app restart');
+  assert.match(source, /UserDefaults\.standard/);
+  assert.match(source, /SMAppService\.mainApp/);
+  assert.match(source, /Settings…/);
+  assert.match(source, /Stop every running session\?/);
+  assert.match(builder, /CFBundleDisplayName<\/key><string>Baton<\/string>/);
 });
 
 test('the Dock tile is the full Baton mark at retina resolution', () => {

@@ -45,12 +45,13 @@ Usage
                                  screenshots, network stats and logs
   baton proofs [list] [-n 20]    list past proof bundles
   baton proofs open <id>         print summary.md for one bundle
-  baton projects                 projects the HUD knows about
+  baton projects                 projects the Baton app knows about
   baton add <path>               track another project
   baton init [--force|--replace] [--claude]
                                  write a launch.json from what is detected here
                                  (--replace to overwrite one that has work in it)
-  baton hud [--browser|--tab]    open the floating control panel
+  baton app [--browser|--tab]    open the Baton control panel
+  baton hud [--browser|--tab]    compatibility alias for baton app
   baton daemon start|stop|status
 
 Examples
@@ -61,7 +62,7 @@ Examples
   baton reload --all
   baton boot "iPhone 17 Pro Max" # boot it, then run on it
   baton network mclane360 --filter 'POST|4\\d\\d'
-  baton add ~/code/storefront    # watch three projects in one HUD
+  baton add ~/code/storefront    # watch three projects in one control panel
   baton init                     # .vscode/launch.json you can then edit anywhere
   baton wait mclane360 --until running --timeout 30000
   baton wait webapp --until log:"ready in"
@@ -697,6 +698,7 @@ async function main() {
         break;
       }
 
+      case 'app':
       case 'hud': {
         // Register the terminal's project first, so a window with no cwd of its
         // own still opens on the project you are standing in.
@@ -711,14 +713,14 @@ async function main() {
         if (!wantsBrowser && panelSupported() && hasSwift()) {
           try {
             openPanel(() => console.log(dim('  compiling the panel (first run only)…')));
-            console.log(`${green('●')} HUD in the menu bar  ${dim(url)}`);
+            console.log(`${green('●')} Baton in the menu bar  ${dim(url)}`);
             console.log(dim('  click the ● to show or hide it; right-click for reload/restart/stop'));
             break;
           } catch (err) {
             console.log(yellow('  ' + (err as Error).message));
           }
         }
-        console.log(`HUD → ${url}`);
+        console.log(`Baton → ${url}`);
         openHud(url, flags.tab === true);
         break;
       }

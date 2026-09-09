@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="system">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -29,6 +29,7 @@
   <button id="diagnoseBtn" title="Search errors and requests across projects">Diagnose</button>
   <button id="refreshProjects" title="Re-read project launch configurations from disk">Refresh</button>
   <button id="historyBtn" title="Past runs, persisted on disk -- survives a daemon restart">History</button>
+  <button class="icon" id="settingsBtn" title="Settings (Command-,)" aria-label="Settings"></button>
   <button class="icon" id="reloadAll" title="Hot reload every running session (r)"></button>
   <button class="icon" id="restartAll" title="Hot restart every running session (R)"></button>
   <button class="icon danger" id="stopAll" title="Stop every running session"></button>
@@ -64,9 +65,82 @@
 <section id="inspector"></section>
 <div class="toast" id="toast"></div>
 
+<div class="settings-backdrop" id="settingsPanel" hidden>
+  <section class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <header class="settings-head">
+      <div>
+        <h2 id="settingsTitle">Settings</h2>
+        <p>Preferences for this Baton control panel.</p>
+      </div>
+      <button class="icon" id="settingsClose" aria-label="Close settings"></button>
+    </header>
+    <div class="settings-body">
+      <fieldset>
+        <legend>Appearance</legend>
+        <label class="settings-row">
+          <span><strong>Theme</strong><small>Match your system, or choose a fixed appearance.</small></span>
+          <select id="themePreference">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+        <label class="settings-row">
+          <span><strong>Motion</strong><small>Reduce non-essential status animation.</small></span>
+          <select id="motionPreference">
+            <option value="system">System</option>
+            <option value="reduce">Reduced</option>
+            <option value="full">Full</option>
+          </select>
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>Window &amp; startup</legend>
+        <label class="settings-row">
+          <span><strong>Open as</strong><small>Choose the view shown when Baton starts.</small></span>
+          <select id="startupViewPreference">
+            <option value="last">Last used view</option>
+            <option value="chip">Compact launcher</option>
+            <option value="inspector">Control panel</option>
+          </select>
+        </label>
+        <label class="settings-row settings-check">
+          <span><strong>Keep control panel on top</strong><small>Compact mode always floats. Available in the macOS app.</small></span>
+          <input type="checkbox" id="alwaysOnTopPreference">
+        </label>
+        <label class="settings-row settings-check">
+          <span><strong>Launch at login</strong><small>Start Baton after you sign in. Available in the macOS app.</small></span>
+          <input type="checkbox" id="launchAtLoginPreference">
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>Behavior</legend>
+        <label class="settings-row settings-check">
+          <span><strong>Restore last project</strong><small>Return to the project you viewed most recently.</small></span>
+          <input type="checkbox" id="restoreProjectPreference">
+        </label>
+        <label class="settings-row settings-check">
+          <span><strong>Confirm Stop all</strong><small>Protect every running session from an accidental click.</small></span>
+          <input type="checkbox" id="confirmStopAllPreference">
+        </label>
+      </fieldset>
+      <div class="settings-note">
+        <strong>Keyboard shortcut</strong>
+        <span>Control–Option–B shows or hides Baton on macOS. In the control panel, <kbd>r</kbd> reloads and <kbd>R</kbd> restarts sessions in view.</span>
+      </div>
+      <div class="settings-foot">
+        <span id="nativePreferenceStatus" aria-live="polite"></span>
+        <button id="resetPreferences">Restore defaults</button>
+        <button class="go" id="settingsDone">Done</button>
+      </div>
+    </div>
+  </section>
+</div>
+
 <script>window.BATON_TOKEN='%%TOKEN%%';</script>
 <script src="/assets/icons.js"></script>
 <script src="/assets/core.js"></script>
+<script src="/assets/settings.js"></script>
 <script src="/assets/diagnostics.js"></script>
 <script src="/assets/network.js"></script>
 <script src="/assets/editor.js"></script>

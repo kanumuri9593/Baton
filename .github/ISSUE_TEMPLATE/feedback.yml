@@ -7,7 +7,7 @@ body:
     id: story
     attributes:
       label: What did you try?
-      description: MCP client (Claude Code, Cursor, Codex, …), CLI, HUD, or all three.
+      description: MCP client, CLI, Baton app, or a combination.
     validations:
       required: true
   - type: input

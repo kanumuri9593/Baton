@@ -3,8 +3,12 @@
     --text: #e6e9ef; --muted: #8b93a7; --accent: #5b8cff;
     --ok: #3fca7a; --warn: #f5b544; --err: #ff6b6b; --idle: #5a6272;
   }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --panel: #fff; --panel-2: #f0f2f5; --line: #dfe3ea;
+    --text: #12151b; --muted: #66708a; --idle: #a8afbd;
+  }
   @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
+    :root[data-theme="system"] {
       --bg: #f6f7f9; --panel: #fff; --panel-2: #f0f2f5; --line: #dfe3ea;
       --text: #12151b; --muted: #66708a; --idle: #a8afbd;
     }
@@ -291,6 +295,64 @@
   .toast.bad { border-color: var(--err); color: var(--err); }
   [hidden] { display: none !important; }
 
+  /* --- settings ---------------------------------------------------------- */
+  .settings-backdrop {
+    position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+    padding: 24px; background: rgba(3, 6, 12, .66); backdrop-filter: blur(6px);
+  }
+  .settings-sheet {
+    width: min(620px, 100%); max-height: min(760px, calc(100vh - 32px)); overflow: hidden;
+    display: flex; flex-direction: column; background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 80px rgba(0, 0, 0, .42);
+  }
+  .settings-head {
+    position: static; display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px;
+    background: transparent; border-bottom: 1px solid var(--line);
+  }
+  .settings-head h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+  .settings-head p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+  .settings-head .icon { margin-left: auto; }
+  .settings-body { padding: 4px 18px 18px; overflow: auto; }
+  .settings-body fieldset { margin: 16px 0 0; padding: 0; border: 0; }
+  .settings-body legend {
+    width: 100%; padding: 0 0 5px; color: var(--muted); font-size: 10px;
+    font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .settings-row {
+    min-height: 56px; display: flex; align-items: center; gap: 18px;
+    padding: 9px 0; border-top: 1px solid var(--line);
+  }
+  .settings-row > span { min-width: 0; flex: 1; display: grid; gap: 2px; }
+  .settings-row strong { font-size: 12px; font-weight: 620; }
+  .settings-row small { color: var(--muted); line-height: 1.35; }
+  .settings-row select { flex: 0 0 150px; }
+  .settings-check input { width: 17px; height: 17px; accent-color: var(--accent); }
+  .settings-note {
+    display: grid; gap: 4px; margin-top: 18px; padding: 11px 12px;
+    border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: 11px;
+  }
+  .settings-note strong { color: var(--text); }
+  kbd {
+    padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; background: var(--panel-2); color: var(--text); font: inherit;
+  }
+  .settings-foot {
+    position: sticky; bottom: -18px; display: flex; align-items: center; gap: 8px;
+    margin: 16px -18px -18px; padding: 12px 18px; background: var(--panel);
+    border-top: 1px solid var(--line);
+  }
+  .settings-foot > span { flex: 1; color: var(--muted); font-size: 11px; }
+  .settings-foot > span.bad { color: var(--err); }
+
+  :root[data-motion="reduce"] *,
+  :root[data-motion="reduce"] *::before,
+  :root[data-motion="reduce"] *::after { animation: none !important; transition: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    :root[data-motion="system"] *,
+    :root[data-motion="system"] *::before,
+    :root[data-motion="system"] *::after { animation: none !important; transition: none !important; }
+  }
+
   /* --- densities: chip / peek / inspector -------------------------------- */
 
   button.icon {
@@ -465,4 +527,12 @@
   .launcher { flex-wrap: wrap; flex-shrink: 0; }
   #picker { flex-basis: 100%; }
   select#device, select#checkout { flex: 1 1 30%; }
+}
+@media (max-width: 560px) {
+  .settings-backdrop { padding: 8px; place-items: end center; }
+  .settings-sheet { max-height: calc(100vh - 8px); border-radius: 14px 14px 0 0; }
+  .settings-row { align-items: flex-start; }
+  .settings-row select { flex-basis: 120px; }
+  .settings-foot { flex-wrap: wrap; }
+  .settings-foot > span { flex-basis: 100%; }
 }

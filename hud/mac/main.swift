@@ -9,6 +9,7 @@
 import AppKit
 import Carbon.HIToolbox
 import Darwin
+import ServiceManagement
 import WebKit
 
 struct Handshake: Decodable {
@@ -106,6 +107,8 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private var missedHealthChecks = 0
     private var terminationConfirmed = false
     private var terminationInProgress = false
+    private var currentDensity = "chip"
+    private var alwaysOnTop = UserDefaults.standard.bool(forKey: "alwaysOnTop")
 
     // MARK: lifecycle
 
@@ -386,7 +389,9 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     private func buildPanel() {
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = .nonPersistent()
+        // Theme, project and layout preferences should survive app restarts.
+        // The authenticated page itself is still served with no-store headers.
+        configuration.websiteDataStore = .default()
         configuration.userContentController.add(self, name: "batonHud")
         web = WKWebView(frame: .zero, configuration: configuration)
         web.uiDelegate = self
@@ -485,6 +490,12 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                 if let density = body["density"] as? String {
                     self?.applyChrome(density)
                 }
+            } else if type == "getPreferences" {
+                self?.sendPreferences()
+            } else if type == "setPreference",
+                      let key = body["key"] as? String,
+                      let value = body["value"] as? Bool {
+                self?.setPreference(key, value: value)
             } else if type == "retryDaemon" {
                 self?.retryDaemon()
             }
@@ -493,6 +504,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     /// Chip/peek stay chrome-less; inspector gets traffic lights and a title.
     private func applyChrome(_ density: String) {
+        currentDensity = density
         let compact = density != "inspector"
         let wasCompact = panel.styleMask.contains(.fullSizeContentView)
         // Transparency belongs only to the rounded launcher. The inspector's
@@ -500,9 +512,9 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         panel.titlebarAppearsTransparent = compact
         panel.isOpaque = !compact
         panel.backgroundColor = compact ? .clear : .windowBackgroundColor
-        panel.isFloatingPanel = compact
-        panel.level = compact ? .floating : .normal
-        panel.collectionBehavior = compact
+        panel.isFloatingPanel = compact || alwaysOnTop
+        panel.level = (compact || alwaysOnTop) ? .floating : .normal
+        panel.collectionBehavior = (compact || alwaysOnTop)
             ? [.canJoinAllSpaces, .fullScreenAuxiliary] : []
         panel.becomesKeyOnlyIfNeeded = compact
         if compact {
@@ -520,6 +532,47 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         if wasCompact && !compact {
             showPanel()
         }
+    }
+
+    private func setPreference(_ key: String, value: Bool) {
+        switch key {
+        case "alwaysOnTop":
+            alwaysOnTop = value
+            UserDefaults.standard.set(value, forKey: "alwaysOnTop")
+            applyChrome(currentDensity)
+            sendPreferences(message: "Window preference saved.")
+        case "launchAtLogin":
+            guard #available(macOS 13.0, *) else {
+                sendPreferences(error: "Launch at login requires macOS 13 or later.")
+                return
+            }
+            do {
+                if value { try SMAppService.mainApp.register() }
+                else { try SMAppService.mainApp.unregister() }
+                sendPreferences(message: "Login preference saved.")
+            } catch {
+                sendPreferences(error: "Could not update Launch at Login: \(error.localizedDescription)")
+            }
+        default:
+            break
+        }
+    }
+
+    private func sendPreferences(message: String? = nil, error: String? = nil) {
+        var launchAtLogin = false
+        if #available(macOS 13.0, *) {
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
+        var payload: [String: Any] = [
+            "available": true,
+            "alwaysOnTop": alwaysOnTop,
+            "launchAtLogin": launchAtLogin,
+        ]
+        if let message { payload["message"] = message }
+        if let error { payload["error"] = error }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else { return }
+        web.evaluateJavaScript("window.BatonSettings && window.BatonSettings.applyNative(\(json))")
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -852,7 +905,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        let toggle = item(panelShown ? "Hide HUD" : "Show HUD", #selector(menuToggle), key: "b")
+        let toggle = item(panelShown ? "Hide Baton" : "Show Baton", #selector(menuToggle), key: "b")
         toggle.keyEquivalentModifierMask = [.control, .option]
         menu.addItem(toggle)
         menu.addItem(.separator())
@@ -860,6 +913,7 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         menu.addItem(item("Hot restart all", #selector(menuRestart), key: "R"))
         menu.addItem(item("Stop all", #selector(menuStop)))
         menu.addItem(.separator())
+        menu.addItem(item("Settings…", #selector(menuSettings), key: ","))
         menu.addItem(item("Open in browser", #selector(menuBrowser)))
         menu.addItem(item("Quit Baton…", #selector(menuQuit), key: "q"))
         return menu
@@ -874,7 +928,24 @@ final class HUDController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     @objc private func menuToggle() { togglePanel() }
     @objc private func menuReload() { rpc("reload", ["all": true]) }
     @objc private func menuRestart() { rpc("restart", ["all": true]) }
-    @objc private func menuStop() { rpc("stop", ["all": true]) }
+    @objc private func menuStop() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Stop every running session?"
+        alert.informativeText = "This stops all sessions across every project."
+        alert.addButton(withTitle: "Stop All")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        rpc("stop", ["all": true])
+    }
+
+    @objc private func menuSettings() {
+        showPanel()
+        web.evaluateJavaScript(
+            "window.baton && window.baton.setDensity('inspector', true); " +
+            "window.BatonSettings && window.BatonSettings.open()"
+        )
+    }
 
     @objc private func menuBrowser() {
         guard let current = handshake,

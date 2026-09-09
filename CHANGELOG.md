@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Added a persistent Settings surface with system/light/dark themes, reduced
+  motion, startup view, last-project restoration, and Stop-all confirmation.
+- Added native macOS preferences for keeping the expanded control panel on top
+  and launching Baton at login.
+- Added `baton app` as the primary control-panel command; `baton hud` remains a
+  backward-compatible alias.
+- Restored the complete test suite as an npm publish gate and documented the
+  system architecture and preference storage.
+
 ## 0.2.1 — 2026-09-09
 
 First npm publish of `baton-run`.

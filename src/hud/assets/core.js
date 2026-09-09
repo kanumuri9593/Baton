@@ -9,7 +9,8 @@ let socket, nextId = 1;
 let sessions = new Map();
 let activeSessionId = null; // session the peek strip and inspector follow
 let projects = [];          // [{root, name, targets, error}]
-let selectedRoot = null;    // null = show every project at once
+const PROJECT_KEY = 'baton.lastProject';
+let selectedRoot = restoreSelectedRoot(); // null = show every project at once
 let devices = [];           // connected, runnable now
 let bootables = [];         // not running, but startable
 let devicesLoaded = false;
@@ -24,6 +25,24 @@ let projectFingerprint = null;
 const openLogs = new Set();
 const pending = new Map();
 const logBuffers = new Map();
+
+function storedPreferences() {
+  try { return JSON.parse(localStorage.getItem('baton.preferences.v1') || '{}'); }
+  catch { return {}; }
+}
+
+function restoreSelectedRoot() {
+  if (storedPreferences().restoreProject === false) return null;
+  try { return localStorage.getItem(PROJECT_KEY) || null; }
+  catch { return null; }
+}
+
+function rememberSelectedRoot(root) {
+  try {
+    if (root) localStorage.setItem(PROJECT_KEY, root);
+    else localStorage.removeItem(PROJECT_KEY);
+  } catch { /* private mode */ }
+}
 
 const basename = (path) => String(path).split(/[\\/]/).filter(Boolean).pop() || path;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
@@ -270,6 +289,7 @@ function renderTabs() {
         e.stopPropagation();
         await call('removeProject', { root: project.root }).catch(() => {});
         selectedRoot = null;
+        rememberSelectedRoot(null);
         loadProjects();
       };
       el.appendChild(x);
@@ -315,6 +335,7 @@ const countFor = (root) =>
 
 function select(root) {
   selectedRoot = root;
+  rememberSelectedRoot(root);
   renderTabs();
   renderPicker();
   render();
@@ -724,7 +745,11 @@ $('run').onclick = async () => {
 
 $('reloadAll').onclick = () => act('reload', scopedAll());
 $('restartAll').onclick = () => act('restart', scopedAll());
-$('stopAll').onclick = () => act('stop', scopedAll());
+$('stopAll').onclick = () => {
+  const shouldConfirm = !window.BatonSettings || window.BatonSettings.confirmStopAll();
+  if (shouldConfirm && !window.confirm('Stop every running session in view?')) return;
+  act('stop', scopedAll());
+};
 
 /**
  * "Every session" means every session in view.
@@ -1058,6 +1083,8 @@ function restoreDensity() {
   }
   let saved = 'chip';
   try { saved = localStorage.getItem(DENSITY_KEY) || 'chip'; } catch { /* private mode */ }
+  const startupView = storedPreferences().startupView;
+  if (startupView === 'chip' || startupView === 'inspector') saved = startupView;
   if (saved !== 'inspector') saved = 'chip';
   setDensity(saved, false);
 }

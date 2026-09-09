@@ -5,8 +5,8 @@
 <h1 align="center">Baton</h1>
 
 <p align="center">
-  <strong>MCP launcher HUD for coding agents.</strong><br>
-  Run, hot-reload, boot simulators, and screenshot Flutter, Next.js, Vite, and React Native apps from any terminal — or hand the same buttons to Claude Code, Cursor, Codex, Gemini CLI, and any other MCP client.
+  <strong>The local run control plane for people and coding agents.</strong><br>
+  Run, hot-reload, boot simulators, and capture evidence for Flutter, Next.js, Vite, and React Native from a terminal, the Baton app, or any MCP-compatible agent.
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@
 
 ```bash
 npm install -g github:kanumuri9593/Baton
-baton hud
+baton app
 ```
 
 **Baton 0.2.1** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
@@ -33,7 +33,7 @@ baton run "iOS Simulator (DEV)" --branch origin/main
 baton reload --all                          # hot reload every session
 baton boot "iPhone 17 Pro Max"              # start a simulator that isn't running
 baton add ~/code/storefront                 # watch another project too
-baton hud                                   # floating panel + menu-bar item
+baton app                                   # floating launcher + full control panel
 ```
 
 ---
@@ -47,7 +47,7 @@ baton hud                                   # floating panel + menu-bar item
 | **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
 | **npm** (after v0.2.1 is published) | `npm install -g baton-run` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
-| **HUD / UI** | After install: `baton hud` — native floating panel + menu bar on macOS; chromeless browser window on Linux/Windows. No App Store download; the panel is compiled from this repo on first use. |
+| **Baton app** | After install: `baton app` — native floating launcher + control panel on macOS; app-style browser window on Linux/Windows. `baton hud` remains an alias. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
 
 Requires **Node.js 24+**. macOS, Linux, and Windows.
@@ -58,12 +58,12 @@ Pin a release:
 npm install -g github:kanumuri9593/Baton#v0.2.1
 ```
 
-### The HUD
+### The Baton app
 
-There is **no App Store download** — the HUD is `baton hud`:
+There is **no App Store download** — open Baton with `baton app`:
 
-- **macOS**: native floating panel + menu-bar item. First run compiles ~250 lines of AppKit from `hud/` (needs Xcode or Command Line Tools).
-- **Linux / Windows**: chromeless browser window.
+- **macOS**: native floating launcher, full control panel, Dock and menu-bar access. First run compiles the small AppKit host from `hud/` (needs Xcode or Command Line Tools).
+- **Linux / Windows**: the same control panel in an app-style browser window.
 
 First launch may take a few seconds while the panel compiles.
 
@@ -78,19 +78,13 @@ npm install -g github:kanumuri9593/Baton   # or wait for baton-run@0.2.1+ on npm
 
 ---
 
-## Give it to your agent
+## Connect any agent
 
-Baton is an MCP server. Agents get structured tools instead of scraping `flutter run` output. People who do not speak MCP can still script `baton`; every command exits non-zero on failure.
+Baton is an MCP server. Any compatible agent gets structured tools instead of scraping `flutter run` output. Scripts can use the same `baton` CLI; every command exits non-zero on failure.
 
 Full agent notes: **[AGENTS.md](AGENTS.md)**. Crawler-friendly summary: **[llms.txt](llms.txt)**.
 
-**Claude Code**
-
-```bash
-claude mcp add baton -- baton-mcp
-```
-
-**Cursor, Windsurf, Claude Desktop, Codex, Gemini CLI, Zed** — anything that reads an MCP config:
+Use this with any client that accepts an MCP server configuration:
 
 ```json
 {
@@ -148,7 +142,7 @@ No IDE can offer that, because the agent isn't holding the mouse.
 | **React Native / Expo** | Fast Refresh is automatic | ✅ reload broadcast to dev clients | Talks to Metro's message socket |
 | **Anything else** | — | ✅ kill and respawn | Any `launch.json` or `package.json` script |
 
-Capabilities are reported honestly. A Vite session does not claim Flutter's stateful hot reload, so the HUD greys the button out and agents get a clear refusal instead of a silent no-op.
+Capabilities are reported honestly. A Vite session does not claim Flutter's stateful hot reload, so the control panel greys the button out and agents get a clear refusal instead of a silent no-op.
 
 **Runs on macOS, Linux and Windows.** Node 24+, zero build step.
 
@@ -183,7 +177,7 @@ The result contains session IDs, readiness, URLs and focused failures. MCP agent
 
 ### Guided discovery and validation
 
-The HUD re-reads launch sources while visible, on focus, and through **Refresh**. Its guidance card shows the selected environment, source file, entrypoint, build mode and setup issues. Device and branch menus follow the selected target's project, including in **All**.
+The control panel re-reads launch sources while visible, on focus, and through **Refresh**. Its guidance card shows the selected environment, source file, entrypoint, build mode and setup issues. Device and branch menus follow the selected target's project, including in **All**.
 
 ```bash
 baton doctor                 # fresh sources, blockers, nested projects, guidance
@@ -210,7 +204,7 @@ bootable
   ○ Pixel 10 Pro                 Pixel_10_Pro  android
 ```
 
-Individual iOS models, not a generic "start a simulator" — Flutter's own emulator list collapses every iPhone and iPad into one entry, so `simctl` is asked directly. `baton boot "iPad mini"` starts one and waits until Flutter can actually see it, then tells you the device id to run on. In the HUD, picking a device under **Start new** boots it and launches on exactly that device in one press.
+Individual iOS models, not a generic "start a simulator" — Flutter's own emulator list collapses every iPhone and iPad into one entry, so `simctl` is asked directly. `baton boot "iPad mini"` starts one and waits until Flutter can actually see it, then tells you the device id to run on. In the control panel, picking a device under **Start new** boots it and launches on exactly that device in one press.
 
 ### Several projects at once
 
@@ -222,7 +216,7 @@ baton add ~/code/api
 baton projects
 ```
 
-The HUD then shows a tab per project with a live count, plus **All** — every session from every project in one list, grouped and labelled. Reload-all while looking at one project reloads only that project. Session ids are project-scoped (`storefront/npm-dev`, `api/npm-dev`), so two projects can both have an `npm dev` without colliding.
+The control panel then shows a tab per project with a live count, plus **All** — every session from every project in one list, grouped and labelled. Reload-all while looking at one project reloads only that project. Session ids are project-scoped (`storefront/npm-dev`, `api/npm-dev`), so two projects can both have an `npm dev` without colliding.
 
 ### A branch without switching git
 
@@ -249,24 +243,26 @@ Configs often reference gitignored files — per-developer secrets, local overri
 
 `baton list` flags blocked targets the same way. Use `--force` to run anyway.
 
-### The floating HUD
+### The control panel
 
 ```bash
-baton hud
+baton app
 ```
 
 One compact row per session: status, ⟳ ⟲ ■, logs, and links to the app URL and DevTools. Above it, a tab per project and a picker for target and device. `r` hot-reloads everything in view, `R` hot-restarts.
 
-On **macOS** this opens a native floating panel and a menu-bar item:
+On **macOS** this opens a native floating launcher and a menu-bar item:
 
 - stays above a full-screen terminal, and follows you between desktops
 - never steals focus — clicking Run leaves your cursor where it was
 - drag it anywhere by its title strip; it remembers where you put it
 - the menu-bar item shows how many sessions are live (`●3`, orange while starting, red on failure); click it to show or hide the panel, right-click for reload/restart/stop all
 
-The panel is ~250 lines of AppKit hosting the same page, compiled from source on first use — no signed binary to trust, and it rebuilds only when that source changes. It needs Xcode or the Command Line Tools; without them you get the browser HUD instead.
+The small AppKit host serves the same page and is compiled from source on first use — no opaque binary to trust, and it rebuilds only when that source changes. It needs Xcode or the Command Line Tools; without them Baton opens in the browser instead.
 
-On **Linux and Windows** (or with `baton hud --browser`) the same page opens as a small chromeless window. It is a single self-contained file with no external requests, served on loopback by the daemon, so it looks and behaves the same everywhere.
+On **Linux and Windows** (or with `baton app --browser`) the same page opens as an app-style browser window. It is self-contained, makes no external requests, and is served on loopback by the daemon.
+
+Settings cover system/light/dark appearance, reduced motion, startup view, last-project restoration, Stop-all confirmation, always-on-top, and launch-at-login. See the [Baton app settings](docs/app-settings.md). The older `hud` name described the first tiny floating display; it is retained only as a command and implementation compatibility alias.
 
 ## How it works
 
@@ -276,12 +272,12 @@ package.json  ───────┼─► detect ─► daemon ─► one ses
 pubspec.yaml  ───────┘                │       (flutter | web-dev | react-native | process)
                                       │
                      WebSocket + POST /rpc on 127.0.0.1
-                          ├── HUD            (native panel on macOS, browser elsewhere)
+                          ├── Baton app      (native panel on macOS, browser elsewhere)
                           ├── baton      (any terminal)
                           └── baton-mcp  (any agent)
 ```
 
-One daemon owns every session, so a session you start in a terminal is instantly visible in the HUD and to your agent. The daemon writes `~/.baton/daemon.json` (mode 0600) with its port and a token; clients read it and authenticate. Nothing listens off-loopback.
+One daemon owns every session, so a session you start in a terminal is instantly visible in the control panel and to your agent. The daemon writes `~/.baton/daemon.json` (mode 0600) with its port and a token; clients read it and authenticate. Nothing listens off-loopback.
 
 For Flutter, sessions are `flutter run --machine` children and every control is one request:
 
@@ -307,11 +303,11 @@ See the [coverage and setup guide](docs/launch-guide.md#local-backend-tracing-us
 
 ## Status
 
-**0.2.1** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one HUD, one of them launched onto a simulator booted from the HUD itself.
+**0.2.1** is working and tested against a large production Flutter app (3,692 libraries): hot reload in 87ms, hot restart in 359ms, with three simulators running at once — and against three projects (Flutter, Vite, a plain worker) running side by side in one control panel, one of them launched onto a simulator booted from Baton itself.
 
 The Flutter adapter is the most complete. Web and React Native adapters cover run/restart/logs/URL detection; contributions extending them are very welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Feedback from other agent setups is the point of this release: [open an issue](https://github.com/kanumuri9593/Baton/issues) or a discussion. Please include OS, Node version, the MCP client, and whether you used CLI or HUD.
+Feedback from other agent setups is the point of this release: [open an issue](https://github.com/kanumuri9593/Baton/issues) or a discussion. Please include OS, Node version, the MCP client, and whether you used the CLI or Baton app.
 
 ## The icon
 
