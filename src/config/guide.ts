@@ -9,7 +9,8 @@ export function inspectProject(root: string) {
   const diagnostics: DetectionDiagnostic[] = [];
   const detected = detectTargets(root, diagnostics);
   const sources = ['.vscode/launch.json', '.claude/launch.json', 'package.json', 'pubspec.yaml',
-    'settings.gradle', 'settings.gradle.kts', 'build.gradle', 'build.gradle.kts', 'gradlew', 'gradlew.bat']
+    'settings.gradle', 'settings.gradle.kts', 'build.gradle', 'build.gradle.kts', 'gradlew', 'gradlew.bat',
+    'Package.swift', 'Podfile', 'AndroidManifest.xml']
     .filter((file) => existsSync(join(root, file)));
   try {
     sources.push(...readdirSync(root, { withFileTypes: true })
@@ -55,7 +56,7 @@ export function inspectProject(root: string) {
     validation: target.kind === 'flutter'
       ? ['Wait for running', 'Review logs and network errors', 'Capture a simulator screenshot', 'Review the screen against the expected flow']
       : target.kind === 'ios' || target.kind === 'android'
-        ? ['Wait for the native build/install to finish', 'Review compiler and deployment logs', 'Restart the process to run an incremental rebuild']
+        ? ['Wait for the app to reach running on the selected simulator or device', 'Exercise the flow on device', 'Review logs and capture a screenshot', 'Restart to rebuild, reinstall and relaunch']
       : ['Wait for running', 'Review logs', 'Open the app URL if available', 'Exercise the flow in a browser or device'],
   }));
   return {

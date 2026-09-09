@@ -46,10 +46,16 @@ const WEB_FRAMEWORK_DEPS = [
 ];
 
 const IOS_CONTAINER_EXTENSIONS = new Set(['.xcodeproj', '.xcworkspace']);
-const ANDROID_PROJECT_FILES = new Set([
+const NATIVE_PROJECT_FILES = new Set([
   'settings.gradle', 'settings.gradle.kts', 'build.gradle', 'build.gradle.kts',
-  'gradlew', 'gradlew.bat', 'AndroidManifest.xml',
+  'gradlew', 'gradlew.bat', 'androidmanifest.xml',
+  'project.pbxproj', 'contents.xcworkspacedata', 'podfile', 'package.swift',
 ]);
+
+/** Files and Xcode bundles a person is likely to select as a native project. */
+export function isNativeProjectBundle(path: string): boolean {
+  return IOS_CONTAINER_EXTENSIONS.has(extname(path));
+}
 
 const safelyReadDir = (dir: string) => {
   try { return readdirSync(dir, { withFileTypes: true }); }
@@ -59,7 +65,9 @@ const safelyReadDir = (dir: string) => {
 /** Files and directory bundles a person is likely to select as a native project. */
 export function isNativeProjectSelection(path: string): boolean {
   const name = basename(path);
-  return IOS_CONTAINER_EXTENSIONS.has(extname(name)) || ANDROID_PROJECT_FILES.has(name);
+  if (isNativeProjectBundle(name)) return true;
+  if (name.endsWith('.xcscheme')) return true;
+  return NATIVE_PROJECT_FILES.has(name.toLowerCase());
 }
 
 function iosContainers(root: string): string[] {
@@ -205,8 +213,8 @@ export function detectTargets(root: string, diagnostics: DetectionDiagnostic[] =
     }
   }
 
-  // 4. Native iOS projects. Xcode has no general-purpose hot-reload protocol,
-  // but an incremental simulator build is still useful and honestly supervised.
+  // 4. Native iOS projects. Build, install and launch on a simulator. There is
+  // no hot-reload protocol; restart rebuilds and relaunches.
   const containers = iosContainers(root);
   if (containers.length) {
     const container = containers[0];
@@ -229,13 +237,13 @@ export function detectTargets(root: string, diagnostics: DetectionDiagnostic[] =
     }
   }
 
-  // 5. Native Android projects. installDebug performs Gradle's incremental
-  // build and deploys to a connected device/emulator; process restart repeats it.
-  const androidRoot = ['settings.gradle', 'settings.gradle.kts', 'gradlew', 'gradlew.bat']
-    .some((file) => existsSync(join(root, file)));
-  if (androidRoot) {
-    const sourceFile = ['settings.gradle.kts', 'settings.gradle', 'gradlew', 'gradlew.bat']
-      .find((file) => existsSync(join(root, file)))!;
+  // 5. Native Android projects. installDebug deploys, then Baton launches the
+  // launcher activity and follows logcat. Library-only Gradle roots cannot launch.
+  if (isAndroidRunnableRoot(root)) {
+    const sourceFile = [
+      'settings.gradle.kts', 'settings.gradle', 'gradlew', 'gradlew.bat',
+      'build.gradle.kts', 'build.gradle',
+    ].find((file) => existsSync(join(root, file)))!;
     const wrapper = process.platform === 'win32' && existsSync(join(root, 'gradlew.bat'))
       ? join(root, 'gradlew.bat')
       : existsSync(join(root, 'gradlew')) ? join(root, 'gradlew') : 'gradle';
@@ -259,34 +267,100 @@ export function detectTargets(root: string, diagnostics: DetectionDiagnostic[] =
     }
   }
 
+  // 6. A Swift package with no Xcode wrapper can still be built. Do not add this
+  // when an .xcodeproj/.xcworkspace is present — that is the thing to run.
+  if (!containers.length && existsSync(join(root, 'Package.swift'))) {
+    add({
+      name: 'swift build',
+      kind: 'process',
+      source: 'auto',
+      sourceFile: 'Package.swift',
+      cwd: root,
+      command: 'swift',
+      args: ['build'],
+    });
+  }
+
   return targets;
 }
 
-const PROJECT_MARKERS = [
+const STRONG_PROJECT_MARKERS = [
   'pubspec.yaml', 'package.json', '.vscode', '.claude', '.git',
   'settings.gradle', 'settings.gradle.kts', 'gradlew', 'gradlew.bat',
+  'Package.swift', 'Podfile',
 ];
+
+const WEAK_NATIVE_MARKERS = [
+  'build.gradle', 'build.gradle.kts', 'AndroidManifest.xml',
+];
+
+function isGradleRoot(dir: string): boolean {
+  return ['settings.gradle', 'settings.gradle.kts', 'gradlew', 'gradlew.bat']
+    .some((file) => existsSync(join(dir, file)));
+}
+
+function isAndroidRunnableRoot(dir: string): boolean {
+  return isGradleRoot(dir) || androidApplicationModules(dir).length > 0;
+}
+
+function isStrongProjectRoot(dir: string): boolean {
+  return STRONG_PROJECT_MARKERS.some((m) => existsSync(join(dir, m))) || iosContainers(dir).length > 0;
+}
+
+function isWeakNativeRoot(dir: string): boolean {
+  return WEAK_NATIVE_MARKERS.some((m) => existsSync(join(dir, m)));
+}
 
 /** Whether a directory is a project at all, regardless of what it can run. */
 export function isProjectRoot(dir: string): boolean {
-  return PROJECT_MARKERS.some((m) => existsSync(join(dir, m))) || iosContainers(dir).length > 0;
+  return isNativeProjectBundle(dir) || isStrongProjectRoot(dir) || isWeakNativeRoot(dir);
+}
+
+/** Climb out of an Xcode bundle to the directory that contains it. */
+function unwrapIosBundle(dir: string): string {
+  let current = dir;
+  for (;;) {
+    if (isNativeProjectBundle(current)) return dirname(current);
+    const parent = dirname(current);
+    if (parent === current) return dir;
+    current = parent;
+  }
+}
+
+function unwrapSelection(start: string): string {
+  let dir = start;
+  let name = basename(start);
+  try {
+    const stats = statSync(start);
+    if (stats.isFile()) {
+      dir = dirname(start);
+      name = basename(start);
+    } else if (isNativeProjectBundle(start)) {
+      return dirname(start);
+    }
+  } catch {
+    if (isNativeProjectSelection(start) || isNativeProjectBundle(start)) {
+      dir = dirname(start);
+      name = basename(start);
+    }
+  }
+  const lower = name.toLowerCase();
+  if (lower === 'project.pbxproj' || lower === 'contents.xcworkspacedata' || name.endsWith('.xcscheme')) {
+    return unwrapIosBundle(dir);
+  }
+  return dir;
 }
 
 /** Find the nearest ancestor that looks like a project root. */
 export function findProjectRoot(start: string): string {
-  const markers = PROJECT_MARKERS;
-  let dir = start;
-  let fallback = start;
-  try {
-    if (statSync(dir).isFile() || IOS_CONTAINER_EXTENSIONS.has(extname(dir))) dir = dirname(dir);
-  } catch {
-    if (isNativeProjectSelection(dir)) dir = dirname(dir);
-  }
-  fallback = dir;
+  let dir = unwrapSelection(start);
+  const fallback = dir;
+  let weak: string | undefined;
   for (;;) {
-    if (markers.some((m) => existsSync(join(dir, m))) || iosContainers(dir).length > 0) return dir;
-    const parent = join(dir, '..');
-    if (parent === dir) return fallback;
+    if (isStrongProjectRoot(dir)) return dir;
+    if (isWeakNativeRoot(dir)) weak = dir;
+    const parent = dirname(dir);
+    if (parent === dir) return weak ?? fallback;
     dir = parent;
   }
 }

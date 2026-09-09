@@ -123,38 +123,38 @@ export function generateLaunchJson(root: string): string {
 }
 
 function configurationFor(target: Target, root: string): Record<string, unknown> | undefined {
-  if (target.kind === 'flutter') {
-    // `type: dart` is the marker the Dart-Code extension uses and the one
-    // `loader.ts` keys `kind: 'flutter'` off; anything else would come back as a
-    // plain process and lose hot reload.
-    const config: Record<string, unknown> = { name: target.name, type: 'dart', request: 'launch' };
-    const program = target.config?.program;
-    if (program) config.program = program;
-    return config;
+  switch (target.kind) {
+    case 'flutter': {
+      // `type: dart` is the marker the Dart-Code extension uses and the one
+      // `loader.ts` keys `kind: 'flutter'` off; anything else would come back as a
+      // plain process and lose hot reload.
+      const config: Record<string, unknown> = { name: target.name, type: 'dart', request: 'launch' };
+      const program = target.config?.program;
+      if (program) config.program = program;
+      return config;
+    }
+    case 'web-dev':
+    case 'react-native':
+    case 'ios':
+    case 'android':
+    case 'process': {
+      const args = target.args ?? [];
+      if (!target.command) return undefined;
+      const config: Record<string, unknown> = {
+        name: target.name,
+        type: 'node',
+        request: 'launch',
+        runtimeExecutable: target.source === 'package.json' ? detectPackageManager(root).command : target.command,
+        runtimeArgs: args,
+      };
+      if (target.kind !== 'process') config.batonKind = target.kind;
+      return config;
+    }
+    default: {
+      const _exhaustive: never = target.kind;
+      throw new Error(`unknown target kind: ${_exhaustive}`);
+    }
   }
-
-  // A script target: `loader.ts` reads exactly `runtimeExecutable` and
-  // `runtimeArgs` back, so those two keys are what has to be right.
-  const args = target.args ?? [];
-  if (!target.command) return undefined;
-
-  // The target's own name, not the bare script name.
-  //
-  // `detectTargets` de-duplicates by name, so a config called "npm dev" absorbs
-  // the package.json target it was generated from; one called "dev" would not,
-  // and the picker would offer the same command twice. It also keeps
-  // regeneration idempotent -- a second pass over a file this function wrote
-  // sees the same names and produces the same file, instead of a second
-  // configuration colliding with the first.
-  return {
-    name: target.name,
-    type: 'node',
-    request: 'launch',
-    // Spelled out rather than assumed: a pnpm/bun project run with `npm` fails
-    // in a way that looks like a broken script.
-    runtimeExecutable: target.source === 'package.json' ? detectPackageManager(root).command : target.command,
-    runtimeArgs: args,
-  };
 }
 
 /**

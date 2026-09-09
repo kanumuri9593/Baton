@@ -3,7 +3,7 @@ const FIXTURE_PROJECT = fixtureProject();
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -255,6 +255,42 @@ test('a project with something runnable is remembered, with no needsConfig flag'
   assert.ok(added.targets.length > 0);
   const listed: any = await daemon.handle({ method: 'projects', params: {} });
   assert.ok(listed.projects.some((p: any) => p.root === root));
+});
+
+test('addProject accepts iOS and Android folders and project files', async () => {
+  const ios = mkdtempSync(join(tmpdir(), 'baton-add-ios-'));
+  mkdirSync(join(ios, 'Demo.xcodeproj', 'xcshareddata', 'xcschemes'), { recursive: true });
+  writeFileSync(join(ios, 'Demo.xcodeproj', 'project.pbxproj'), '// pbx');
+  writeFileSync(join(ios, 'Demo.xcodeproj', 'xcshareddata', 'xcschemes', 'Demo.xcscheme'), '<Scheme/>');
+  const fromBundle: any = await daemon.handle({
+    method: 'addProject', params: { path: join(ios, 'Demo.xcodeproj') },
+  });
+  assert.equal(fromBundle.root, ios);
+  assert.equal(fromBundle.targets[0].kind, 'ios');
+  const fromPbx: any = await daemon.handle({
+    method: 'addProject', params: { path: join(ios, 'Demo.xcodeproj', 'project.pbxproj') },
+  });
+  assert.equal(fromPbx.root, ios);
+
+  const android = mkdtempSync(join(tmpdir(), 'baton-add-android-'));
+  writeFileSync(join(android, 'settings.gradle.kts'), 'include(":app")');
+  writeFileSync(join(android, 'gradlew'), '#!/bin/sh');
+  mkdirSync(join(android, 'app', 'src', 'main'), { recursive: true });
+  writeFileSync(join(android, 'app', 'build.gradle.kts'), 'plugins { id("com.android.application") }');
+  writeFileSync(join(android, 'app', 'src', 'main', 'AndroidManifest.xml'), '<manifest/>');
+  const fromManifest: any = await daemon.handle({
+    method: 'addProject', params: { path: join(android, 'app', 'src', 'main', 'AndroidManifest.xml') },
+  });
+  assert.equal(fromManifest.root, android);
+  assert.equal(fromManifest.targets[0].kind, 'android');
+
+  writeFileSync(join(android, 'notes.txt'), 'nope');
+  await assert.rejects(
+    () => daemon.handle({ method: 'addProject', params: { path: join(android, 'notes.txt') } }),
+    /not a recognised project file/,
+  );
+  rmSync(ios, { recursive: true, force: true });
+  rmSync(android, { recursive: true, force: true });
 });
 
 test('removing a project takes it out of the list without touching the disk', async () => {

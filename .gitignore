@@ -5,6 +5,7 @@ dist/
 .DS_Store
 output/
 Untitled/
+.baton/
 
 # Generated from assets/baton.svg by `npm run icons` -- never edit by hand.
 assets/png/

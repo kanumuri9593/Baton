@@ -4,7 +4,7 @@ Baton connects a person choosing an environment to an agent collecting evidence 
 
 ## First launch, without terminal expertise
 
-Open the control panel with `baton app`. Use **+** to select your app folder. Choose a named environment, a checkout, and a device. **Run** starts it. **Start new** in the device menu boots a simulator first.
+Open the control panel with `baton app`. Use **+** to select your app folder, or a recognised project file such as `Demo.xcodeproj`, `settings.gradle.kts`, or `AndroidManifest.xml`. Choose a named environment, a checkout, and a device. **Run** starts it. **Start new** in the device menu boots a simulator first.
 
 The guidance card shows the selected folder, source file, entrypoint, build mode and missing configuration files. Launch files refresh every three seconds while the control panel is visible, when the window regains focus, and through **Refresh**. An external rename or deletion replaces an invalid selection with an available target. Running sessions keep their original configuration until relaunched.
 

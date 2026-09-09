@@ -32,10 +32,16 @@ test('lists recognised native project files but not unrelated files', () => {
   writeFileSync(join(root, 'settings.gradle.kts'), '');
   writeFileSync(join(root, 'build.gradle'), '');
   writeFileSync(join(root, 'notes.txt'), '');
+  writeFileSync(join(root, 'Podfile'), '');
+  writeFileSync(join(root, 'Package.swift'), '');
+  mkdirSync(join(root, 'Demo.xcodeproj'));
 
   const result = browseDirs(root);
-  assert.deepEqual(result.entries.map((entry) => entry.name), ['build.gradle', 'settings.gradle.kts']);
-  assert.ok(result.entries.every((entry) => !entry.isDirectory && entry.isProject));
+  assert.deepEqual(result.entries.map((entry) => entry.name), [
+    'build.gradle', 'Demo.xcodeproj', 'Package.swift', 'Podfile', 'settings.gradle.kts',
+  ]);
+  assert.equal(result.entries.find((entry) => entry.name === 'Demo.xcodeproj')?.isDirectory, true);
+  assert.ok(result.entries.every((entry) => entry.isProject));
   rmSync(root, { recursive: true, force: true });
 });
 

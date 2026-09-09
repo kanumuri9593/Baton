@@ -8,6 +8,10 @@
   and launching Baton at login.
 - Added `baton app` as the primary control-panel command; `baton hud` remains a
   backward-compatible alias.
+- Native iOS and Android folders and project files are recognised when adding a
+  project. Run builds, installs and launches on the selected simulator or
+  device, then follows logs. Restart rebuilds and relaunches. There is still no
+  hot reload.
 - Restored the complete test suite as an npm publish gate and documented the
   system architecture and preference storage.
 

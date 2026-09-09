@@ -144,6 +144,8 @@ No IDE can offer that, because the agent isn't holding the mouse.
 | **Flutter / Dart** | ✅ real, via the daemon protocol | ✅ hot restart | Devices, DevTools, debug flags, screenshots |
 | **Next.js, Vite, Nuxt, Astro, Remix, Angular, CRA** | HMR is automatic on save | ✅ reboots the dev server | Detects the real URL and readiness |
 | **React Native / Expo** | Fast Refresh is automatic | ✅ reload broadcast to dev clients | Talks to Metro's message socket |
+| **Native iOS (Xcode)** | — | ✅ rebuild, reinstall, relaunch | Builds for the selected simulator, installs, launches, follows logs, screenshots |
+| **Native Android (Gradle)** | — | ✅ rebuild, reinstall, relaunch | `installDebug`, starts the launcher activity, follows logcat, screenshots |
 | **Anything else** | — | ✅ kill and respawn | Any `launch.json` or `package.json` script |
 
 Capabilities are reported honestly. A Vite session does not claim Flutter's stateful hot reload, so the control panel greys the button out and agents get a clear refusal instead of a silent no-op.
@@ -158,6 +160,10 @@ Baton reads what you already have. No new config file is required.
 - `.claude/launch.json` — same format
 - `package.json` — `dev`, `start`, `serve`, `storybook` scripts, with the right package manager picked from your lockfile
 - `pubspec.yaml` — Flutter projects with no launch.json still get a sensible default
+- Xcode — `.xcodeproj` / `.xcworkspace`, shared schemes, `Podfile`, or `Package.swift`
+- Gradle — `settings.gradle(.kts)`, the wrapper, application modules, or a lone `AndroidManifest.xml` as a project marker
+
+Picking a nested `ios/` or `android/` folder (or a file inside one) tracks that native project. Picking the Flutter or React Native root still prefers the framework runner, which is what actually hot-reloads. Native sessions build, install and **launch** on the device you pick, then stay running on the app log stream. Restart rebuilds and relaunches. They do not claim Flutter-style hot reload.
 
 ```bash
 baton list        # every target, and where it came from
@@ -272,8 +278,9 @@ Settings cover system/light/dark appearance, reduced motion, startup view, last-
 
 ```
 .vscode/launch.json ─┐
-package.json  ───────┼─► detect ─► daemon ─► one session per target
-pubspec.yaml  ───────┘                │       (flutter | web-dev | react-native | process)
+package.json  ───────┤
+pubspec.yaml  ───────┼─► detect ─► daemon ─► one session per target
+Xcode / Gradle  ─────┘                │       (flutter | web-dev | react-native | ios | android | process)
                                       │
                      WebSocket + POST /rpc on 127.0.0.1
                           ├── Baton app      (native panel on macOS, browser elsewhere)

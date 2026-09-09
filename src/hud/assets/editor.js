@@ -156,12 +156,13 @@
     }
     for (const entry of listing.entries) {
       const row = el('div', 'sheet-row' + (entry.isProject ? ' project' : ''));
-      row.onclick = () => entry.isDirectory ? browse(entry.path) : openPath(entry.path);
+      const nativeBundle = /\.(?:xcodeproj|xcworkspace)$/.test(entry.name);
+      row.onclick = () => (entry.isDirectory && !nativeBundle) ? browse(entry.path) : openPath(entry.path);
       row.appendChild(iconEl('folder'));
       row.lastChild.classList.add('sheet-icon');
       row.appendChild(el('span', 'name', entry.name));
       if (entry.isProject) row.appendChild(el('span', 'tag', '▶ project'));
-      if (!entry.isDirectory) row.appendChild(el('span', 'tag', 'project file'));
+      if (!entry.isDirectory || nativeBundle) row.appendChild(el('span', 'tag', 'project file'));
       if (entry.hasLaunchJson) row.appendChild(el('span', 'tag', 'launch.json'));
       const open = button('Open', 'Track ' + entry.name + ' as a project', (e) => {
         e.stopPropagation();

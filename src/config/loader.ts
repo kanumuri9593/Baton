@@ -10,7 +10,7 @@ export type LaunchConfig = {
   kind: ConfigKind;
   request?: string;
   batonTrace?: boolean;
-  batonKind?: 'web-dev' | 'react-native' | 'process';
+  batonKind?: 'web-dev' | 'react-native' | 'ios' | 'android' | 'process';
   /** Project root the config is relative to. */
   cwd: string;
   // --- flutter ---
@@ -103,7 +103,8 @@ export function normalise(raw: RawConfig, cwd: string): LaunchConfig {
     name: raw.name as string,
     kind,
     batonTrace: raw.batonTrace === true,
-    batonKind: ['web-dev', 'react-native', 'process'].includes(raw.batonKind as string) ? raw.batonKind as LaunchConfig['batonKind'] : undefined,
+    batonKind: ['web-dev', 'react-native', 'ios', 'android', 'process'].includes(raw.batonKind as string)
+      ? raw.batonKind as LaunchConfig['batonKind'] : undefined,
     request: typeof raw.request === 'string' ? raw.request : undefined,
     cwd: typeof raw.cwd === 'string' ? resolve(cwd, expand(raw.cwd)) : cwd,
     flutterMode: ['debug', 'profile', 'release'].includes(raw.flutterMode as string) ? raw.flutterMode as LaunchConfig['flutterMode'] : undefined,

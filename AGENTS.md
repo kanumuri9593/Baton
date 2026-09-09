@@ -53,6 +53,8 @@ Without a global install:
 
 Typical loop: `inspect_project` → `run_target` or `run_workflow` → `wait_for` → exercise the app with browser/device tools → `screenshot` / `read_logs` / `diagnose` → edit → `hot_reload`.
 
+Opening an Xcode or Gradle folder (or `.xcodeproj`, `project.pbxproj`, `settings.gradle(.kts)`, `gradlew`, `AndroidManifest.xml`) is a native `ios`/`android` target: Baton builds, installs and launches on the selected simulator or device, then follows logs. Restart rebuilds and relaunches. It is not Flutter hot reload. Nested `ios/` and `android/` under a Flutter or React Native root are recognised when that folder is the project; the framework root still runs the framework.
+
 Baton launches and reports evidence. It does not tap the UI or judge screenshots. Treat capture success as “an image was written”, not visual correctness.
 
 **Current limitations:** MCP cannot boot simulators or emulators. Use CLI `baton boot "iPhone 17 Pro"` or target a device that is already running. `run_target` waits only briefly for a device to appear; if none is available, it fails. A `boot_device` MCP tool is planned.

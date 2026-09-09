@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { isNativeProjectSelection, isProjectRoot } from '../config/detect.ts';
+import { isNativeProjectBundle, isNativeProjectSelection, isProjectRoot } from '../config/detect.ts';
 
 /**
  * Browsing the filesystem from the HUD.
@@ -97,7 +97,7 @@ export function browseDirs(path?: string): BrowseResult {
         name,
         path: full,
         isDirectory,
-        isProject: safely(() => isProjectRoot(full) || isNativeProjectSelection(full), false),
+        isProject: safely(() => isProjectRoot(full) || isNativeProjectSelection(full) || isNativeProjectBundle(full), false),
         hasLaunchJson: isDirectory && safely(() => hasLaunchJson(full), false),
       };
     });

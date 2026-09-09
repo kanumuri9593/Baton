@@ -155,10 +155,29 @@ export class SessionRegistry extends EventEmitter {
         });
 
       case 'ios':
-      case 'android':
+      case 'android': {
+        const devices = this.devices(idRoot ?? target.cwd);
+        const device = await devices.waitForDevice(target.name, options.deviceId);
+        if (!device) {
+          const wanted = DeviceRegistry.describePreference(target.name);
+          const available = devices.list();
+          throw new Error(
+            `"${target.name}" needs ${wanted} so the app can actually launch, and none is connected.\n` +
+              (available.length
+                ? `Available: ${available.map((d) => `${d.name} (${d.platformType})`).join(', ')}`
+                : 'No devices were detected. Boot a simulator or connect a device, then retry.'),
+          );
+        }
+        if (device.platformType !== target.kind) {
+          throw new Error(
+            `"${target.name}" is ${target.kind} but ${device.name} is ${device.platformType}. Pick a matching device.`,
+          );
+        }
         return NativeBuildSession.create(target.kind, target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, ...ids,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
+          deviceId: device.id, ...ids,
         });
+      }
 
       case 'process':
         return ProcessSession.forCommand(target.name, {
