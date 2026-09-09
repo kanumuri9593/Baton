@@ -1,38 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Baton">
   <title>Baton</title>
   <defs>
-    <linearGradient id="tile-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#6366f1"/>
-      <stop offset="50%" stop-color="#3b82f6"/>
       <stop offset="100%" stop-color="#06b6d4"/>
     </linearGradient>
-    <linearGradient id="baton-shaft" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#fff"/>
-      <stop offset="100%" stop-color="#e0e7ff"/>
-    </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
-      <feOffset dx="0" dy="1"/>
-      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"/>
-      <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.15 0"/>
-      <feBlend in2="SourceGraphic"/>
-    </filter>
-    <mask id="lane-mask">
-      <rect width="64" height="64" fill="#fff"/>
-      <path d="M15 51 L52 11" stroke="#000" stroke-width="10" stroke-linecap="round"/>
-    </mask>
   </defs>
-  <!-- Rounded square tile -->
-  <rect width="64" height="64" rx="14" fill="url(#tile-bg)"/>
-  <!-- Three lanes representing running processes -->
-  <g mask="url(#lane-mask)" stroke="#fff" stroke-opacity="0.5" stroke-width="4" stroke-linecap="round">
-    <path d="M12 20 H42"/>
-    <path d="M12 32 H50"/>
-    <path d="M28 44 H50"/>
+  <!-- Squircle background -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- Signal arcs (three broadcast lines) -->
+  <g fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7">
+    <path d="M44 16 Q52 24 44 32"/>
+    <path d="M48 12 Q60 24 48 36"/>
+    <path d="M52 8 Q68 24 52 40"/>
   </g>
-  <!-- Conductor's baton - the primary mark -->
-  <g filter="url(#glow)">
-    <path d="M15 51 L52 11" stroke="url(#baton-shaft)" stroke-width="5" stroke-linecap="round"/>
-    <ellipse cx="14" cy="52" rx="5" ry="4" fill="#fff" transform="rotate(-8 14 52)"/>
-  </g>
+  <!-- Conductor's baton -->
+  <line x1="16" y1="52" x2="48" y2="20" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="14" cy="54" r="5" fill="#fff"/>
 </svg>

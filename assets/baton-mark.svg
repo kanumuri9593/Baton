@@ -1,22 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Baton mark">
   <title>Baton</title>
   <defs>
-    <linearGradient id="lane-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="arc-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
     </linearGradient>
-    <mask id="mark-lane-mask">
-      <rect width="64" height="64" fill="#fff"/>
-      <path d="M15 51 L52 11" stroke="#000" stroke-width="10" stroke-linecap="round"/>
-    </mask>
   </defs>
-  <!-- Three lanes representing running processes -->
-  <g mask="url(#mark-lane-mask)" stroke="url(#lane-gradient)" stroke-width="4" stroke-linecap="round">
-    <path d="M12 20 H42"/>
-    <path d="M12 32 H50"/>
-    <path d="M28 44 H50"/>
+  <!-- Signal arcs (gradient colored) -->
+  <g fill="none" stroke="url(#arc-gradient)" stroke-width="2.5" stroke-linecap="round" opacity="0.6">
+    <path d="M44 16 Q52 24 44 32"/>
+    <path d="M48 12 Q60 24 48 36"/>
+    <path d="M52 8 Q68 24 52 40"/>
   </g>
-  <!-- Conductor's baton - uses currentColor for theme adaptability -->
-  <path d="M15 51 L52 11" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
-  <ellipse cx="14" cy="52" rx="5" ry="4" fill="currentColor" transform="rotate(-8 14 52)"/>
+  <!-- Conductor's baton (currentColor for theme adaptation) -->
+  <line x1="16" y1="52" x2="48" y2="20" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="14" cy="54" r="5" fill="currentColor"/>
 </svg>
