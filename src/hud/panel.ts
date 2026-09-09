@@ -79,6 +79,7 @@ export function buildPanelApp(onBuild?: () => void): string {
   const binary = join(app, 'Contents', 'MacOS', 'BatonHUD');
   const stamp = join(app, 'Contents', 'Resources', 'source.sha');
   const icns = join(dirname(import.meta.dirname), '..', 'assets', 'baton.icns');
+  const menubarPng = join(dirname(import.meta.dirname), '..', 'assets', 'baton-menubar-18.png');
   // A GUI app does not inherit the terminal's npm PATH reliably. Bundle the
   // exact Node + daemon entry paths that built it so reopening from the Dock can
   // bring Baton back after an intentional Quit shut the daemon down.
@@ -94,6 +95,7 @@ export function buildPanelApp(onBuild?: () => void): string {
   }, null, 2);
   const hash = createHash('sha256').update(readFileSync(source)).update(INFO_PLIST).update(launcher);
   if (existsSync(icns)) hash.update(readFileSync(icns));
+  if (existsSync(menubarPng)) hash.update(readFileSync(menubarPng));
   const digest = hash.digest('hex');
 
   const current = existsSync(stamp) ? readFileSync(stamp, 'utf8').trim() : '';
@@ -110,6 +112,8 @@ export function buildPanelApp(onBuild?: () => void): string {
   // The icon is generated from assets/baton.svg by `npm run icons`. A missing
   // icns still gets a drawn Dock tile from the Swift host.
   if (existsSync(icns)) copyFileSync(icns, join(dirname(stamp), 'baton.icns'));
+  // Design menu bar template PNG — fallback drawing is used when missing.
+  if (existsSync(menubarPng)) copyFileSync(menubarPng, join(dirname(stamp), 'baton-menubar-18.png'));
   execFileSync('xcrun', ['swiftc', '-O', '-o', binary, source], { stdio: 'inherit' });
   writeFileSync(stamp, digest);
   return app;

@@ -1,25 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Baton">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" role="img" aria-label="Baton">
   <title>Baton</title>
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="batonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#06b6d4"/>
     </linearGradient>
   </defs>
-  
-  <!-- Squircle background -->
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  
-  <!-- Three signal arcs - elegant curved Wi-Fi style in upper-left -->
-  <g fill="none" stroke="#fff" stroke-width="15" stroke-linecap="round">
-    <path d="M 195 115 C 145 145, 125 195, 125 255"/>
-    <path d="M 225 75 C 155 115, 115 185, 115 295"/>
-    <path d="M 255 40 C 165 85, 105 175, 105 335"/>
+  <rect width="64" height="64" rx="14.2" fill="url(#batonGrad)"/>
+  <g>
+  <path d="M26.717 27.243 A9.500 9.500 0 0 1 37.373 17.980" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M22.069 28.647 A14.200 14.200 0 0 1 39.410 13.573" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M17.662 31.015 A18.900 18.900 0 0 1 42.368 9.539" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="15.461" y1="45.451" x2="48.743" y2="16.518" stroke="#FFFFFF" stroke-width="2.85" stroke-linecap="round"/>
+  <circle cx="49.800" cy="15.600" r="4.0" fill="#FFFFFF"/>
   </g>
-  
-  <!-- Baton - diagonal shaft from lower-left to upper-right -->
-  <line x1="150" y1="385" x2="385" y2="140" stroke="#fff" stroke-width="18" stroke-linecap="round"/>
-  
-  <!-- Pommel - round ball at lower-left end -->
-  <circle cx="138" cy="397" r="34" fill="#fff"/>
 </svg>

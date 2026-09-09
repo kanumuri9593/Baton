@@ -1,17 +1,17 @@
   :root {
-    /* Premium dark theme with indigo→cyan brand colors */
-    --bg: #0c0d12; --panel: #14161d; --panel-2: #1c1f29; --line: #282d3a;
+    /* Baton Design Tokens — Concept B brand palette */
+    --bg: #0b0f1a; --panel: #121620; --panel-2: #1a1f2e; --line: #252b3b;
     --text: #f0f2f7; --muted: #8892a8; --accent: #6366f1;
-    --accent-cyan: #06b6d4; --accent-light: #818cf8;
-    --ok: #22c55e; --warn: #f59e0b; --err: #ef4444; --idle: #4b5563;
+    --accent-2: #06b6d4; --accent-light: #818cf8;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171; --idle: #4b5563;
     /* Brand gradient for special elements */
-    --brand-gradient: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+    --accent-grad: linear-gradient(135deg, #6366f1, #06b6d4);
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       --bg: #f8fafc; --panel: #fff; --panel-2: #f1f5f9; --line: #e2e8f0;
       --text: #0f172a; --muted: #64748b; --idle: #94a3b8;
-      --accent: #6366f1; --accent-cyan: #06b6d4;
+      --accent: #6366f1; --accent-2: #06b6d4;
     }
   }
   * { box-sizing: border-box; }
@@ -39,7 +39,7 @@
   button.icon { font-size: 14px; padding: 4px 8px; line-height: 1; }
   button.danger:hover:not(:disabled) { border-color: var(--err); color: var(--err); }
   button.go { 
-    background: var(--brand-gradient, var(--accent)); 
+    background: var(--accent-grad, var(--accent)); 
     border-color: var(--accent); color: #fff; font-weight: 560; 
   }
   button.go:hover:not(:disabled) { filter: brightness(1.12); box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3); }
@@ -344,9 +344,11 @@
     display: flex; width: 22px; height: 22px; color: var(--idle);
   }
   .chip-mark svg { width: 22px; height: 22px; display: block; }
+  /* Status colors via currentColor so SVG stroke/fill inherits */
   .chip-mark.running { color: var(--ok); }
-  .chip-mark.starting { color: var(--warn); }
+  .chip-mark.starting { color: var(--warn); animation: pulse 1.1s ease-in-out infinite; }
   .chip-mark.failed { color: var(--err); }
+  .chip-mark.idle { color: var(--idle); }
   #chipCount { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
   #peek {
     display: none; align-items: center; gap: 8px; min-width: 0; flex: 1;
@@ -401,6 +403,10 @@
     display: grid; place-items: center; padding: 0 4px; border-radius: 999px;
     background: var(--accent); color: white; font-size: 9px;
   }
+  /* Floating chip badge status colors */
+  body.panel[data-density="chip"] #chipCount.running { background: var(--ok); }
+  body.panel[data-density="chip"] #chipCount.starting { background: var(--warn); color: #0b0f1a; }
+  body.panel[data-density="chip"] #chipCount.failed { background: var(--err); }
   body[data-density="peek"] #peek { display: flex; }
   body[data-density="chip"] #chipExpand { display: none; }
   body[data-density="inspector"] #chip {
