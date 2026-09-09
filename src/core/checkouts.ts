@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import {
   copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync,
-  rmSync, symlinkSync, writeFileSync,
+  rmSync, statSync, symlinkSync, writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -92,6 +92,13 @@ function parseWorktreeList(text: string): Worktree[] {
 
 function samePath(a: string, b: string): boolean {
   const comparable = (path: string) => process.platform === 'win32' ? path.toLowerCase() : path;
+  try {
+    const left = statSync(a, { bigint: true });
+    const right = statSync(b, { bigint: true });
+    if (left.dev === right.dev && left.ino === right.ino) return true;
+  } catch {
+    // Fall through to lexical path normalization for paths not on disk.
+  }
   try {
     return comparable(realpathSync(a)) === comparable(realpathSync(b));
   } catch {
