@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baton — Runtime Control for Coding Agents</title>
+  <meta name="description" content="MCP server, CLI, and floating HUD. Run, hot-reload, boot simulators, and screenshot your apps from any terminal — or hand the same buttons to your coding agent.">
+  <link rel="icon" href="../assets/baton-glyph.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="./" class="nav-brand">
+        <img src="../assets/baton.svg" alt="Baton">
+        <span>Baton</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#frameworks">Frameworks</a>
+        <a href="roi.html">ROI</a>
+        <a href="https://github.com/kanumuri9593/Baton">GitHub</a>
+        <a href="https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md">Docs</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <img src="../assets/baton.svg" alt="Baton" class="hero-icon">
+    <h1>Runtime control for<br>coding agents</h1>
+    <p class="hero-tagline">
+      MCP server, CLI, and floating HUD. Run, hot-reload, boot simulators, and screenshot your apps from any terminal — or hand the same buttons to your coding agent.
+    </p>
+    <div class="hero-buttons">
+      <a href="https://github.com/kanumuri9593/Baton#get-it" class="btn btn-primary">
+        Get Started
+      </a>
+      <a href="https://github.com/kanumuri9593/Baton" class="btn btn-secondary">
+        View on GitHub
+      </a>
+    </div>
+    
+    <div class="terminal-preview">
+      <div class="terminal">
+        <div class="terminal-header">
+          <span class="terminal-dot red"></span>
+          <span class="terminal-dot yellow"></span>
+          <span class="terminal-dot green"></span>
+        </div>
+        <div class="terminal-body">
+          <div class="terminal-line">
+            <span class="terminal-prompt">$</span>
+            <span class="terminal-command">baton run "iOS Simulator (DEV)"</span>
+          </div>
+          <div class="terminal-output terminal-success">✓ storefront running on iPhone 17 Pro</div>
+          <div class="terminal-line">
+            <span class="terminal-prompt">$</span>
+            <span class="terminal-command">baton reload --all</span>
+          </div>
+          <div class="terminal-output terminal-success">✓ hot reload in 87ms — 3 sessions</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background: var(--color-bg-elevated);">
+    <div class="section-header">
+      <h2>Works with MCP clients</h2>
+      <p>Any tool that speaks the Model Context Protocol can use Baton's structured controls.</p>
+    </div>
+    <div class="client-grid">
+      <div class="client-badge">Claude Code</div>
+      <div class="client-badge">Cursor</div>
+      <div class="client-badge">Codex</div>
+      <div class="client-badge">Gemini CLI</div>
+      <div class="client-badge">Windsurf</div>
+      <div class="client-badge">Zed</div>
+      <div class="client-badge">+ any MCP client</div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="section-header">
+      <h2>Why Baton?</h2>
+      <p>Stop spending agent credits on terminal babysitting. Get structured controls and evidence.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Real Hot Reload</h3>
+        <p>Baton drives Flutter's daemon protocol directly — hot reload is one request, not a terminal scrape. Web frameworks get HMR-aware restart detection.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>Multi-Device</h3>
+        <p>Run three simulators at once. Boot iOS devices by name, not a generic "start simulator." Pick a branch and Baton makes a worktree — no stash, no switch.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Honest Capabilities</h3>
+        <p>A Vite session doesn't claim Flutter's stateful hot reload. Agents get clear refusals instead of silent no-ops. Every capability is reported truthfully.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Structured Errors</h3>
+        <p>Failed reloads return the actual compiler error, not just "DevFS synchronization failed." Agents can fix their own mistakes without guessing.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📸</div>
+        <h3>Screenshot Evidence</h3>
+        <p>Capture what the app actually shows. The agent can edit a widget, hot reload, screenshot, and see whether it worked — no IDE, no manual clicking.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🖥️</div>
+        <h3>Floating HUD</h3>
+        <p>Native floating panel on macOS, chromeless browser elsewhere. Stays above full-screen terminals, never steals focus, remembers where you put it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background: var(--color-bg-elevated);" id="frameworks">
+    <div class="section-header">
+      <h2>Framework Support</h2>
+      <p>From Flutter to Next.js — Baton detects what you have and reports what it can do.</p>
+    </div>
+    <div class="framework-grid">
+      <div class="framework-item">
+        <span class="check">✓</span>
+        <div>
+          <div class="name">Flutter / Dart</div>
+          <div class="detail">Real hot reload, DevTools, debug flags, screenshots</div>
+        </div>
+      </div>
+      <div class="framework-item">
+        <span class="check">✓</span>
+        <div>
+          <div class="name">Next.js</div>
+          <div class="detail">HMR detection, URL readiness, dev server restart</div>
+        </div>
+      </div>
+      <div class="framework-item">
+        <span class="check">✓</span>
+        <div>
+          <div class="name">Vite</div>
+          <div class="detail">HMR detection, URL readiness, dev server restart</div>
+        </div>
+      </div>
+      <div class="framework-item">
+        <span class="check">✓</span>
+        <div>
+          <div class="name">React Native / Expo</div>
+          <div class="detail">Fast Refresh, Metro socket, reload broadcast</div>
+        </div>
+      </div>
+      <div class="framework-item">
+        <span class="check">✓</span>
+        <div>
+          <div class="name">Nuxt / Astro / Remix</div>
+          <div class="detail">Dev server management, readiness detection</div>
+        </div>
+      </div>
+      <div class="framework-item">
+        <span class="check">✓</span>
+        <div>
+          <div class="name">Any launch.json</div>
+          <div class="detail">Run/restart/logs for any VS Code config</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <h2>The Agent Loop</h2>
+      <p>Baton gives your agent a feedback loop that doesn't exist in an IDE.</p>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <span>Typical agent workflow</span>
+      </div>
+      <div class="code-body">
+<pre style="color: var(--color-text-muted);">
+<span style="color: var(--color-accent);">inspect_project</span>  <span style="color: var(--color-text-dim);">→ discover targets and devices</span>
+<span style="color: var(--color-accent);">run_target</span>       <span style="color: var(--color-text-dim);">→ start the app on a simulator</span>
+<span style="color: var(--color-accent);">wait_for</span>         <span style="color: var(--color-text-dim);">→ block until ready (no polling)</span>
+<span style="color: var(--color-text-dim);">... exercise the app with browser/device tools ...</span>
+<span style="color: var(--color-accent);">screenshot</span>       <span style="color: var(--color-text-dim);">→ capture evidence</span>
+<span style="color: var(--color-accent);">read_logs</span>        <span style="color: var(--color-text-dim);">→ structured output, not terminal scraping</span>
+<span style="color: var(--color-text-dim);">... edit code ...</span>
+<span style="color: var(--color-accent);">hot_reload</span>       <span style="color: var(--color-text-dim);">→ 87ms, compiler errors if it fails</span>
+<span style="color: var(--color-accent);">screenshot</span>       <span style="color: var(--color-text-dim);">→ verify the change worked</span>
+</pre>
+      </div>
+    </div>
+    <p style="text-align: center; color: var(--color-text-muted); margin-top: 24px;">
+      No IDE can offer this — the agent isn't holding the mouse.
+    </p>
+  </section>
+
+  <section class="section" style="background: var(--color-bg-elevated);">
+    <div class="roi-banner">
+      <h2>Measure the Impact</h2>
+      <p>See how teams can measure time and cost savings with Baton — with transparent assumptions you can adjust for your workflow.</p>
+      <a href="roi.html" class="btn btn-primary">View Modeled Scenarios</a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <h2>Get Started</h2>
+      <p>Install Baton and wire it into your agent in under a minute.</p>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <span>Install from GitHub</span>
+      </div>
+      <div class="code-body">
+<pre><span style="color: var(--color-text-dim);"># Global install (requires Node 24+)</span>
+<span style="color: var(--color-text);">npm install -g github:kanumuri9593/Baton</span>
+
+<span style="color: var(--color-text-dim);"># Or one-shot without install</span>
+<span style="color: var(--color-text);">npx -y --package=github:kanumuri9593/Baton baton list</span>
+</pre>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <span>Add to your MCP client config</span>
+      </div>
+      <div class="code-body">
+<pre><span style="color: var(--color-text);">{</span>
+  <span style="color: var(--color-primary-light);">"mcpServers"</span>: {
+    <span style="color: var(--color-primary-light);">"baton"</span>: { <span style="color: var(--color-primary-light);">"command"</span>: <span style="color: var(--color-accent);">"baton-mcp"</span> }
+  }
+<span style="color: var(--color-text);">}</span>
+</pre>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 32px;">
+      <a href="https://github.com/kanumuri9593/Baton#get-it" class="btn btn-secondary">Full Installation Guide</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <img src="../assets/baton.svg" alt="Baton">
+          <span>Baton</span>
+        </div>
+        <p class="footer-tagline">Runtime control for coding agents.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="https://github.com/kanumuri9593/Baton#get-it">Install</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md">Documentation</a></li>
+          <li><a href="roi.html">ROI Scenarios</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/CHANGELOG.md">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://github.com/kanumuri9593/Baton">GitHub</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/issues">Issues</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/AGENTS.md">Agent Guide</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/llms.txt">llms.txt</a></li>
+          <li><a href="https://modelcontextprotocol.io/">MCP Protocol</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>MIT License</span>
+      <span>Node 24+ · macOS · Linux · Windows</span>
+    </div>
+  </footer>
+</body>
+</html>

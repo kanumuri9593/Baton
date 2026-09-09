@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROI Scenarios — Baton</title>
+  <meta name="description" content="Modeled scenarios showing how teams can measure time and cost savings with Baton. Transparent assumptions, no fabricated metrics.">
+  <link rel="icon" href="../assets/baton-glyph.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="./" class="nav-brand">
+        <img src="../assets/baton.svg" alt="Baton">
+        <span>Baton</span>
+      </a>
+      <div class="nav-links">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#frameworks">Frameworks</a>
+        <a href="roi.html">ROI</a>
+        <a href="https://github.com/kanumuri9593/Baton">GitHub</a>
+        <a href="https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md">Docs</a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero" style="min-height: auto; padding-top: 140px; padding-bottom: 60px;">
+    <h1>ROI Scenarios</h1>
+    <p class="hero-tagline">
+      How teams can measure time and cost savings with Baton. These are <strong>modeled scenarios</strong> with transparent assumptions — adjust the inputs to match your workflow.
+    </p>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <h2>The Problem: Agent-Credit Waste</h2>
+      <p>Coding agents spend significant context on tasks that should be deterministic.</p>
+    </div>
+    <div class="feature-grid" style="margin-bottom: 48px;">
+      <div class="feature-card">
+        <h3>Terminal Babysitting</h3>
+        <p>Agents run <code>npm start</code>, watch the terminal, wait for a port, copy logs, and parse unstructured output. Every poll and paste consumes tokens.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Restart Loops</h3>
+        <p>After each edit, the agent re-runs commands, waits for readiness, and manually checks if the change worked. This loop repeats dozens of times per task.</p>
+      </div>
+      <div class="feature-card">
+        <h3>No Evidence</h3>
+        <p>Without screenshots or structured logs, agents can't verify their changes worked. They guess, retry, or ask the human — all of which cost time and credits.</p>
+      </div>
+    </div>
+    <p style="text-align: center; color: var(--color-text-muted); max-width: 700px; margin: 0 auto;">
+      <strong>Baton converts these into deterministic local operations with structured results.</strong> The goal isn't to remove agents — it's to spend agent intelligence where judgment is valuable.
+    </p>
+  </section>
+
+  <section class="section" style="background: var(--color-bg-elevated);">
+    <div class="section-header">
+      <h2>Modeled Scenarios</h2>
+      <p>These scenarios use measured performance from Baton (hot reload in ~87ms) and reasonable estimates for agent behavior. Adjust the assumptions to match your team.</p>
+    </div>
+
+    <div class="scenario-grid">
+      <!-- Scenario 1: Hot Reload Time Savings -->
+      <div class="scenario-card">
+        <div class="scenario-header">
+          <span class="badge">Modeled Scenario</span>
+          <h3>Flutter Hot Reload vs. Manual Restart</h3>
+        </div>
+        <div class="scenario-body">
+          <h4>Measured Performance</h4>
+          <ul class="assumption-list">
+            <li>
+              <span>Baton hot reload (large production app)</span>
+              <span class="value">87ms</span>
+            </li>
+            <li>
+              <span>Baton hot restart (same app)</span>
+              <span class="value">359ms</span>
+            </li>
+          </ul>
+          
+          <h4>Modeled Assumptions</h4>
+          <ul class="assumption-list">
+            <li>
+              <span>Agent restart without Baton (estimate)</span>
+              <span class="value">8-15s</span>
+            </li>
+            <li>
+              <span>Reloads per development session</span>
+              <span class="value">50</span>
+            </li>
+            <li>
+              <span>Sessions per week</span>
+              <span class="value">5</span>
+            </li>
+          </ul>
+
+          <div class="scenario-result">
+            <div class="label">Estimated Weekly Time Saved</div>
+            <div class="value">33-62 minutes</div>
+            <div class="note">Per developer, assuming 250 reloads/week × 8-15s saved per reload</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario 2: Multi-Simulator Productivity -->
+      <div class="scenario-card">
+        <div class="scenario-header">
+          <span class="badge">Modeled Scenario</span>
+          <h3>Multi-Simulator Development</h3>
+        </div>
+        <div class="scenario-body">
+          <h4>Measured Capability</h4>
+          <ul class="assumption-list">
+            <li>
+              <span>Simultaneous simulators supported</span>
+              <span class="value">3+</span>
+            </li>
+            <li>
+              <span>Reload-all latency</span>
+              <span class="value">&lt;100ms</span>
+            </li>
+          </ul>
+          
+          <h4>Modeled Assumptions</h4>
+          <ul class="assumption-list">
+            <li>
+              <span>Time to boot and switch simulators manually</span>
+              <span class="value">30-60s</span>
+            </li>
+            <li>
+              <span>Cross-device checks per feature</span>
+              <span class="value">10</span>
+            </li>
+            <li>
+              <span>Features per week</span>
+              <span class="value">3</span>
+            </li>
+          </ul>
+
+          <div class="scenario-result">
+            <div class="label">Estimated Weekly Time Saved</div>
+            <div class="value">15-30 minutes</div>
+            <div class="note">Per developer, from parallel testing vs. sequential simulator switching</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario 3: Agent Credit Savings -->
+      <div class="scenario-card">
+        <div class="scenario-header">
+          <span class="badge">Modeled Scenario</span>
+          <h3>Agent Token Reduction</h3>
+        </div>
+        <div class="scenario-body">
+          <h4>Baton Approach</h4>
+          <ul class="assumption-list">
+            <li>
+              <span>Tool calls per edit-verify cycle</span>
+              <span class="value">2-3</span>
+            </li>
+            <li>
+              <span>Structured response size</span>
+              <span class="value">~500 tokens</span>
+            </li>
+          </ul>
+          
+          <h4>Traditional Agent Approach (Estimate)</h4>
+          <ul class="assumption-list">
+            <li>
+              <span>Shell commands per cycle</span>
+              <span class="value">4-8</span>
+            </li>
+            <li>
+              <span>Log parsing tokens per cycle</span>
+              <span class="value">2,000-5,000</span>
+            </li>
+            <li>
+              <span>Polling attempts for readiness</span>
+              <span class="value">3-10</span>
+            </li>
+          </ul>
+
+          <div class="scenario-result">
+            <div class="label">Estimated Token Reduction</div>
+            <div class="value">60-80%</div>
+            <div class="note">Per edit-verify cycle. Actual savings depend on model, task complexity, and baseline workflow.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario 4: Clone-to-Running Friction -->
+      <div class="scenario-card">
+        <div class="scenario-header">
+          <span class="badge">Modeled Scenario</span>
+          <h3>Clone-to-Running for QA/Product</h3>
+        </div>
+        <div class="scenario-body">
+          <h4>The Problem</h4>
+          <p style="color: var(--color-text-muted); margin-bottom: 16px;">
+            Non-developers (QA, product, design, support) often depend on a developer to turn a repository into a working app, select the correct environment, and explain whether it's healthy.
+          </p>
+          
+          <h4>Modeled Assumptions</h4>
+          <ul class="assumption-list">
+            <li>
+              <span>Developer time per "help me run this" request</span>
+              <span class="value">10-30 min</span>
+            </li>
+            <li>
+              <span>Requests per non-dev per week</span>
+              <span class="value">2-5</span>
+            </li>
+            <li>
+              <span>Non-devs needing local builds</span>
+              <span class="value">3-10</span>
+            </li>
+          </ul>
+
+          <div class="scenario-result">
+            <div class="label">Potential Developer Time Recovered</div>
+            <div class="value">1-25 hours/week</div>
+            <div class="note">Team-wide, if non-devs can safely use Run buttons themselves. Assumes Baton's HUD and target picker reduce dependency on developer assistance.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <h4>About These Scenarios</h4>
+      <p>
+        These are <strong>modeled scenarios</strong>, not customer case studies. The measured values (87ms hot reload, 359ms restart, multi-sim support) come from testing Baton against a 3,692-library production Flutter app. The estimates for "traditional" approaches are reasonable assumptions based on observed agent behavior — your mileage will vary. We're actively collecting real-world data and will publish verified case studies as they become available.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-header">
+      <h2>How to Measure Your Own ROI</h2>
+      <p>Track these metrics before and after adopting Baton.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>Agent Token Usage</h3>
+        <p>Monitor tokens consumed per development task. Compare edit-verify-fix cycles with and without structured runtime controls.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Time to Verify</h3>
+        <p>Measure wall-clock time from "code change" to "verified working." Include reload time, readiness waits, and manual testing.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Developer Interrupts</h3>
+        <p>Count how often developers are asked to help others run the app. Track who can now self-serve with the HUD.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Failed Reload Resolution</h3>
+        <p>When hot reload fails, measure time to diagnose. Baton returns the actual compiler error vs. "DevFS synchronization failed."</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background: var(--color-bg-elevated);">
+    <div class="roi-banner">
+      <h2>Share Your Results</h2>
+      <p>We're collecting real-world data to build verified case studies. If you measure improvements with Baton, we'd love to hear about it.</p>
+      <a href="https://github.com/kanumuri9593/Baton/issues/new?labels=feedback&title=ROI%20Feedback" class="btn btn-primary">Share Feedback</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <img src="../assets/baton.svg" alt="Baton">
+          <span>Baton</span>
+        </div>
+        <p class="footer-tagline">Runtime control for coding agents.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="https://github.com/kanumuri9593/Baton#get-it">Install</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md">Documentation</a></li>
+          <li><a href="roi.html">ROI Scenarios</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/CHANGELOG.md">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://github.com/kanumuri9593/Baton">GitHub</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/issues">Issues</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/AGENTS.md">Agent Guide</a></li>
+          <li><a href="https://github.com/kanumuri9593/Baton/blob/master/llms.txt">llms.txt</a></li>
+          <li><a href="https://modelcontextprotocol.io/">MCP Protocol</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>MIT License</span>
+      <span>Node 24+ · macOS · Linux · Windows</span>
+    </div>
+  </footer>
+</body>
+</html>
