@@ -4,11 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { readHandshake, type Handshake } from '../daemon/server.ts';
 import { logDir, stateDir } from './paths.ts';
+import { resolveRuntimeEntry } from './runtime-entry.ts';
 import { openSync, closeSync, mkdirSync, statSync, rmSync } from 'node:fs';
 import type { RpcMethods } from './api.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const DAEMON_ENTRY = join(HERE, '..', 'daemon', 'main.ts');
+const DAEMON_ENTRY = resolveRuntimeEntry(join(HERE, '..', 'daemon'), 'main');
 
 /**
  * Thin client for the daemon, used by both the CLI and the MCP server.

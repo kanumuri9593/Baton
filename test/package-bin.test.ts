@@ -8,6 +8,10 @@ import { test } from 'node:test';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
   bin: Record<string, string>;
+  files: string[];
+  scripts: Record<string, string>;
+  dependencies: Record<string, string>;
+  devDependencies?: Record<string, string>;
 };
 
 test('npm bin entries use JS shims so registry publish keeps the commands', () => {
@@ -28,6 +32,29 @@ test('the baton shim prints usage', () => {
     timeout: 15_000,
   });
   assert.match(out, /baton —/);
+});
+
+test('global git installs can compile because typescript is a runtime dependency', () => {
+  assert.ok(
+    pkg.dependencies.typescript,
+    'npm omits devDependencies on `npm install -g git+https://...`; tsc must still be installed',
+  );
+  assert.ok(pkg.dependencies['@types/node'], 'tsc needs @types/node when compiling from git');
+  assert.ok(pkg.dependencies['@types/ws'], 'tsc needs @types/ws when compiling from git');
+});
+
+test('prepare builds via the local typescript binary, not a PATH lookup for tsc', () => {
+  assert.match(pkg.scripts.prepare, /scripts\/prepare\.mjs/);
+  const script = readFileSync(join(root, 'scripts', 'prepare.mjs'), 'utf8');
+  assert.match(script, /typescript\/bin\/tsc/);
+  assert.match(script, /'dist',\s*'daemon',\s*'main\.js'/);
+});
+
+test('the npm pack includes HUD icon rasteriser and prepare helper', () => {
+  for (const rel of ['scripts/render-icons.mjs', 'scripts/prepare.mjs', 'scripts/copy-hud-assets.mjs']) {
+    assert.ok(pkg.files.includes(rel), `${rel} must be in package.json files`);
+    assert.equal(existsSync(join(root, rel)), true, `${rel} is missing`);
+  }
 });
 
 test('the published build contains every control-panel asset', () => {

@@ -6,7 +6,7 @@ Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `b
 
 ## Install
 
-- GitHub: `npm install -g github:kanumuri9593/Baton`
+- GitHub: `npm install -g github:kanumuri9593/Baton#v0.2.4`
 - npm: `npm install -g baton-run`
 - MCP: command `baton-mcp`
 - Control panel: `baton app` (`baton hud` is a compatibility alias)

@@ -1,6 +1,6 @@
 {
   "name": "baton-run",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Local run control plane for people and coding agents: launch, hot-reload, inspect, and capture evidence across Flutter and web apps.",
   "author": "kanumuri9593",
   "type": "module",
@@ -17,7 +17,7 @@
     "postbuild": "node scripts/copy-hud-assets.mjs",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "prepare": "test -d dist || npm run build",
+    "prepare": "node scripts/prepare.mjs",
     "release:check": "npm run build && npm run typecheck && npm test",
     "prepublishOnly": "npm run release:check",
     "test": "node --test --test-timeout=20000 \"test/*.test.ts\"",
@@ -34,14 +34,12 @@
     "@opentelemetry/instrumentation-undici": "^0.32.0",
     "@opentelemetry/sdk-trace-base": "^2.11.0",
     "@opentelemetry/sdk-trace-node": "^2.11.0",
-    "jsonc-parser": "^3.3.1",
-    "ws": "^8.21.3",
-    "zod": "^4.5.4"
-  },
-  "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.1",
-    "typescript": "^5.7.0"
+    "jsonc-parser": "^3.3.1",
+    "typescript": "^5.7.0",
+    "ws": "^8.21.3",
+    "zod": "^4.5.4"
   },
   "keywords": [
     "baton",
@@ -85,6 +83,10 @@
     "hud",
     "assets",
     "scripts/copy-hud-assets.mjs",
+    "scripts/prepare.mjs",
+    "scripts/render-icons.mjs",
+    "tsconfig.json",
+    "tsconfig.build.json",
     "README.md",
     "LICENSE",
     "AGENTS.md",

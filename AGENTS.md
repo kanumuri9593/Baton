@@ -7,7 +7,7 @@ Requires **Node.js 24+**. The daemon listens on loopback only.
 ## Install
 
 ```bash
-npm install -g github:kanumuri9593/Baton
+npm install -g github:kanumuri9593/Baton#v0.2.4
 ```
 
 ```bash
@@ -39,7 +39,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=github:kanumuri9593/Baton", "baton-mcp"]
+      "args": ["-y", "--package=github:kanumuri9593/Baton#v0.2.4", "baton-mcp"]
     }
   }
 }

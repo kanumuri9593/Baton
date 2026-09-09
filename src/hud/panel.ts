@@ -5,6 +5,7 @@ import {
 } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { logDir, stateDir } from '../core/paths.ts';
+import { resolveRuntimeEntry } from '../core/runtime-entry.ts';
 
 /**
  * The native macOS shell around the HUD.
@@ -39,8 +40,8 @@ function infoPlist(includeIcon: boolean): string {
   <key>CFBundleIdentifier</key><string>dev.baton.hud</string>
   <key>CFBundleExecutable</key><string>BatonHUD</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.2.3</string>
-  <key>CFBundleVersion</key><string>8</string>
+  <key>CFBundleShortVersionString</key><string>0.2.4</string>
+  <key>CFBundleVersion</key><string>9</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
 ${icon}  <!-- The daemon is plain HTTP on loopback; ATS blocks that without this. -->
   <key>NSAppTransportSecurity</key>
@@ -62,6 +63,7 @@ function ensureAppIcon(): void {
   const icns = appIconPath();
   const sources = [join(dirname(icns), 'baton-app-icon.png'), join(dirname(icns), 'baton.svg')];
   const script = join(dirname(icns), '..', 'scripts', 'render-icons.mjs');
+  if (!existsSync(script)) return;
   const stale = !existsSync(icns)
     || sources.some((source) => existsSync(source) && statSync(source).mtimeMs > statSync(icns).mtimeMs);
   if (!stale) return;
@@ -108,7 +110,7 @@ export function buildPanelApp(onBuild?: () => void): string {
   // A GUI app does not inherit the terminal's npm PATH reliably. Bundle the
   // exact Node + daemon entry paths that built it so reopening from the Dock can
   // bring Baton back after an intentional Quit shut the daemon down.
-  const entry = join(dirname(import.meta.dirname), 'cli', 'index.ts');
+  const entry = resolveRuntimeEntry(join(dirname(import.meta.dirname), 'cli'), 'index');
   const daemonLog = join(logDir(), 'daemon.log');
   // Use the CLI's locked startup path here as well. Launching daemon/main.ts
   // directly let a transient handshake miss create an independent runner.

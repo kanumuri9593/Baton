@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.4 — 2026-09-09
+
+- Global git installs compile with the package's TypeScript dependency, so
+  `npm install -g github:kanumuri9593/Baton` no longer fails looking for `tsc`.
+- Cold `baton` / MCP auto-start spawn compiled `dist/daemon/main.js` instead of
+  missing `main.ts`.
+- HUD first launch ships `scripts/render-icons.mjs` and skips it when absent.
+- Documented GitHub installs pin `#v0.2.4` so an unpinned default branch
+  cannot still serve 0.2.0.
+
 ## 0.2.3 — 2026-09-09
 
 - Folded the project list into the existing logo strip. There is no second

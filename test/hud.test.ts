@@ -242,6 +242,10 @@ test('reopening the macOS app starts the daemon and never shows a blank panel', 
   assert.match(builder, /launcher\.json/);
   assert.match(builder, /arguments: \['daemon', 'start'\]/,
     'the native HUD must use the same locked daemon startup path as the CLI');
+  assert.match(builder, /resolveRuntimeEntry/,
+    'HUD dock relaunch must spawn compiled index.js from a global install');
+  assert.match(builder, /existsSync\(script\)/,
+    'first launch must skip a missing render-icons.mjs instead of throwing');
 });
 
 test('the generated HUD app is a regular Mac app with a Dock icon', () => {
