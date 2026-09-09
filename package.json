@@ -1,6 +1,6 @@
 {
   "name": "baton-run",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Local run control plane for people and coding agents: launch, hot-reload, inspect, and capture evidence across Flutter and web apps.",
   "author": "kanumuri9593",
   "type": "module",

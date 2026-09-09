@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.6 — 2026-09-09
+
+- GitHub default branch is `main`. `master` stays fast-forwarded to the same
+  commits so existing clones do not drift.
+- Install docs, AGENTS.md, and the public site pin `#v0.2.6` (or
+  `npm install -g baton-run`). Unpinned `github:kanumuri9593/Baton` follows
+  `main`.
+- GitHub Pages deploys from `main` as well as `master`.
+
 ## 0.2.5 — 2026-09-09
 
 - HUD icon rasteriser passes a MIME type when drawing menu-bar template PNGs, so

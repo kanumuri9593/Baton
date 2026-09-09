@@ -6,7 +6,7 @@ Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `b
 
 ## Install
 
-- GitHub: `npm install -g github:kanumuri9593/Baton#v0.2.5`
+- GitHub: `npm install -g github:kanumuri9593/Baton#v0.2.6`
 - npm: `npm install -g baton-run`
 - MCP: command `baton-mcp`
 - Control panel: `baton app` (`baton hud` is a compatibility alias)
@@ -15,12 +15,12 @@ Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `b
 
 ## Agent docs
 
-- https://github.com/kanumuri9593/Baton/blob/master/AGENTS.md
-- https://github.com/kanumuri9593/Baton/blob/master/README.md
-- https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md
+- https://github.com/kanumuri9593/Baton/blob/main/AGENTS.md
+- https://github.com/kanumuri9593/Baton/blob/main/README.md
+- https://github.com/kanumuri9593/Baton/blob/main/docs/launch-guide.md
 - Labs: examples/flutter-lab, examples/workflow-lab
 
 ## Optional
 
-- [Launch and validation guide](https://github.com/kanumuri9593/Baton/blob/master/docs/launch-guide.md): people and agents
-- [CONTRIBUTING](https://github.com/kanumuri9593/Baton/blob/master/CONTRIBUTING.md): adapters and tests
+- [Launch and validation guide](https://github.com/kanumuri9593/Baton/blob/main/docs/launch-guide.md): people and agents
+- [CONTRIBUTING](https://github.com/kanumuri9593/Baton/blob/main/CONTRIBUTING.md): adapters and tests
