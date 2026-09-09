@@ -23,7 +23,7 @@
 </p>
 
 ```bash
-npm install -g github:kanumuri9593/Baton
+npm install -g baton-run
 baton app
 ```
 
@@ -49,10 +49,10 @@ baton app                                   # floating launcher + full control p
 
 | Way | Command |
 |---|---|
-| **npm** (publish pending) | `npm install -g baton-run` |
+| **npm** | `npm install -g baton-run` |
 | **GitHub** | `npm install -g github:kanumuri9593/Baton` |
-| **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton baton list` |
-| **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton baton-mcp` |
+| **One-shot CLI** | `npx -y --package=baton-run baton list` |
+| **One-shot MCP** | `npx -y --package=baton-run baton-mcp` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
 | **Baton app** | After install: `baton app` — native floating launcher + control panel on macOS; app-style browser window on Linux/Windows. `baton hud` remains an alias. |
 | **Source tarball** | [Releases](https://github.com/kanumuri9593/Baton/releases) |
@@ -108,7 +108,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=github:kanumuri9593/Baton", "baton-mcp"]
+      "args": ["-y", "--package=baton-run", "baton-mcp"]
     }
   }
 }
