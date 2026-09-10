@@ -118,11 +118,12 @@ export class WorkspaceEngine extends EventEmitter {
       for (const [node, declared] of Object.entries(manifest.nodes)) {
         const state = existing.run.nodes[node];
         if (!state) {
-          existing.run.nodes[node] = this.#pending(node, declared.kind, providers.get(node)!, declared.dependsOn);
+          existing.run.nodes[node] = this.#pending(node, declared, providers.get(node)!);
           continue;
         }
         state.kind = declared.kind;
         state.dependsOn = declared.dependsOn;
+        state.providers = Object.keys(declared.providers);
         if (state.provider !== providers.get(node)) {
           state.provider = providers.get(node)!;
           // A different provider means whatever is up is the wrong thing.
@@ -143,7 +144,7 @@ export class WorkspaceEngine extends EventEmitter {
       startedAt: Date.now(),
       nodes: Object.fromEntries(
         Object.entries(manifest.nodes).map(([node, declared]) =>
-          [node, this.#pending(node, declared.kind, providers.get(node)!, declared.dependsOn)]),
+          [node, this.#pending(node, declared, providers.get(node)!)]),
       ),
     };
     const live: LiveRun = {
@@ -159,8 +160,16 @@ export class WorkspaceEngine extends EventEmitter {
     return live;
   }
 
-  #pending(name: string, kind: NodeState['kind'], provider: string, dependsOn: string[]): NodeState {
-    return { name, kind, provider, dependsOn: [...dependsOn], status: 'pending', readOnly: false };
+  #pending(name: string, declared: WorkspaceManifest['nodes'][string], provider: string): NodeState {
+    return {
+      name,
+      kind: declared.kind,
+      provider,
+      providers: Object.keys(declared.providers),
+      dependsOn: [...declared.dependsOn],
+      status: 'pending',
+      readOnly: false,
+    };
   }
 
   /** Ids are for humans to type, so they are the workspace name, not a uuid. */

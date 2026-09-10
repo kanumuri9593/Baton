@@ -49,6 +49,7 @@ export const HUD_ASSETS: ReadonlyMap<string, { path: string; contentType: string
   ['diagnostics.js', { path: join(HUD_ASSET_DIR, 'diagnostics.js'), contentType: 'text/javascript' }],
   ['network.js', { path: join(HUD_ASSET_DIR, 'network.js'), contentType: 'text/javascript' }],
   ['editor.js', { path: join(HUD_ASSET_DIR, 'editor.js'), contentType: 'text/javascript' }],
+  ['workspace-pane.js', { path: join(HUD_ASSET_DIR, 'workspace-pane.js'), contentType: 'text/javascript' }],
   ['inspector.js', { path: join(HUD_ASSET_DIR, 'inspector.js'), contentType: 'text/javascript' }],
 ]);
 

@@ -28,6 +28,8 @@ export type NodeState = {
   name: string;
   kind: NodeKind;
   provider: string;
+  /** Every provider this node offers, so a client can present the choice. */
+  providers: string[];
   dependsOn: string[];
   status: NodeStatus;
   sessionId?: string;

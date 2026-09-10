@@ -56,7 +56,7 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
   const core = read('core.js');
   const editor = read('editor.js');
 
-  for (const name of ['network.js', 'editor.js', 'inspector.js']) {
+  for (const name of ['network.js', 'editor.js', 'inspector.js', 'workspace-pane.js']) {
     assert.match(read(name), /window\.baton/, `${name} must go through the hook registry`);
   }
   // core.js knows nothing about the launch.json feature: every one of those
@@ -79,6 +79,21 @@ test('the add-ons hook into core.js rather than being wired into it', () => {
   for (const hook of ['openProject', 'chip', 'sessionFocus', 'density']) {
     assert.ok(core.includes(hook), `core.js must still call the "${hook}" hook`);
   }
+
+  // The same rule as editor.js, for the same reason: core.js must not learn a
+  // second feature's RPCs, or it starts growing every feature again.
+  const pane = read('workspace-pane.js');
+  for (const method of ['workspaceUp', 'workspaceDown', 'workspaceSwitch', 'workspaceRestart']) {
+    assert.ok(!core.includes(`'${method}'`), `core.js must not call ${method} itself`);
+    assert.ok(pane.includes(`'${method}'`), `workspace-pane.js must be the one calling ${method}`);
+  }
+  const paneTakes = /const \{([^}]+)\} = window\.baton;/.exec(pane)![1];
+  for (const name of paneTakes.split(',').map((n) => n.trim()).filter(Boolean)) {
+    assert.match(provided, new RegExp('\\b' + name + '\\b'), `core.js must still expose ${name}`);
+  }
+  assert.ok(core.includes("hook('render'"), 'core.js must dispatch the render hook the pane needs');
+  // Grouping must survive without the module: core.js has its own fallback.
+  assert.match(core, /workspace\?\.id/, 'fallback packing must know the workspace id');
 
   assert.match(core, /removeProject/);
   assert.match(core, /chipExpand/);

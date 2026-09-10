@@ -7,6 +7,8 @@ const historyList = $('historyList'), historyLogs = $('historyLogs');
 
 let socket, nextId = 1;
 let sessions = new Map();
+/** Live workspace runs, by id, from `hello` and the `workspace` push event. */
+let workspaces = new Map();
 let activeSessionId = null; // session the peek strip and inspector follow
 let projects = [];          // [{root, name, targets, error}]
 const PROJECT_KEY = 'baton.lastProject';
@@ -110,7 +112,12 @@ function connect() {
       msg.error ? p.reject(new Error(msg.error)) : p.resolve(msg.result);
       return;
     }
-    if (msg.event === 'hello') { sessions = new Map(msg.sessions.map((s) => [s.id, s])); render(); }
+    if (msg.event === 'hello') {
+      sessions = new Map(msg.sessions.map((s) => [s.id, s]));
+      workspaces = new Map((msg.workspaces || []).map((run) => [run.id, run]));
+      render();
+    }
+    if (msg.event === 'workspace') { workspaces.set(msg.run.id, msg.run); render(); }
     if (msg.event === 'session') { sessions.set(msg.snapshot.id, msg.snapshot); render(); }
     if (msg.event === 'forgotten') { sessions.delete(msg.sessionId); render(); }
     if (msg.event === 'devices') loadDevices(true);
@@ -231,6 +238,7 @@ window.baton = {
   projects: () => projects.slice(),
   activeRoot: () => selectedRoot,
   sessions: () => [...sessions.values()],
+  workspaces: () => [...workspaces.values()],
   logBuffer: (id) => (logBuffers.get(id) ?? []).slice(),
   hydrateLogs,
   activeSession: () => activeSessionId,
@@ -355,12 +363,12 @@ function workspaceApi() {
 function fallbackPacks(list) {
   const groups = new Map();
   for (const s of list) {
-    const key = s.workflow || s.root || '';
+    const key = s.workspace?.id || s.workflow || s.root || '';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(s);
   }
   return [...groups.entries()].map(([id, group]) => ({
-    kind: group[0]?.workflow ? 'workflow' : 'project',
+    kind: (group[0]?.workspace?.id || group[0]?.workflow) ? 'workflow' : 'project',
     id, title: group[0]?.workflow || basename(id), sessions: group,
   }));
 }
@@ -434,8 +442,10 @@ function renderTabs() {
     const el = railGroup({
       id: 'p:' + project.root,
       title: project.name,
-      subtitle: project.root + (project.error ? '\n' + project.error : ''),
-      mark: api.compactMark({ targets: project.targets, sessions: members }),
+      subtitle: project.root
+        + (project.workspace ? '\nWorkspace: ' + project.workspace.name : '')
+        + (project.error ? '\n' + project.error : ''),
+      mark: api.compactMark({ workspace: project.workspace, targets: project.targets, sessions: members }),
       on: selectedRoot === project.root,
       count: countFor(project.root),
       sessions: members,
@@ -1054,6 +1064,9 @@ function render() {
     list.innerHTML = '<div class="empty"><h2>Nothing running' + where + '</h2>' +
       'Pick a target above and press Run — or start one from a terminal with ' +
       '<code>baton run &lt;name&gt;</code>.</div>';
+    // A project with a workspace manifest is never really empty: the pane adds
+    // its node rows and an Up button here.
+    hook('render', list);
     paintPeek();
     return;
   }
@@ -1066,6 +1079,7 @@ function render() {
     if (labelled) list.appendChild(renderPack(pack, hog));
     else for (const s of pack.sessions) list.appendChild(renderRow(s, hog));
   }
+  hook('render', list);
   paintPeek();
 }
 

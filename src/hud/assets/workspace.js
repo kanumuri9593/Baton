@@ -34,18 +34,24 @@ export function projectTitle(path) {
  */
 
 /**
- * @param {{ workflow?: string, root?: string }[]} sessions
+ * @param {{ workspace?: { id?: string, node?: string }, workflow?: string, root?: string }[]} sessions
  * @returns {SessionPack[]}
  */
 export function packSessions(sessions) {
   const workflows = new Map();
+  const titles = new Map();
   const projects = new Map();
   for (const session of sessions) {
+    // The workspace id is the durable identity; `workflow` is the display name
+    // set alongside it, and the only identity a legacy workflow session has.
+    const workspace = String(session.workspace?.id || '').trim();
     const workflow = String(session.workflow || '').trim();
-    if (workflow) {
-      const group = workflows.get(workflow) ?? [];
+    const key = workspace || workflow;
+    if (key) {
+      const group = workflows.get(key) ?? [];
       group.push(session);
-      workflows.set(workflow, group);
+      workflows.set(key, group);
+      if (workflow) titles.set(key, workflow);
       continue;
     }
     const root = session.root ?? '';
@@ -55,7 +61,7 @@ export function packSessions(sessions) {
   }
   const packs = [];
   for (const [id, group] of workflows) {
-    packs.push({ kind: 'workflow', id, title: id, sessions: group });
+    packs.push({ kind: 'workflow', id, title: titles.get(id) ?? id, sessions: group });
   }
   for (const [id, group] of projects) {
     packs.push({ kind: 'project', id, title: projectTitle(id), sessions: group });
@@ -86,7 +92,7 @@ export function sessionsForRoot(sessions, root) {
  * @returns {{ kind: 'ios' | 'android' | 'web' | 'workspace' | 'folder', letter?: string }}
  */
 export function compactMark(item) {
-  const workflow = String(item?.workflow || '').trim();
+  const workflow = String(item?.workspace?.name || item?.workflow || '').trim();
   if (workflow) {
     const ch = workflow.charAt(0);
     return { kind: 'workspace', letter: /[a-z]/i.test(ch) ? ch.toUpperCase() : 'W' };
@@ -108,4 +114,54 @@ export function compactMark(item) {
   if (web) return { kind: 'web' };
   if (ios) return { kind: 'ios' };
   return { kind: 'folder' };
+}
+
+/**
+ * How a node's status should read: the same vocabulary as a session row, so
+ * one glance across the panel means one thing.
+ *
+ * `external` is its own tone on purpose -- it is neither a success Baton is
+ * responsible for nor a problem, it is somebody else's process.
+ *
+ * @param {string | undefined} status
+ * @returns {'ok' | 'busy' | 'warn' | 'bad' | 'idle' | 'external'}
+ */
+export function nodeTone(status) {
+  switch (status) {
+    case 'ready': return 'ok';
+    case 'starting': return 'busy';
+    case 'unhealthy': return 'warn';
+    case 'failed': return 'bad';
+    case 'external': return 'external';
+    default: return 'idle';
+  }
+}
+
+/**
+ * Nodes in dependency order, so the map reads top to bottom the way it starts.
+ *
+ * Ties keep manifest order rather than being sorted alphabetically: the author
+ * listed them in an order that meant something.
+ *
+ * @param {{ nodes?: Record<string, { name?: string, dependsOn?: string[] }> }} run
+ * @returns {{ name: string, dependsOn?: string[] }[]}
+ */
+export function orderedNodes(run) {
+  const nodes = run?.nodes ?? {};
+  const remaining = new Map(Object.entries(nodes));
+  const placed = new Set();
+  const ordered = [];
+  while (remaining.size > 0) {
+    const ready = [...remaining.entries()]
+      .filter(([, node]) => (node?.dependsOn ?? []).every((dep) => placed.has(dep) || !nodes[dep]));
+    // A cycle should be impossible -- the engine refuses one -- but a pane that
+    // silently drops nodes would be worse than one that shows them unordered.
+    const batch = ready.length ? ready : [...remaining.entries()];
+    for (const [name, node] of batch) {
+      remaining.delete(name);
+      placed.add(name);
+      ordered.push(node);
+    }
+  }
+  return ordered;
 }
