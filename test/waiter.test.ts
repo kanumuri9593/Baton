@@ -152,6 +152,53 @@ test('a malformed until condition is refused rather than silently matching every
   assert.equal(session.listenerCount('log'), 0);
 });
 
+test('a probe condition resolves from the probe, and reports the session url with it', async () => {
+  const session = new FakeSession();
+  session.status = 'running';
+  session.url = 'http://127.0.0.1:8080';
+  let attempts = 0;
+
+  const result = await waitForSession(session as any, { http: 'http://127.0.0.1:8080/health' }, 2000, undefined, {
+    intervalMs: 1,
+    probeFn: async () => ({ ok: (attempts += 1) >= 2 }),
+  });
+
+  assert.equal(result.met, true);
+  assert.equal(result.url, 'http://127.0.0.1:8080');
+  assert.equal(session.listenerCount('change'), 0);
+  assert.equal(session.listenerCount('log'), 0);
+  assert.equal(session.listenerCount('exit'), 0);
+});
+
+test('a session that dies while its probe is still trying fails immediately, not at the probe timeout', async () => {
+  const session = new FakeSession();
+  const pending = waitForSession(session as any, { tcp: 5432 }, 10_000, () => ['exit code 1'], {
+    intervalMs: 5,
+    probeFn: async () => ({ ok: false, detail: 'ECONNREFUSED' }),
+  });
+
+  const started = Date.now();
+  setTimeout(() => session.setStatus('failed'), 10);
+
+  await assert.rejects(pending, (error: Error) => {
+    assert.match(error.message, /cannot reach "tcp:5432": session is failed/);
+    assert.match(error.message, /exit code 1/);
+    return true;
+  });
+  assert.ok(Date.now() - started < 5000, 'must not wait out the probe timeout');
+  assert.equal(session.listenerCount('change'), 0);
+});
+
+test('a probe that never answers times out naming what it was probing', async () => {
+  const session = new FakeSession();
+  session.status = 'running';
+  await assert.rejects(
+    waitForSession(session as any, { tcp: 5432 }, 60, undefined, { intervalMs: 5, probeFn: async () => ({ ok: false, detail: 'ECONNREFUSED' }) }),
+    /tcp:5432/,
+  );
+  assert.equal(session.listenerCount('change'), 0);
+});
+
 test('clampTimeout applies the default and the cap', () => {
   assert.equal(clampTimeout(undefined), 60_000);
   assert.equal(clampTimeout(1_000_000), 300_000);

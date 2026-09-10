@@ -8,6 +8,7 @@ import { basename, dirname, resolve } from 'node:path';
 import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 import { regenerationLoss } from '../config/writer.ts';
 import type { RpcMethods } from '../core/api.ts';
+import type { WaitUntil } from '../daemon/waiter.ts';
 import {
   parseAppearanceList, parseAxisList, parseTextScaleList, formatCellLabel, type ProofCheckName,
 } from '../daemon/proof.ts';
@@ -36,7 +37,7 @@ Usage
   baton devices [--all]          connected devices; --all adds bootable ones
   baton boot <device>            start a simulator or emulator
   baton screenshot <session> [-o path]  capture the screen (iOS sim / Android)
-  baton wait <session> [--until running|stopped|url|log:<regex>] [--timeout ms]
+  baton wait <session> [--until running|stopped|url|log:<re>|tcp:<port>|http:<url>] [--timeout ms]
                                  block until a session reaches a state
   baton status <session>         cheap structured overview: status, uptime,
                                  last reload, recent errors, network counts
@@ -66,6 +67,7 @@ Examples
   baton init                     # .vscode/launch.json you can then edit anywhere
   baton wait mclane360 --until running --timeout 30000
   baton wait webapp --until log:"ready in"
+  baton wait orders-api --until http://127.0.0.1:8080/health  # a real answer, not just a process
 `;
 
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -117,11 +119,21 @@ function humanDuration(ms: number): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-/** `--until running|stopped|url|log:<regex>` -- the one bit of parsing `wait` needs. */
-function parseUntil(raw: string): 'running' | 'stopped' | 'url' | { log: string } {
+/** `--until running|stopped|url|log:<regex>|tcp:<port>|http:<url>` -- `wait`'s one bit of parsing. */
+function parseUntil(raw: string): WaitUntil {
   if (raw.startsWith('log:')) return { log: raw.slice(4) };
+  if (raw.startsWith('tcp:')) {
+    const port = Number(raw.slice(4));
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error(`--until tcp:<port> needs a port between 1 and 65535 (got "${raw.slice(4)}")`);
+    }
+    return { tcp: port };
+  }
+  if (raw.startsWith('http:') || raw.startsWith('https:')) return { http: raw };
   if (raw === 'running' || raw === 'stopped' || raw === 'url') return raw;
-  throw new Error(`--until must be running, stopped, url, or log:<regex> (got "${raw}")`);
+  throw new Error(
+    `--until must be running, stopped, url, log:<regex>, tcp:<port> or http:<url> (got "${raw}")`,
+  );
 }
 
 function checkoutGroupHeading(group: 'this' | 'worktrees' | 'local' | 'remote'): string {

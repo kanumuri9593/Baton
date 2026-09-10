@@ -355,6 +355,11 @@ server.tool(
       .union([
         z.enum(['running', 'stopped', 'url']),
         z.object({ log: z.string().describe('Case-insensitive regular expression matched against new log lines.') }),
+        z.object({ tcp: z.number().int().describe('Wait until this port accepts a connection on 127.0.0.1.') }),
+        z.object({
+          http: z.string().describe('Wait until this URL answers. Any HTTP response counts unless status is set.'),
+          status: z.number().int().optional().describe('Require exactly this status code.'),
+        }),
       ])
       .default('running'),
     timeoutMs: z.number().optional().describe('Default 60000, capped at 300000.'),

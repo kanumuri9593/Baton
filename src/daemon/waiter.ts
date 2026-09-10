@@ -1,8 +1,14 @@
 import type { EventEmitter } from 'node:events';
 import type { Session, SessionStatus } from '../core/types.ts';
+import { describeProbe, isProbe, pollProbe, ProbeAborted, type NetProbe, type PollOptions } from './probes.ts';
 
-/** What `wait` can be asked to block on. */
-export type WaitUntil = 'running' | 'stopped' | 'url' | { log: string };
+/**
+ * What `wait` can be asked to block on.
+ *
+ * The probe conditions are what make "ready" mean the service actually answers,
+ * rather than "the process has not exited yet".
+ */
+export type WaitUntil = 'running' | 'stopped' | 'url' | { log: string } | NetProbe;
 
 export type WaitResult = {
   met: true;
@@ -27,7 +33,8 @@ export type WaitableSession = Session &
   Pick<EventEmitter, 'on' | 'removeListener'> & { recentLogs: (limit?: number) => { text: string; error: boolean }[] };
 
 function describe(until: WaitUntil): string {
-  return typeof until === 'string' ? until : `log:${until.log}`;
+  if (typeof until === 'string') return until;
+  return isProbe(until) ? describeProbe(until) : `log:${(until as { log: string }).log}`;
 }
 
 /**
@@ -44,13 +51,14 @@ export function waitForSession(
   until: WaitUntil,
   timeoutMs?: number,
   recentErrors: (session: WaitableSession) => string[] = () => [],
+  probeOptions: Pick<PollOptions, 'intervalMs' | 'probeFn'> = {},
 ): Promise<WaitResult> {
   // A malformed `until` (off the wire, unvalidated JSON) must be refused up
   // front -- an object with no string `log`, for instance, would otherwise
   // build `new RegExp(undefined)`, which matches every line rather than none.
   const validShape =
-    until === 'running' || until === 'stopped' || until === 'url' ||
-    (typeof until === 'object' && until !== null && typeof until.log === 'string');
+    until === 'running' || until === 'stopped' || until === 'url' || isProbe(until) ||
+    (typeof until === 'object' && until !== null && typeof (until as { log?: unknown }).log === 'string');
   if (!validShape) {
     throw new Error(`invalid wait condition: ${JSON.stringify(until)}`);
   }
@@ -63,12 +71,14 @@ export function waitForSession(
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let logPattern: RegExp | undefined;
+    const probing = isProbe(until) ? new AbortController() : undefined;
 
-    if (typeof until === 'object') {
+    if (typeof until === 'object' && !isProbe(until)) {
+      const pattern = (until as { log: string }).log;
       try {
-        logPattern = new RegExp(until.log, 'i');
+        logPattern = new RegExp(pattern, 'i');
       } catch (err) {
-        reject(new Error(`invalid log pattern "${until.log}": ${(err as Error).message}`));
+        reject(new Error(`invalid log pattern "${pattern}": ${(err as Error).message}`));
         return;
       }
     }
@@ -77,6 +87,9 @@ export function waitForSession(
       session.removeListener('change', onChange);
       session.removeListener('log', onLog);
       session.removeListener('exit', onChange);
+      // A session that died first makes the probe pointless; stop it now rather
+      // than leaving it connecting to a port nobody is going to open.
+      probing?.abort();
       if (timer) clearTimeout(timer);
     };
 
@@ -139,6 +152,23 @@ export function waitForSession(
     session.on('change', onChange);
     session.on('log', onLog);
     session.on('exit', onChange);
+
+    // A probe answers from outside the process, so it runs alongside the event
+    // subscriptions above -- which still catch the session dying first.
+    if (probing && isProbe(until)) {
+      pollProbe(until, {
+        timeoutMs: ms,
+        intervalMs: probeOptions.intervalMs,
+        probeFn: probeOptions.probeFn,
+        signal: probing.signal,
+      }).then(
+        () => finish({ met: true, status: session.status, elapsedMs: Date.now() - start, url: session.snapshot().url }),
+        (error: Error) => {
+          if (error instanceof ProbeAborted) return; // the session already settled this wait
+          fail(error);
+        },
+      );
+    }
 
     timer = setTimeout(() => {
       fail(new Error(`timeout after ${ms}ms waiting for ${label}; status is ${session.status}`));
