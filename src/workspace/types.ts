@@ -36,6 +36,8 @@ export type NodeState = {
   error?: string;
   /** True when the session is shared with another workspace, or not ours to stop. */
   readOnly: boolean;
+  /** How long this node took to settle, the last time it was started. */
+  elapsedMs?: number;
 };
 
 export type WorkspaceRun = {

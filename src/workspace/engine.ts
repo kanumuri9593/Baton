@@ -191,11 +191,17 @@ export class WorkspaceEngine extends EventEmitter {
       return;
     }
 
-    this.#set(live, node, { status: 'starting', error: undefined });
+    const startedAt = Date.now();
+    this.#set(live, node, { status: 'starting', error: undefined, elapsedMs: undefined });
     try {
       await this.#start(live, node);
+      this.#set(live, node, { elapsedMs: Date.now() - startedAt });
     } catch (error) {
-      this.#set(live, node, { status: 'failed', error: String((error as Error).message).slice(0, 2000) });
+      this.#set(live, node, {
+        status: 'failed',
+        error: String((error as Error).message).slice(0, 2000),
+        elapsedMs: Date.now() - startedAt,
+      });
     }
   }
 

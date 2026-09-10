@@ -1,6 +1,5 @@
 import { resolve, isAbsolute } from 'node:path';
 import { z } from 'zod';
-import type { SessionSnapshot } from '../core/types.ts';
 
 const stepSchema = z.object({
   name: z.string().min(1).max(100),
@@ -38,35 +37,4 @@ export function parseWorkflow(input: unknown, base?: string): Workflow {
     }
   }
   return workflow;
-}
-
-export type WorkflowHost = {
-  run(step: Workflow['steps'][number], workflowName: string): Promise<SessionSnapshot>;
-  wait(id: string, step: Workflow['steps'][number]): Promise<{ url?: string }>;
-};
-
-/** Sequential readiness gates: do not start dependents after a failure. No log polling. */
-export async function runWorkflow(host: WorkflowHost, input: unknown): Promise<WorkflowResult> {
-  const workflow = parseWorkflow(input);
-  const result: WorkflowResult = { name: workflow.name, ok: true, steps: [], next: '' };
-  for (const step of workflow.steps) {
-    if (!result.ok) {
-      result.steps.push({ name: step.name, root: step.cwd, status: 'skipped', elapsedMs: 0 });
-      continue;
-    }
-    const start = Date.now();
-    let session: SessionSnapshot | undefined;
-    try {
-      session = await host.run(step, workflow.name);
-      const ready = await host.wait(session.id, step);
-      result.steps.push({ name: step.name, root: step.cwd, session: session.id, status: 'ready', url: ready.url ?? session.url, elapsedMs: Date.now() - start });
-    } catch (error) {
-      result.ok = false;
-      result.steps.push({ name: step.name, root: step.cwd, session: session?.id, status: 'failed', elapsedMs: Date.now() - start, error: String((error as Error).message).slice(0, 2000) });
-    }
-  }
-  result.next = result.ok
-    ? 'Use the returned URLs or device sessions to exercise the flow. Read session_summary only when needed; readiness does not prove visual or business correctness.'
-    : 'Inspect the failed step. Started sessions are retained for debugging; stop only these session IDs when finished.';
-  return result;
 }

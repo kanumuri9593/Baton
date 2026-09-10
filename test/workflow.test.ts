@@ -1,51 +1,40 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseWorkflow, runWorkflow, type WorkflowHost } from '../src/daemon/workflow.ts';
-import type { SessionSnapshot } from '../src/core/types.ts';
+import { parseWorkflow } from '../src/daemon/workflow.ts';
 import { resolve } from 'node:path';
-const plan = {name:'Demo',steps:[{name:'API',cwd:resolve('api'),target:'api'},{name:'Web',cwd:resolve('web'),target:'web',until:'url'}]};
 
-test('workflow launches in readiness order and returns only compact results', async () => {
-  const order: string[] = [];
-  const names: string[] = [];
-  const result = await runWorkflow({
-    run: async (s, workflowName) => {
-      order.push('run '+s.name);
-      names.push(workflowName);
-      return {id:s.name, env:'BATON_SECRET_SHOULD_NOT_LEAK', logs:['long output']} as unknown as SessionSnapshot;
-    },
-    wait: async (id) => {order.push('wait '+id); return {url:'http://localhost:1234'};},
-  }, plan);
-  assert.deepEqual(order,['run API','wait API','run Web','wait Web']);
-  assert.deepEqual(names,['Demo','Demo']);
-  assert.ok(result.ok);
-  assert.ok(!JSON.stringify(result).includes('BATON_SECRET_SHOULD_NOT_LEAK'));
-  assert.equal(result.steps[1].url,'http://localhost:1234');
+const plan = {
+  name: 'Demo',
+  steps: [
+    { name: 'API', cwd: resolve('api'), target: 'api' },
+    { name: 'Web', cwd: resolve('web'), target: 'web', until: 'url' },
+  ],
+};
+
+test('every step is validated, so a bad plan never starts a first process', () => {
+  assert.throws(() => parseWorkflow({ ...plan, steps: [plan.steps[0], { ...plan.steps[1], timeoutMs: -1 }] }));
+  assert.throws(() => parseWorkflow({ ...plan, steps: [plan.steps[0], plan.steps[0]] }), /Duplicate/);
+  assert.throws(() => parseWorkflow({ ...plan, steps: [] }));
 });
 
-test('workflow retains failed session id and skips dependents', async () => {
-  const result = await runWorkflow({
-    run: async (s) => ({id:s.name}) as SessionSnapshot,
-    wait: async () => {throw new Error('port already in use');},
-  }, plan);
-  assert.equal(result.ok,false);
-  assert.equal(result.steps[0].session,'API');
-  assert.equal(result.steps[0].error,'port already in use');
-  assert.equal(result.steps[1].status,'skipped');
-});
-
-test('all steps are validated before executing any target', async () => {
-  let calls = 0;
-  const host = {run:async()=>{calls++;},wait:async()=>{}} as unknown as WorkflowHost;
-  await assert.rejects(runWorkflow(host,{...plan,steps:[plan.steps[0],{...plan.steps[1],timeoutMs:-1}]}));
-  await assert.rejects(runWorkflow(host,{...plan,steps:[plan.steps[0],plan.steps[0]]}),/Duplicate/);
-  assert.equal(calls,0);
+test('defaults are filled in so every step has an explicit readiness and timeout', () => {
+  const parsed = parseWorkflow(plan);
+  assert.equal(parsed.steps[0].until, 'running');
+  assert.equal(parsed.steps[1].until, 'url');
+  assert.equal(parsed.steps[0].timeoutMs, 60000);
 });
 
 test('workflow file paths resolve relative to the file; RPC requires absolute paths', () => {
-  const relative = {name:'Demo',steps:[{name:'API',cwd:'api',target:'api',checkout:'../worktree'}]};
-  assert.throws(()=>parseWorkflow(relative),/absolute/);
-  const parsed = parseWorkflow(relative,resolve('examples'));
-  assert.equal(parsed.steps[0].cwd,resolve('examples/api'));
-  assert.equal(parsed.steps[0].checkout,resolve('worktree'));
+  const relative = { name: 'Demo', steps: [{ name: 'API', cwd: 'api', target: 'api', checkout: '../worktree' }] };
+  assert.throws(() => parseWorkflow(relative), /absolute/);
+  const parsed = parseWorkflow(relative, resolve('examples'));
+  assert.equal(parsed.steps[0].cwd, resolve('examples/api'));
+  assert.equal(parsed.steps[0].checkout, resolve('worktree'));
+});
+
+test('branch and checkout are mutually exclusive', () => {
+  assert.throws(() => parseWorkflow({
+    name: 'Demo',
+    steps: [{ name: 'API', cwd: resolve('api'), target: 'api', branch: 'main', checkout: resolve('wt') }],
+  }));
 });

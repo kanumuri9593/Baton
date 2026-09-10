@@ -1,5 +1,6 @@
 import { diagnose } from './diagnose.ts';
-import { runWorkflow } from './workflow.ts';
+import { parseWorkflow } from './workflow.ts';
+import { toWorkflowResult, workflowToManifest } from '../workspace/convert.ts';
 import { inspectProject } from '../config/guide.ts';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -278,17 +279,11 @@ export class LaunchDaemon {
     switch (request.method) {
       case 'diagnose': return diagnose(this.registry.list(), this.network.store, p);
       case 'workflowRun': {
-        return runWorkflow({
-          run: (step, workflowName) => this.handle({
-            method: 'run', params: { ...step, workflow: workflowName },
-          }) as Promise<SessionSnapshot>,
-          wait: async (session, step) => {
-            const started = Date.now();
-            const ready = await this.handle({ method: 'wait', params: { session, until: 'running', timeoutMs: step.timeoutMs } }) as RpcMethods['wait']['result'];
-            if (step.until === 'running') return ready;
-            return this.handle({ method: 'wait', params: { session, until: 'url', timeoutMs: Math.max(1, step.timeoutMs - (Date.now() - started)) } }) as Promise<RpcMethods['wait']['result']>;
-          },
-        }, p);
+        // A workflow is the sequential special case of a workspace, so it runs
+        // on the same engine and returns the same shape it always has.
+        const workflow = parseWorkflow(p);
+        const run = await this.workspaces.up(workflowToManifest(workflow));
+        return toWorkflowResult(workflow, run) satisfies RpcMethods['workflowRun']['result'];
       }
       case 'inspectProject': {
         const params = p as RpcMethods['inspectProject']['params'];
