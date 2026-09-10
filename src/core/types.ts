@@ -58,6 +58,13 @@ export type SessionSnapshot = {
    * `run_workflow` / `baton workflow`. Omitted for ordinary single-target runs.
    */
   workflow?: string;
+  /**
+   * The workspace node this session is, when a workspace started it.
+   *
+   * `workflow` is still set alongside it (to the workspace name) so clients
+   * that only know about workflows keep grouping these sessions correctly.
+   */
+  workspace?: { id: string; node: string };
 };
 
 /** A session's git checkout: in-place, an attached worktree, or a Baton-owned copy. */
@@ -134,6 +141,8 @@ export interface Session {
   checkout?: SessionCheckout;
   /** Set when this session was started as a workflow step. */
   workflow?: string;
+  /** Set by the registry when a workspace started this session. */
+  workspace?: { id: string; node: string };
 
   start(): void;
   hotReload(reason?: string): Promise<OperationResult>;

@@ -68,6 +68,23 @@ test('registry forwards launch.json env into a react-native-kind session child',
   assert.match(text, /VALUE=from-launch-json/);
 });
 
+test('a workspace\'s env is merged over the launch.json env and reaches the child', async () => {
+  const target = envTarget('process', tmpProject());
+  target.name = 'workspace-env';
+  const session = await registry.run(target, { env: { BATON_ENV_TEST: 'from-workspace' } });
+  await waitForExit(session);
+  assert.match(session.recentLogs().map((l) => l.text).join(''), /VALUE=from-workspace/);
+});
+
+test('launch.json keys the workspace does not mention survive the merge', async () => {
+  const target = envTarget('process', tmpProject());
+  target.name = 'workspace-env-merge';
+  target.args = ['-e', "process.stdout.write('VALUE=' + process.env.BATON_ENV_TEST + ' EXTRA=' + process.env.API_URL)"];
+  const session = await registry.run(target, { env: { API_URL: 'http://127.0.0.1:43121' } });
+  await waitForExit(session);
+  assert.match(session.recentLogs().map((l) => l.text).join(''), /VALUE=from-launch-json EXTRA=http:\/\/127\.0\.0\.1:43121/);
+});
+
 test('Node targets still launch when a desktop environment omits Node from PATH', async () => {
   const target = envTarget('process', tmpProject());
   target.name = 'desktop-node';

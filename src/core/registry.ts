@@ -9,6 +9,29 @@ import { NativeBuildSession } from '../adapters/native-build.ts';
 import { DeviceRegistry } from '../daemon/devices.ts';
 import { resolveFlutter } from '../config/flutter.ts';
 import { slug } from './session-base.ts';
+import { toDartDefines } from '../workspace/exports.ts';
+import type { LaunchConfig } from '../config/loader.ts';
+
+/**
+ * A Flutter config that carries `env` as compile-time defines.
+ *
+ * A Flutter app is a compiled binary on a device or simulator; the env of the
+ * `flutter run` process on the developer's laptop never reaches it. Handing a
+ * workspace's `API_URL` to a Flutter node therefore means `--dart-define`,
+ * which `buildFlutterArgv` already appends via `toolArgs`. The env is merged
+ * too, since the tool process itself may legitimately want it.
+ */
+export function flutterConfigWith(
+  config: LaunchConfig,
+  env?: Record<string, string>,
+): LaunchConfig {
+  if (!env || Object.keys(env).length === 0) return config;
+  return {
+    ...config,
+    env: { ...config.env, ...env },
+    toolArgs: [...config.toolArgs, ...toDartDefines(env)],
+  };
+}
 
 export type RunOptions = {
   deviceId?: string;
@@ -18,6 +41,23 @@ export type RunOptions = {
   checkout?: SessionCheckout;
   /** Workflow name when this run is one step of a multi-project plan. */
   workflow?: string;
+  /**
+   * Extra environment merged over the target's own `env`.
+   *
+   * This is how a workspace hands a node its dependencies' URLs. Flutter apps
+   * cannot read env at all, so for them these become `--dart-define`s instead.
+   */
+  env?: Record<string, string>;
+  /** The workspace node this run belongs to, when a workspace started it. */
+  workspace?: { id: string; node: string };
+  /**
+   * What to do when a session with this id already exists.
+   *
+   * The default stays `refuse`, so a person who types `baton run` twice still
+   * gets told. A workspace passes `reuse`, because `up` is idempotent: finding
+   * the node already running is success, not a collision.
+   */
+  ifRunning?: 'refuse' | 'reuse';
 };
 
 /**
@@ -73,11 +113,11 @@ export class SessionRegistry extends EventEmitter {
   }
 
   async run(target: Target, options: RunOptions = {}): Promise<Session> {
-    const session = this.adopt(await this.#create(target, options), options.projectRoot ?? target.cwd);
-    if (options.checkout && options.checkout.kind !== 'inplace') {
-      session.checkout = options.checkout;
-    }
-    if (options.workflow) session.workflow = options.workflow;
+    const created = await this.#create(target, options);
+    const session = this.own(created, { ...options, projectRoot: options.projectRoot ?? target.cwd });
+    // `own` hands back the live session it found instead of the new one when the
+    // caller asked to reuse; that one is already running, so leave it alone.
+    if (session !== created) return session;
     session.start();
     this.emit('change', session.snapshot());
     return session;
@@ -88,19 +128,36 @@ export class SessionRegistry extends EventEmitter {
    *
    * Split out of `run` because creating a session and owning one are different
    * jobs -- `run` has to pick a device and spawn a process, while a session that
-   * already exists (a replay, a future attach-to-a-running-app) needs only this
-   * half. Does not `start()` it: the caller decides when, or whether, to.
+   * already exists (a Compose container, a replay, a future attach-to-a-running
+   * -app) needs only this half. Does not `start()` it: the caller decides when.
    */
-  adopt(session: Session, root?: string): Session {
+  own(session: Session, options: RunOptions = {}): Session {
     // Which project this came from -- the HUD groups by it, so three projects
     // can be watched side by side without their sessions blurring together.
-    if (root !== undefined) (session as { root?: string }).root = root;
+    if (options.projectRoot !== undefined) (session as { root?: string }).root = options.projectRoot;
 
-    if (this.#sessions.has(session.id)) {
-      throw new Error(
-        `a session for "${session.name}" is already running on this device (${session.id})`,
-      );
+    const existing = this.#sessions.get(session.id);
+    if (existing) {
+      const terminal = existing.status === 'stopped' || existing.status === 'failed';
+      if (terminal) {
+        // A finished session is history, not an obstacle. Evicting it here is
+        // what lets a workspace restart a node with new env without anyone
+        // having to type `baton forget` first; listeners are told so the HUD
+        // drops the old row rather than showing two.
+        this.#sessions.delete(existing.id);
+        this.emit('forgotten', existing.id);
+      } else if (options.ifRunning === 'reuse') {
+        return existing;
+      } else {
+        throw new Error(
+          `a session for "${session.name}" is already running on this device (${session.id})`,
+        );
+      }
     }
+
+    if (options.checkout && options.checkout.kind !== 'inplace') session.checkout = options.checkout;
+    if (options.workflow) session.workflow = options.workflow;
+    if (options.workspace) session.workspace = options.workspace;
 
     this.#sessions.set(session.id, session);
     session.on('change', () => this.emit('change', session.snapshot()));
@@ -112,7 +169,19 @@ export class SessionRegistry extends EventEmitter {
     return session;
   }
 
+  /** Backwards-compatible shorthand for `own`, from before there were options. */
+  adopt(session: Session, root?: string): Session {
+    return this.own(session, root === undefined ? {} : { projectRoot: root });
+  }
+
+  /** Workspace env wins over the target's own: it describes where things actually are today. */
+  static #env(target: Target, options: RunOptions): Record<string, string> | undefined {
+    if (!options.env || Object.keys(options.env).length === 0) return target.config?.env;
+    return { ...target.config?.env, ...options.env };
+  }
+
   async #create(target: Target, options: RunOptions): Promise<Session> {
+    const env = SessionRegistry.#env(target, options);
     const idRoot = options.projectRoot;
     const checkoutSlug = options.checkout && options.checkout.kind !== 'inplace'
       ? slug(options.checkout.ref ?? options.checkout.cwd.split(/[\\/]/).pop() ?? 'checkout')
@@ -121,9 +190,10 @@ export class SessionRegistry extends EventEmitter {
 
     switch (target.kind) {
       case 'flutter': {
-        const config = options.deviceId
-          ? { ...target.config!, deviceId: options.deviceId }
-          : target.config!;
+        const config = flutterConfigWith(
+          options.deviceId ? { ...target.config!, deviceId: options.deviceId } : target.config!,
+          options.env,
+        );
         const devices = this.devices(idRoot ?? target.cwd);
         const device = await devices.waitForDevice(
           config.name,
@@ -149,12 +219,12 @@ export class SessionRegistry extends EventEmitter {
 
       case 'web-dev':
         return WebDevSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, trace: target.config?.batonTrace, ...ids,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env, trace: target.config?.batonTrace, ...ids,
         });
 
       case 'react-native':
         return ReactNativeSession.create(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, trace: target.config?.batonTrace, ...ids,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env, trace: target.config?.batonTrace, ...ids,
         });
 
       case 'ios':
@@ -177,14 +247,14 @@ export class SessionRegistry extends EventEmitter {
           );
         }
         return NativeBuildSession.create(target.kind, target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env,
           deviceId: device.id, ...ids,
         });
       }
 
       case 'process':
         return ProcessSession.forCommand(target.name, {
-          command: target.command!, args: target.args ?? [], cwd: target.cwd, env: target.config?.env, trace: target.config?.batonTrace, ...ids,
+          command: target.command!, args: target.args ?? [], cwd: target.cwd, env, trace: target.config?.batonTrace, ...ids,
         });
       default: {
         const _exhaustive: never = target.kind;

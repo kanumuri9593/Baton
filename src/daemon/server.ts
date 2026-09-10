@@ -92,6 +92,14 @@ export class LaunchDaemon {
     this.#samplePids = options.samplePids ?? ((pids) => samplePids(pids));
     this.registry.on('network', (id, row) => this.network.store.upsert(id, row));
     this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
+    // The registry evicts a finished session when a new run reuses its id (a
+    // workspace restarting a node with fresh env). Clean up the same state
+    // `forget` would, so nothing is left pointing at a session that is gone.
+    this.registry.on('forgotten', (sessionId: string) => {
+      this.network.forget(sessionId);
+      this.#lastOperation.delete(sessionId);
+      this.#broadcast({ event: 'forgotten', sessionId } satisfies PushEvent);
+    });
     this.registry.on('log', (sessionId, text, error) =>
       this.#broadcast({ event: 'log', sessionId, text, error } satisfies PushEvent),
     );

@@ -33,6 +33,8 @@ export abstract class BaseSession extends EventEmitter implements Session {
   checkout?: SessionCheckout;
   /** Set when this session was started as a workflow step. */
   workflow?: string;
+  /** Set by the registry when a workspace started this session. */
+  workspace?: { id: string; node: string };
 
   #logs: LogLine[] = [];
   #capabilities: Set<Capability>;
@@ -115,6 +117,7 @@ export abstract class BaseSession extends EventEmitter implements Session {
         ? { checkout: this.checkout }
         : {}),
       ...(this.workflow ? { workflow: this.workflow } : {}),
+      ...(this.workspace ? { workspace: this.workspace } : {}),
     };
   }
 }
