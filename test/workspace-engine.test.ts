@@ -149,8 +149,25 @@ test('a failed node names itself in every dependent it took down, and independen
   assert.match(run.nodes.web.error!, /api failed \(api never answered\)/);
   assert.equal(run.nodes.mobile.status, 'skipped');
   assert.match(run.nodes.mobile.error!, /web was skipped/);
+  // One line: the culprit's full error is already shown on its own row.
+  assert.ok(!run.nodes.web.error!.includes('\n'), 'attribution stays a single line');
   assert.equal(run.nodes.docs.status, 'ready', 'an unrelated branch is unaffected');
   assert.ok(!fake.calls.includes('runTarget:web:{}'), 'a skipped node is never started');
+});
+
+test('attribution quotes only the first line of a multi-line failure', async () => {
+  const fake = fakeHost();
+  const engine = new WorkspaceEngine({ host: fake.host, healthIntervalMs: 60_000 });
+  after(() => engine.dispose());
+  fake.host.waitFor = async () => { throw new Error('cannot reach "url"\nFATAL: could not connect to postgres'); };
+
+  const run = await engine.up(loaded({
+    api: { providers: { local: target('api') } },
+    web: { dependsOn: ['api'], providers: { local: target('web') } },
+  }));
+
+  assert.match(run.nodes.api.error!, /FATAL: could not connect/, 'the failure keeps every line');
+  assert.equal(run.nodes.web.error, 'api failed (cannot reach "url")');
 });
 
 test('up is idempotent: a second call starts only what is not already up', async () => {

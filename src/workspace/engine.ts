@@ -191,11 +191,12 @@ export class WorkspaceEngine extends EventEmitter {
       .map((dep) => live.run.nodes[dep])
       .find((dep) => dep && (dep.status === 'failed' || dep.status === 'skipped'));
     if (blocker) {
+      // First line only: the culprit's full error is already on its own row,
+      // and repeating a multi-line stack inside parentheses reads as noise.
+      const because = firstLine(blocker.error) ?? 'no reason reported';
       this.#set(live, node, {
         status: 'skipped',
-        error: blocker.status === 'failed'
-          ? `${blocker.name} failed (${blocker.error ?? 'no reason reported'})`
-          : `${blocker.name} was skipped (${blocker.error ?? 'no reason reported'})`,
+        error: `${blocker.name} ${blocker.status === 'failed' ? 'failed' : 'was skipped'} (${because})`,
       });
       return;
     }
@@ -475,6 +476,12 @@ export class WorkspaceEngine extends EventEmitter {
   dispose(): void {
     for (const live of this.#runs.values()) live.health.dispose();
   }
+}
+
+/** The first, most specific line of a multi-line failure. */
+function firstLine(text: string | undefined): string | undefined {
+  const line = String(text ?? '').split('\n').map((l) => l.trim()).find(Boolean);
+  return line || undefined;
 }
 
 /** Manifest readiness, as the waiter's condition. */

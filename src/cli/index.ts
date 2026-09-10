@@ -634,13 +634,16 @@ async function main() {
           const { workspaces } = await client.call('workspaceStatus', {});
           const here = canonical(session || cwd);
           const mine = workspaces.filter((run: any) => here.startsWith(run.root) || run.id === session);
-          const shown = mine.length ? mine : workspaces;
-          if (!shown.length) {
-            if (!session) throw new Error('no workspace is up here. `baton up` to start one, or `baton status <session>`.');
-          } else {
+          // Every workspace is a fair answer to a bare `baton status`. It is not
+          // a fair answer to one about a named directory: showing an unrelated
+          // workspace there is worse than saying none is up.
+          const shown = mine.length || session ? mine : workspaces;
+          if (shown.length) {
             for (const run of shown) printWorkspace(run);
             break;
           }
+          if (session) throw new Error(`no workspace is up for ${here}. \`baton up\` starts one.`);
+          throw new Error('no workspace is up here. `baton up` to start one, or `baton status <session>`.');
         }
         if (!session) throw new Error('which session? try `baton ps`');
         printSummary(await client.call('summary', { session }));

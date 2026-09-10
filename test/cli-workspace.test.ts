@@ -51,3 +51,23 @@ test('the MCP surface names the five workspace tools and marks run_workflow lega
   assert.match(source, /Blocks until every node has settled, so do not poll/);
   assert.match(source, /never stopped/, 'ownership has to be stated where an agent will read it');
 });
+
+test('help says status and restart each cover two things, and never implies a guess', () => {
+  const help = execFileSync(process.execPath, [resolve('src/cli/index.ts'), 'help'], { encoding: 'utf8' });
+  assert.match(help, /a workspace here: node · provider · status · url/);
+  assert.match(help, /a named session: status, uptime/);
+});
+
+test('the CLI never falls back to an unrelated workspace when a path was named', () => {
+  const source = readFileSync(resolve('src/cli/index.ts'), 'utf8');
+  // Guarding the fallback on `session` is the whole fix: without it, asking
+  // about one directory can print a workspace rooted somewhere else entirely.
+  assert.match(source, /mine\.length \|\| session \? mine : workspaces/);
+  assert.match(source, /no workspace is up for/);
+});
+
+test('an ambiguous workspace is refused by naming both, rather than picking one', () => {
+  const source = readFileSync(resolve('src/cli/index.ts'), 'utf8');
+  assert.match(source, /workspaces are up here/);
+  assert.match(source, /Name the one you mean by its id/);
+});

@@ -177,6 +177,11 @@
     return box;
   }
 
+  /** Nodes that are up right now, however they got there. */
+  function liveNodes(run) {
+    return nodesOf(run || {}).filter((n) => n.status === 'ready' || n.status === 'external' || n.status === 'unhealthy');
+  }
+
   extend({
     /** Painted on every core render, above the session list. */
     render(list) {
@@ -184,6 +189,11 @@
       if (!project?.workspace) return;
       const run = runFor(project);
       list.insertBefore(pane(project, run), list.firstChild);
+
+      // A workspace node's session belongs to its own project, so core sees
+      // none here and says "nothing running" — directly under rows saying
+      // otherwise. The workspace is what is running; drop the contradiction.
+      if (liveNodes(run).length) list.querySelector('.empty')?.remove();
     },
   });
 }());
