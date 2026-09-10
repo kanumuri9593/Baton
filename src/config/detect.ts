@@ -288,6 +288,9 @@ const STRONG_PROJECT_MARKERS = [
   'pubspec.yaml', 'package.json', '.vscode', '.claude', '.git',
   'settings.gradle', 'settings.gradle.kts', 'gradlew', 'gradlew.bat',
   'Package.swift', 'Podfile',
+  // A workspace umbrella folder may hold nothing but this file and point at
+  // sibling repositories; it is still exactly the directory to add.
+  'baton.workspace.json',
 ];
 
 const WEAK_NATIVE_MARKERS = [

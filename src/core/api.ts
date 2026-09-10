@@ -21,6 +21,9 @@ import type { BrowseResult } from '../daemon/browse.ts';
 import type { Bootable } from '../daemon/simulators.ts';
 import type { Device } from '../daemon/devices.ts';
 import type { WaitUntil } from '../daemon/waiter.ts';
+import type {
+  WorkspaceDownResult, WorkspaceRun, WorkspaceUpOptions,
+} from '../workspace/types.ts';
 import type { RunInfo } from './log-store.ts';
 import type { CheckoutListEntry } from './checkouts.ts';
 import type {
@@ -53,6 +56,13 @@ export type ProjectInfo = {
    * it has something to offer.
    */
   needsConfig?: boolean;
+  /**
+   * The workspace manifest committed at this root, when there is one.
+   *
+   * Present whether or not the workspace is up, because the app needs to offer
+   * an Up button for a workspace nobody has started yet.
+   */
+  workspace?: { manifestPath: string; name: string; nodes: string[]; id?: string };
 };
 
 /** A project's launch.json as the editor needs it: the bytes, what they mean, and what is wrong. */
@@ -319,6 +329,36 @@ export type RpcMethods = {
     params: { id: string };
     result: ProofRunSummary;
   };
+  /**
+   * Bring a workspace up: dependency-ordered, parallel within a level.
+   *
+   * Resolves once every node has settled, so a caller never polls. Either
+   * `manifest` (a file) or `cwd` (any directory at or below the manifest).
+   */
+  workspaceUp: {
+    params: { manifest?: string; cwd?: string } & WorkspaceUpOptions;
+    result: WorkspaceRun;
+  };
+  /** Stop everything this workspace started, in reverse order. Leaves external nodes alone. */
+  workspaceDown: {
+    params: { id: string };
+    result: WorkspaceDownResult;
+  };
+  /** Every live workspace, or one by id or manifest path. */
+  workspaceStatus: {
+    params: { id?: string };
+    result: { workspaces: WorkspaceRun[] };
+  };
+  /** Point one node at a different provider and restart its dependents. */
+  workspaceSwitch: {
+    params: { id: string; node: string; provider: string };
+    result: WorkspaceRun;
+  };
+  /** Restart one node, and optionally everything downstream of it. */
+  workspaceRestart: {
+    params: { id: string; node: string; cascade?: boolean };
+    result: WorkspaceRun;
+  };
   shutdown: {
     params: {};
     result: { stopping: boolean };
@@ -327,12 +367,14 @@ export type RpcMethods = {
 
 /** Server-pushed messages, sent unsolicited over the WebSocket. */
 export type PushEvent =
-  | { event: 'hello'; sessions: SessionSnapshot[] }
+  | { event: 'hello'; sessions: SessionSnapshot[]; workspaces: WorkspaceRun[] }
   | { event: 'session'; snapshot: SessionSnapshot }
   | { event: 'forgotten'; sessionId: string }
   | { event: 'log'; sessionId: string; text: string; error: boolean }
   /** One captured HTTP request, pushed as it starts and again as it finishes. */
   | { event: 'network'; sessionId: string; request: NetworkRequestSnapshot }
   | { event: 'devices' }
+  /** Any node in a workspace changing state, pushed as the whole run. */
+  | { event: 'workspace'; run: WorkspaceRun }
   /** Live progress while `proofRun` executes its matrix. */
   | ({ event: 'proof' } & ProofProgressEvent);

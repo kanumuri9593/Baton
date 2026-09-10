@@ -22,6 +22,8 @@ export type ComposeRunRequest = {
   root: string;
   workspace: { id: string; node: string };
   workflow: string;
+  /** How long to give `docker compose` before giving up on the container. */
+  timeoutMs: number;
 };
 
 /**
@@ -33,6 +35,11 @@ export type ComposeRunRequest = {
  */
 export type WorkspaceHost = {
   runTarget(request: TargetRunRequest): Promise<SessionSnapshot>;
+  /**
+   * Start a Compose service and resolve once it has settled, so `external` --
+   * whether the container was already running -- is a fact by the time the
+   * engine records it, not a guess.
+   */
   runCompose(request: ComposeRunRequest): Promise<{ session: SessionSnapshot; external: boolean }>;
   /** Block until a session satisfies a readiness condition. Rejects with why it could not. */
   waitFor(sessionId: string, until: WaitUntil, timeoutMs: number): Promise<{ url?: string }>;

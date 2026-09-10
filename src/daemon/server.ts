@@ -26,6 +26,9 @@ import { NetworkStore } from '../core/network-store.ts';
 import { NetworkService, type CreateVmClient } from './network.ts';
 import { screenshotSession } from './capture.ts';
 import { waitForSession, type WaitableSession } from './waiter.ts';
+import { WorkspaceEngine } from '../workspace/engine.ts';
+import { createWorkspaceHost } from './workspace-host.ts';
+import { MANIFEST_FILE, readManifest } from '../workspace/manifest.ts';
 import {
   getProof, listProofs, runProof, type ProofHost,
 } from './proof.ts';
@@ -49,6 +52,8 @@ export type LaunchDaemonOptions = {
    * is one `ps -p` for those pids only.
    */
   samplePids?: (pids: number[]) => Promise<Map<number, { pid: number; cpuPct: number; rssBytes: number }>>;
+  /** How often workspace nodes are re-probed. Tests shorten it; production is 15s. */
+  workspaceHealthIntervalMs?: number;
 };
 
 export type Handshake = { port: number; token: string; pid: number; version: string };
@@ -77,6 +82,7 @@ export class LaunchDaemon {
   #token = randomBytes(24).toString('hex');
   #version: string;
   #proofCheckoutUsers = new Map<string, number>();
+  readonly workspaces: WorkspaceEngine;
   #samplePids: (pids: number[]) => Promise<Map<number, { pid: number; cpuPct: number; rssBytes: number }>>;
 
   constructor(version = '0.1.0', options: LaunchDaemonOptions = {}) {
@@ -90,6 +96,15 @@ export class LaunchDaemon {
       { pollIntervalMs: options.networkPollIntervalMs, retryBaseMs: options.networkRetryBaseMs },
     );
     this.#samplePids = options.samplePids ?? ((pids) => samplePids(pids));
+    this.workspaces = new WorkspaceEngine({
+      host: createWorkspaceHost({
+        runTarget: (request) => this.#runTarget(request),
+        registry: this.registry,
+        recentErrors,
+      }),
+      healthIntervalMs: options.workspaceHealthIntervalMs,
+    });
+    this.workspaces.on('change', (run) => this.#broadcast({ event: 'workspace', run } satisfies PushEvent));
     this.registry.on('network', (id, row) => this.network.store.upsert(id, row));
     this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
     // The registry evicts a finished session when a new run reuses its id (a
@@ -141,6 +156,7 @@ export class LaunchDaemon {
   }
 
   async close(): Promise<void> {
+    this.workspaces.dispose();
     this.network.disposeAll();
     await this.registry.stopAll();
     for (const client of this.#clients) client.close();
@@ -241,7 +257,9 @@ export class LaunchDaemon {
       }
     });
 
-    socket.send(JSON.stringify({ event: 'hello', sessions: this.registry.snapshots() } satisfies PushEvent));
+    socket.send(JSON.stringify({
+      event: 'hello', sessions: this.registry.snapshots(), workspaces: this.workspaces.list(),
+    } satisfies PushEvent));
   }
 
   #broadcast(message: PushEvent): void {
@@ -330,7 +348,9 @@ export class LaunchDaemon {
         // let the caller offer to write a launch.json. It is deliberately not
         // remembered until it has something to offer: a HUD full of blank tabs
         // for directories you glanced at once is worse than no memory at all.
-        if (!described.error && described.targets.length === 0) {
+        // A workspace manifest *is* something to offer, even with no runnable
+        // target at this level: an umbrella folder often holds nothing else.
+        if (!described.error && described.targets.length === 0 && !described.workspace) {
           return { ...described, needsConfig: true } satisfies RpcMethods['addProject']['result'];
         }
         this.projects.remember(root);
@@ -507,38 +527,11 @@ export class LaunchDaemon {
 
       case 'run': {
         const params = p as RpcMethods['run']['params'];
-        const root = this.#resolveRoot(params.cwd);
-        this.projects.remember(root);
-        const checkout = this.checkouts.resolve(root, {
-          branch: params.branch, checkout: params.checkout,
-        });
-        const targets = detectTargets(checkout.cwd);
-        const target = matchTarget(targets, params.target);
-        if (!target) {
-          const candidates = matchCandidates(targets, params.target);
-          if (candidates.length > 1) {
-            throw new Error(
-              `"${params.target}" matches several targets: ${candidates.map((c) => c.name).join(', ')}. Use the full name.`,
-            );
-          }
-          throw new Error(
-            `no target matching "${params.target}" in ${checkout.cwd}. Run \`baton list\` to see what is available.`,
-          );
-        }
-        // Fail before spawning: a missing dart-define file surfaces deep inside
-        // the build otherwise, long after the useful context is gone.
-        const issues = target.config ? validate(target.config) : [];
-        if (issues.length > 0 && !params.force) {
-          throw new Error(
-            `"${target.name}" cannot run yet:\n` +
-              issues.map((i) => `  missing ${i.path} — ${i.hint}`).join('\n'),
-          );
-        }
-
-        const session = await this.registry.run(target, {
-          deviceId: params.deviceId,
-          projectRoot: root,
-          checkout,
+        // `workspace` and `env` are deliberately not read off the wire: only the
+        // engine, in-process, may place a session inside a workspace.
+        const session = await this.#runTarget({
+          cwd: params.cwd, target: params.target, deviceId: params.deviceId,
+          branch: params.branch, checkout: params.checkout, force: params.force,
           workflow: params.workflow,
         });
         return session.snapshot() satisfies RpcMethods['run']['result'];
@@ -757,6 +750,40 @@ export class LaunchDaemon {
         }
       }
 
+      case 'workspaceUp': {
+        const params = p as RpcMethods['workspaceUp']['params'];
+        const from = params.manifest ?? params.cwd;
+        if (!from) throw new Error('which workspace? Pass a manifest path or a directory.');
+        const loaded = readManifest(from);
+        this.projects.remember(loaded.root);
+        return await this.workspaces.up(loaded, {
+          nodes: params.nodes, providers: params.providers,
+        }) satisfies RpcMethods['workspaceUp']['result'];
+      }
+
+      case 'workspaceDown': {
+        const params = p as RpcMethods['workspaceDown']['params'];
+        return await this.workspaces.down(params.id) satisfies RpcMethods['workspaceDown']['result'];
+      }
+
+      case 'workspaceStatus': {
+        const params = p as RpcMethods['workspaceStatus']['params'];
+        if (!params.id) return { workspaces: this.workspaces.list() } satisfies RpcMethods['workspaceStatus']['result'];
+        const run = this.workspaces.get(params.id);
+        if (!run) throw new Error(`no workspace is up for "${params.id}"`);
+        return { workspaces: [run] } satisfies RpcMethods['workspaceStatus']['result'];
+      }
+
+      case 'workspaceSwitch': {
+        const params = p as RpcMethods['workspaceSwitch']['params'];
+        return await this.workspaces.switch(params.id, params.node, params.provider) satisfies RpcMethods['workspaceSwitch']['result'];
+      }
+
+      case 'workspaceRestart': {
+        const params = p as RpcMethods['workspaceRestart']['params'];
+        return await this.workspaces.restart(params.id, params.node, params.cascade === true) satisfies RpcMethods['workspaceRestart']['result'];
+      }
+
       case 'proofList': {
         const params = p as RpcMethods['proofList']['params'];
         return listProofs(params.limit ?? 50) satisfies RpcMethods['proofList']['result'];
@@ -776,6 +803,65 @@ export class LaunchDaemon {
       default:
         throw new Error(`unknown method: ${request.method}`);
     }
+  }
+
+  /**
+   * Start one launch target: resolve the checkout, detect, match, pre-flight, run.
+   *
+   * Shared by the `run` RPC and the workspace engine, which needs the same
+   * behaviour plus injected env and a workspace stamp. Those two extras are not
+   * part of the `run` RPC's params on purpose — a client must not be able to
+   * place a session inside a workspace, or set its environment, over the wire.
+   */
+  async #runTarget(request: {
+    cwd?: string;
+    target: string;
+    deviceId?: string;
+    branch?: string;
+    checkout?: string;
+    force?: boolean;
+    workflow?: string;
+    env?: Record<string, string>;
+    workspace?: { id: string; node: string };
+    ifRunning?: 'refuse' | 'reuse';
+  }): Promise<Session> {
+    const root = this.#resolveRoot(request.cwd);
+    this.projects.remember(root);
+    const checkout = this.checkouts.resolve(root, {
+      branch: request.branch, checkout: request.checkout,
+    });
+    const targets = detectTargets(checkout.cwd);
+    const target = matchTarget(targets, request.target);
+    if (!target) {
+      const candidates = matchCandidates(targets, request.target);
+      if (candidates.length > 1) {
+        throw new Error(
+          `"${request.target}" matches several targets: ${candidates.map((c) => c.name).join(', ')}. Use the full name.`,
+        );
+      }
+      throw new Error(
+        `no target matching "${request.target}" in ${checkout.cwd}. Run \`baton list\` to see what is available.`,
+      );
+    }
+    // Fail before spawning: a missing dart-define file surfaces deep inside
+    // the build otherwise, long after the useful context is gone.
+    const issues = target.config ? validate(target.config) : [];
+    if (issues.length > 0 && !request.force) {
+      throw new Error(
+        `"${target.name}" cannot run yet:\n` +
+          issues.map((i) => `  missing ${i.path} — ${i.hint}`).join('\n'),
+      );
+    }
+
+    return this.registry.run(target, {
+      deviceId: request.deviceId,
+      projectRoot: root,
+      checkout,
+      workflow: request.workflow,
+      env: request.env,
+      workspace: request.workspace,
+      ifRunning: request.ifRunning,
+    });
   }
 
   /**
@@ -840,9 +926,37 @@ export class LaunchDaemon {
     }
     try {
       const inspection = inspectProject(root);
-      return { root, name, targets: inspection.targets, inspection };
+      return { root, name, targets: inspection.targets, inspection, ...this.#describeWorkspace(root) };
     } catch (err) {
       return { root, name, targets: [], error: (err as Error).message };
+    }
+  }
+
+  /**
+   * The workspace manifest at a project root, if it has one.
+   *
+   * Only the manifest actually committed *at* this root counts: a project
+   * inside a monorepo should not claim the umbrella workspace as its own.
+   * Deliberately free of timestamps and live state beyond the run id, so two
+   * calls with nothing happening in between return the same bytes.
+   */
+  #describeWorkspace(root: string): Pick<ProjectInfo, 'workspace'> {
+    if (!existsSync(join(root, MANIFEST_FILE))) return {};
+    try {
+      const { manifest, manifestPath } = readManifest(join(root, MANIFEST_FILE));
+      const run = this.workspaces.get(manifestPath);
+      return {
+        workspace: {
+          manifestPath,
+          name: manifest.name,
+          nodes: Object.keys(manifest.nodes),
+          ...(run ? { id: run.id } : {}),
+        },
+      };
+    } catch {
+      // An unparseable manifest is reported by `up`, with the reason. It must
+      // not make the whole project undescribable in the meantime.
+      return {};
     }
   }
 

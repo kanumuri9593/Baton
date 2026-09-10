@@ -217,6 +217,7 @@ export class WorkspaceEngine extends EventEmitter {
         root: live.run.root,
         workspace,
         workflow: live.run.name,
+        timeoutMs: provider.timeoutMs,
       });
       await this.#settle(live, node, provider, started.session.id, provider.url ?? started.session.url, started.external);
       return;

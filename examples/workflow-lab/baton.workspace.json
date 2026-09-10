@@ -1,0 +1,27 @@
+{
+  "name": "Delivery lab",
+  "nodes": {
+    "api": {
+      "kind": "backend",
+      "providers": {
+        "local": {
+          "target": { "cwd": "./api", "name": "Delivery API" },
+          "url": "http://127.0.0.1:43121",
+          "ready": { "http": "http://127.0.0.1:43121/health" }
+        }
+      },
+      "exports": { "API_URL": "${url}" }
+    },
+    "console": {
+      "kind": "web",
+      "dependsOn": ["api"],
+      "providers": {
+        "local": {
+          "target": { "cwd": "./console", "name": "Delivery console" },
+          "ready": { "http": "http://127.0.0.1:43122/" }
+        }
+      }
+    }
+  },
+  "defaults": { "api": "local", "console": "local" }
+}
