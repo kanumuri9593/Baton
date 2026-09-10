@@ -56,9 +56,53 @@ server.tool(
 
 server.tool(
   'run_workflow',
-  'Launch up to eight project targets in dependency order and wait for each to become ready, in one call. Stops launching dependents on failure. Returns compact session IDs, URLs and errors; retains sessions for debugging. Use browser/device tools next to validate the actual flow. Paths must be absolute.',
+  'Legacy flat form: launch up to eight project targets in strict sequence and wait for each to become ready, in one call. Prefer start_workspace, which takes a real dependency graph, providers and readiness probes. Stops launching dependents on failure. Returns compact session IDs, URLs and errors; retains sessions for debugging. Use browser/device tools next to validate the actual flow. Paths must be absolute.',
   workflowSchema.shape,
   async (plan) => guarded(async () => (await daemon()).call('workflowRun', plan)),
+);
+
+server.tool(
+  'start_workspace',
+  'Bring a whole local system up from its baton.workspace.json: databases, containers, APIs, web and mobile apps, in dependency order, in parallel where safe. Blocks until every node has settled, so do not poll. Returns each node with its provider, status, URL and session id; a node that failed says why, and its dependents say which node took them down. Baton stops only what it started -- remote endpoints and containers that were already running come back as "external".',
+  {
+    cwd: z.string().optional().describe('Any directory at or below the manifest. Defaults to the daemon working directory.'),
+    manifest: z.string().optional().describe('Path to a baton.workspace.json, instead of cwd.'),
+    nodes: z.array(z.string()).optional().describe('Bring up only these nodes and what they depend on.'),
+    providers: z.record(z.string(), z.string()).optional().describe('One-off provider overrides, {node: provider}.'),
+  },
+  async (params) => guarded(async () => (await daemon()).call('workspaceUp', params)),
+);
+
+server.tool(
+  'stop_workspace',
+  'Stop everything a workspace started, in reverse dependency order. Reports what it deliberately left running: remote endpoints and containers Baton did not start are never stopped.',
+  { id: z.string().describe('Workspace id from start_workspace or workspace_status.') },
+  async ({ id }) => guarded(async () => (await daemon()).call('workspaceDown', { id })),
+);
+
+server.tool(
+  'workspace_status',
+  'Every workspace that is up, or one by id, with each node\'s provider, status, URL and session. Cheap: call this before reading logs.',
+  { id: z.string().optional() },
+  async ({ id }) => guarded(async () => (await daemon()).call('workspaceStatus', { id })),
+);
+
+server.tool(
+  'switch_provider',
+  'Point one node at a different provider -- local process, Docker Compose service, or a named remote endpoint -- and restart its dependents so they pick up the new address. The choice is remembered on this machine.',
+  {
+    id: z.string(),
+    node: z.string(),
+    provider: z.string().describe('A provider name declared for that node in the manifest.'),
+  },
+  async (params) => guarded(async () => (await daemon()).call('workspaceSwitch', params)),
+);
+
+server.tool(
+  'restart_node',
+  'Restart one workspace node. Always a full stop and start, never a hot restart, so a node picks up changed environment. With cascade, everything downstream restarts too.',
+  { id: z.string(), node: z.string(), cascade: z.boolean().optional() },
+  async (params) => guarded(async () => (await daemon()).call('workspaceRestart', params)),
 );
 
 server.tool(

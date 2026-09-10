@@ -1,6 +1,6 @@
 # Baton
 
-> Local run control plane and MCP server for launching, hot-reloading, inspecting, and capturing evidence across Flutter and web apps.
+> Local run control plane and MCP server for launching, hot-reloading, inspecting, and capturing evidence across Flutter and web apps — one target, or a whole declared local system.
 
 Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `baton` and `baton app`. Any MCP-compatible agent uses `baton-mcp` or the same CLI.
 
@@ -19,6 +19,13 @@ Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `b
 - https://github.com/kanumuri9593/Baton/blob/main/README.md
 - https://github.com/kanumuri9593/Baton/blob/main/docs/launch-guide.md
 - Labs: examples/flutter-lab, examples/workflow-lab
+
+## Workspaces
+
+- `baton.workspace.json` declares a system: nodes, `dependsOn`, and per-node providers (`target`, `compose`, `remote`).
+- CLI: `baton up`, `baton down`, `baton status`, `baton switch <node> <provider>`, `baton restart <node> [--cascade]`.
+- MCP: `start_workspace`, `stop_workspace`, `workspace_status`, `switch_provider`, `restart_node`. `run_workflow` is the legacy flat form.
+- Baton stops only what it started; remote and already-running nodes are reported as `external`.
 
 ## Optional
 

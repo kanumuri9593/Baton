@@ -104,6 +104,7 @@
     "examples/workflow-lab/console/server.mjs",
     "examples/workflow-lab/console/index.html",
     "examples/workflow-lab/console/.vscode/launch.json",
+    "examples/workflow-lab/baton.workspace.json",
     "examples/workflow-lab/workflow.json",
     "examples/workflow-lab/README.md",
     "examples/workflow-lab/workflow-test.json",

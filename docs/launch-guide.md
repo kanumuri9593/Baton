@@ -55,13 +55,63 @@ Use `toolArgs` for Flutter build flags, as described in [Dart Code's launch conf
 
 Malformed launch files, duplicate names and entries without a supported runtime are reported by inspection. Remaining valid sources still load. Arbitrary debugger adapters, attach requests and VS Code command/input variable resolution are not supported.
 
+## Run a whole system: `baton.workspace.json`
+
+A workspace manifest, committed at an umbrella folder, says what a project *is*: its services, what each one depends on, and where each one can come from. It composes existing configuration rather than replacing it — launch targets stay in each project's launch.json, containers stay in Compose files.
+
+```jsonc
+{
+  "name": "Delivery",
+  "nodes": {
+    "postgres": {
+      "kind": "datastore",
+      "providers": {
+        "docker":  { "compose": { "file": "./infra/docker-compose.yml", "service": "postgres" },
+                     "url": "postgres://127.0.0.1:5432/app", "ready": { "tcp": 5432 } },
+        "staging": { "remote": { "url": "postgres://staging-db:5432/app" } }
+      },
+      "exports": { "DATABASE_URL": "${url}" }
+    },
+    "api": {
+      "kind": "backend",
+      "dependsOn": ["postgres"],
+      "providers": {
+        "local": { "target": { "cwd": "./api", "name": "Delivery API" },
+                   "url": "http://127.0.0.1:8080",
+                   "ready": { "http": "http://127.0.0.1:8080/health" } }
+      },
+      "exports": { "API_URL": "${url}" }
+    }
+  },
+  "defaults": { "postgres": "docker", "api": "local" }
+}
+```
+
+- **Providers.** Each node offers one or more, and each is exactly one of `target` (a launch configuration), `compose` (a Compose service), or `remote` (an endpoint Baton never starts). Which one is used is: `--provider` for this call, then what this machine last chose, then `defaults`, then the only one there is. A node with several providers and no default is ambiguous, and `up` says so rather than picking.
+- **Readiness.** `"running"`, `"url"`, `{ "log": "<regex>" }`, `{ "tcp": <port> }`, or `{ "http": "<url>", "status": <code> }`. The last two are real probes, and they are also what makes ongoing health checks possible: a node that answered once and stops answering becomes `unhealthy` without anything being stopped. The same conditions are available to `baton wait --until tcp:5432` / `--until http://…/health`.
+- **Exports.** A node's `exports` are templated from its live `${url}` and merged into the environment of the nodes that *directly* depend on it. Not transitive: a web app that talks to an API has no business receiving the database URL. Flutter targets receive them as `--dart-define`s, because a compiled app on a device never sees the laptop's environment.
+- **Ownership.** Baton stops only what it started. A remote endpoint, or a container that was already running when Baton looked, is `external`: used, reported, never stopped, and named in `down`'s `left`.
+- Paths are relative to the manifest. Limit 24 nodes. The per-machine provider choice lives in `~/.baton/workspaces.json`, deliberately not in the committed file.
+
+```bash
+baton up [dir|manifest] [--provider postgres=staging] [--node api]
+baton down [dir|manifest]
+baton status [dir]                 # node · provider · status · url
+baton switch <node> <provider>     # dependents restart with the new address
+baton restart <node> [--cascade]
+```
+
+`up` is idempotent: it starts only what is not already up, so running it after stopping one node restarts exactly that node. A failed node marks its dependents `skipped` and names the culprit and its reason; independent branches keep starting. MCP agents use `start_workspace`, `stop_workspace`, `workspace_status`, `switch_provider` and `restart_node`.
+
+Two commands mean two things now. `baton status` with no argument, or a directory, reports a workspace; with a session name it is the session summary it always was. `baton restart <name>` prefers a workspace node when a workspace here is up and has one, and `--cascade` always means the workspace.
+
 ## Launch a whole workflow in one agent call
 
-`baton workflow path/to/workflow.json` and MCP `run_workflow` launch up to eight steps in order. Each step names a project folder and an existing target, with optional branch, checkout, device and readiness timeout. `until: "url"` waits for both running state and a URL. No raw shell commands are embedded in the workflow. CLI paths are relative to the workflow file; MCP paths are absolute.
+The flat form, kept working and now running on the workspace engine as the graph where each step depends on the one before it. Prefer a manifest for anything with real dependencies. `baton workflow path/to/workflow.json` and MCP `run_workflow` launch up to eight steps in order. Each step names a project folder and an existing target, with optional branch, checkout, device and readiness timeout. `until: "url"` waits for both running state and a URL. No raw shell commands are embedded in the workflow. CLI paths are relative to the workflow file; MCP paths are absolute.
 
 A failure stops dependent launches. Already-started sessions remain available for diagnosis; the result identifies the failed session and skipped steps. Workflows do not roll back application data, automatically reuse sessions, or assert that a business flow passed.
 
-See [the two-project delivery lab](../examples/workflow-lab/README.md) and its [workflow file](../examples/workflow-lab/workflow.json). For generic Node web servers, `"batonKind": "web-dev"` in a launch configuration opts into URL/readiness detection instead of plain process supervision. Servers must print a supported readiness line, such as `Local: http://127.0.0.1:43121`.
+See [the two-project delivery lab](../examples/workflow-lab/README.md), its [workspace manifest](../examples/workflow-lab/baton.workspace.json) and its [workflow file](../examples/workflow-lab/workflow.json). For generic Node web servers, `"batonKind": "web-dev"` in a launch configuration opts into URL/readiness detection instead of plain process supervision. Servers must print a supported readiness line, such as `Local: http://127.0.0.1:43121`.
 
 For an agent, the efficient loop is: one workflow call → use returned URL/device → one focused UI action and observation → request a short error summary only on failure → edit → restart the affected session → re-check the visible result. The two-step lab replaces four separate launch/wait calls with one workflow call. Browser actions and visual evidence still cost time and tokens; no credit-saving percentage is assumed.
 

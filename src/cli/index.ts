@@ -8,7 +8,7 @@ import { basename, dirname, resolve } from 'node:path';
 import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 import { regenerationLoss } from '../config/writer.ts';
 import type { RpcMethods } from '../core/api.ts';
-import type { WaitUntil } from '../daemon/waiter.ts';
+import { parseUntil, parseProviders } from './args.ts';
 import {
   parseAppearanceList, parseAxisList, parseTextScaleList, formatCellLabel, type ProofCheckName,
 } from '../daemon/proof.ts';
@@ -17,6 +17,10 @@ const HELP = `baton — run and control dev sessions from any terminal
 
 Usage
   baton diagnose [query] [--all] search errors (or all evidence) across sessions
+  baton up [dir|manifest] [--provider <node>=<name>] [--node <name>]
+                                 bring a workspace up in dependency order
+  baton down [dir|manifest]      stop what Baton started; leaves the rest alone
+  baton switch <node> <provider> point one node elsewhere; dependents restart
   baton workflow <file.json>     launch a multi-project workflow and await readiness
   baton doctor [--json]           inspect sources, blockers and launch guidance
   baton list                     what can be run here
@@ -39,8 +43,11 @@ Usage
   baton screenshot <session> [-o path]  capture the screen (iOS sim / Android)
   baton wait <session> [--until running|stopped|url|log:<re>|tcp:<port>|http:<url>] [--timeout ms]
                                  block until a session reaches a state
-  baton status <session>         cheap structured overview: status, uptime,
-                                 last reload, recent errors, network counts
+  baton status [session|dir]     a workspace here: node · provider · status · url
+                                 a named session: status, uptime, last reload,
+                                 recent errors, network counts
+  baton restart <node> [--cascade]
+                                 a workspace node here, else a session
   baton proof <target> [--devices "iPhone SE"] [--appearance light,dark]
                                  verify across devices; outputs a zip with
                                  screenshots, network stats and logs
@@ -68,6 +75,9 @@ Examples
   baton wait mclane360 --until running --timeout 30000
   baton wait webapp --until log:"ready in"
   baton wait orders-api --until http://127.0.0.1:8080/health  # a real answer, not just a process
+  baton up examples/workflow-lab # API then console, wired together
+  baton up --provider postgres=staging
+  baton switch postgres docker   # back to a local container
 `;
 
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -119,23 +129,6 @@ function humanDuration(ms: number): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-/** `--until running|stopped|url|log:<regex>|tcp:<port>|http:<url>` -- `wait`'s one bit of parsing. */
-function parseUntil(raw: string): WaitUntil {
-  if (raw.startsWith('log:')) return { log: raw.slice(4) };
-  if (raw.startsWith('tcp:')) {
-    const port = Number(raw.slice(4));
-    if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      throw new Error(`--until tcp:<port> needs a port between 1 and 65535 (got "${raw.slice(4)}")`);
-    }
-    return { tcp: port };
-  }
-  if (raw.startsWith('http:') || raw.startsWith('https:')) return { http: raw };
-  if (raw === 'running' || raw === 'stopped' || raw === 'url') return raw;
-  throw new Error(
-    `--until must be running, stopped, url, log:<regex>, tcp:<port> or http:<url> (got "${raw}")`,
-  );
-}
-
 function checkoutGroupHeading(group: 'this' | 'worktrees' | 'local' | 'remote'): string {
   switch (group) {
     case 'this': return 'this checkout';
@@ -156,9 +149,36 @@ function runStatus(run: { live: boolean; exitCode?: number | null }): string {
   return `exit ${run.exitCode}`;
 }
 
+const NODE_STATUS_COLOR: Record<string, (t: string) => string> = {
+  ready: green, external: blue, starting: yellow, unhealthy: yellow,
+  failed: red, skipped: dim, stopped: dim, pending: dim,
+};
+
+/** `node · provider · status · url`, plus the reason when a node is not up. */
+function printWorkspace(run: {
+  id: string; name: string; root: string;
+  nodes: Record<string, { name: string; provider: string; status: string; url?: string; sessionId?: string; error?: string; readOnly: boolean }>;
+}): void {
+  console.log(`${bold(run.name)} ${dim(run.id)}  ${dim(run.root)}`);
+  const rows = Object.values(run.nodes);
+  const width = Math.max(4, ...rows.map((n) => n.name.length));
+  for (const node of rows) {
+    const paint = NODE_STATUS_COLOR[node.status] ?? dim;
+    const tags = [node.provider, node.readOnly && node.status === 'external' ? 'not ours to stop' : ''].filter(Boolean);
+    console.log(
+      `  ${node.name.padEnd(width)}  ${paint(node.status.padEnd(9))} ${dim(tags.join(' · '))}`
+      + (node.url ? `  ${node.url}` : ''),
+    );
+    if (node.error) console.log(`      ${node.status === 'failed' ? red(node.error) : dim(node.error)}`);
+    else if (node.sessionId) console.log(dim(`      logs: baton logs ${node.sessionId}`));
+  }
+}
+
 function parseArgs(argv: string[]) {
   const flags: Record<string, string | boolean> = {};
   const positional: string[] = [];
+  const providers: string[] = [];
+  const nodes: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--all') flags.all = true;
@@ -181,15 +201,35 @@ function parseArgs(argv: string[]) {
     else if (arg === '--allow') flags.allow = argv[++i];
     else if (arg === '--settle') flags.settle = argv[++i];
     else if (arg === '--keep') flags.keep = true;
+    // Repeatable: `--provider postgres=staging --provider api=dev`.
+    else if (arg === '--provider') providers.push(argv[++i]);
+    else if (arg === '--node') nodes.push(argv[++i]);
     else if (arg.startsWith('-')) flags[arg.replace(/^-+/, '')] = true;
     else positional.push(arg);
   }
-  return { flags, positional };
+  return { flags, positional, providers, nodes };
+}
+
+/** The workspace governing a path, when one is up. */
+async function workspaceRunFor(client: DaemonClient, from: string): Promise<any | undefined> {
+  const { workspaces } = await client.call('workspaceStatus', {});
+  const here = resolve(from);
+  return workspaces.find((run: any) => here.startsWith(run.root)) ?? workspaces[0];
+}
+
+/**
+ * The workspace to act on: the one already up for this path, or the manifest
+ * found from it — so `baton down` works without anyone remembering an id.
+ */
+async function workspaceIdFor(client: DaemonClient, from: string): Promise<string> {
+  const run = await workspaceRunFor(client, from);
+  if (!run) throw new Error(`no workspace is up for ${resolve(from)}. \`baton up\` starts one.`);
+  return run.id;
 }
 
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
-  const { flags, positional } = parseArgs(rest);
+  const { flags, positional, providers, nodes } = parseArgs(rest);
 
   if (!command || command === 'help' || flags.help) {
     process.stdout.write(HELP);
@@ -241,6 +281,36 @@ async function main() {
         if (!result.ok) process.exitCode = 1;
         break;
       }
+      case 'up': {
+        const run = await client.call('workspaceUp', {
+          cwd: resolve(positional[0] ?? cwd),
+          ...(nodes.length ? { nodes } : {}),
+          ...(providers.length ? { providers: parseProviders(providers) } : {}),
+        });
+        printWorkspace(run);
+        const broken = Object.values(run.nodes).filter((n: any) => n.status === 'failed' || n.status === 'skipped');
+        if (broken.length) process.exitCode = 1;
+        break;
+      }
+
+      case 'down': {
+        const id = await workspaceIdFor(client, positional[0] ?? cwd);
+        const result = await client.call('workspaceDown', { id });
+        for (const node of result.stopped) console.log(`  ${dim('■')} ${node}`);
+        // Never silently imply a full stop: what stayed up, stayed up on purpose.
+        if (result.left.length) console.log(dim(`  left running: ${result.left.join(', ')} (not started by Baton)`));
+        if (!result.stopped.length && !result.left.length) console.log('nothing was running');
+        break;
+      }
+
+      case 'switch': {
+        const [node, provider] = positional;
+        if (!node || !provider) throw new Error('usage: baton switch <node> <provider>');
+        const id = await workspaceIdFor(client, cwd);
+        printWorkspace(await client.call('workspaceSwitch', { id, node, provider }));
+        break;
+      }
+
       case 'doctor': {
         const report = await client.call('inspectProject', { cwd });
         if (rest.includes('--json')) console.log(JSON.stringify(report, null, 2));
@@ -309,6 +379,18 @@ async function main() {
 
       case 'reload':
       case 'restart': {
+        // A workspace node and a session can share a name; the node wins only
+        // when a workspace here is actually up and has one. --cascade always
+        // means the workspace, since a session has nothing to cascade to.
+        if (command === 'restart' && !flags.all && positional.length) {
+          const node = positional.join(' ');
+          const run = await workspaceRunFor(client, cwd);
+          if (run && (run.nodes[node] || flags.cascade)) {
+            if (!run.nodes[node]) throw new Error(`"${node}" is not a node in ${run.name}`);
+            printWorkspace(await client.call('workspaceRestart', { id: run.id, node, cascade: flags.cascade === true }));
+            break;
+          }
+        }
         const params = flags.all
           ? { all: true }
           : { session: positional.join(' ') || required('which session? try `baton ps`') };
@@ -520,10 +602,25 @@ async function main() {
       }
 
       case 'status': {
+        // `baton status` meant "summarise this session" long before workspaces
+        // existed. With no argument, or an argument that is a directory or a
+        // manifest, it is a workspace question; anything else is still a session.
         const session = positional.join(' ');
+        const looksLikeAPath = !session || existsSync(resolve(session));
+        if (looksLikeAPath) {
+          const { workspaces } = await client.call('workspaceStatus', {});
+          const here = resolve(session || cwd);
+          const mine = workspaces.filter((run: any) => here.startsWith(run.root));
+          const shown = mine.length ? mine : workspaces;
+          if (!shown.length) {
+            if (!session) throw new Error('no workspace is up here. `baton up` to start one, or `baton status <session>`.');
+          } else {
+            for (const run of shown) printWorkspace(run);
+            break;
+          }
+        }
         if (!session) throw new Error('which session? try `baton ps`');
-        const summary = await client.call('summary', { session });
-        printSummary(summary);
+        printSummary(await client.call('summary', { session }));
         break;
       }
 

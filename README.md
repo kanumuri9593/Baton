@@ -113,9 +113,9 @@ Without a global install:
 }
 ```
 
-**Tools:** `inspect_project`, `list_targets`, `list_sessions`, `list_checkouts`, `list_devices`, `run_target`, `run_workflow`, `hot_reload`, `hot_restart`, `stop_session`, `forget_session`, `wait_for`, `read_logs`, `session_summary`, `screenshot`, `set_debug_flag`, `diagnose`, `list_network_requests`, `get_network_request`, `clear_network_requests`, `read_launch_config`, `write_launch_config`, `run_proof`, `list_proofs`, `list_run_history`.
+**Tools:** `inspect_project`, `list_targets`, `list_sessions`, `list_checkouts`, `list_devices`, `run_target`, `start_workspace`, `stop_workspace`, `workspace_status`, `switch_provider`, `restart_node`, `run_workflow`, `hot_reload`, `hot_restart`, `stop_session`, `forget_session`, `wait_for`, `read_logs`, `session_summary`, `screenshot`, `set_debug_flag`, `diagnose`, `list_network_requests`, `get_network_request`, `clear_network_requests`, `read_launch_config`, `write_launch_config`, `run_proof`, `list_proofs`, `list_run_history`.
 
-Typical loop: inspect → run (or `run_workflow`) → wait → use your browser/device tools on the live app → screenshot / logs / diagnose → edit → hot reload.
+Typical loop: inspect → run (or `start_workspace`) → wait → use your browser/device tools on the live app → screenshot / logs / diagnose → edit → hot reload.
 
 Failed reloads return the compiler errors, not just `DevFS synchronization failed`:
 
@@ -177,15 +177,33 @@ baton stop --all
 baton devices --all   # connected devices, plus every one you could boot
 ```
 
-### Multi-project agent workflows
+### Whole systems, not one process at a time
 
-Launch an API and a console in dependency order with one call:
+Describe what a project actually is — services, containers, the endpoints they talk to — in a committed `baton.workspace.json`, then bring it all up with one command:
 
 ```bash
-baton workflow examples/workflow-lab/workflow.json
+baton up examples/workflow-lab
 ```
 
-The result contains session IDs, readiness, URLs and focused failures. MCP agents use `run_workflow` for the same operation, then their browser/device tools to exercise the actual app. Try the dependency-free [two-project delivery lab](examples/workflow-lab/README.md): complete a delivery, inspect its receipt, stop the API to reproduce an outage, then recover it through Baton.
+```text
+Delivery lab delivery-lab  /code/examples/workflow-lab
+  api      ready     local   http://127.0.0.1:43121
+  console  ready     local   http://127.0.0.1:43122
+```
+
+Nodes start in dependency order, in parallel where that is safe. A node's `exports` become environment for the nodes that depend on it, so the console above is genuinely pointed at the API that just started. Readiness is a real TCP or HTTP probe, not a guess that a process which has not exited yet must be working.
+
+Each node can declare several **providers** — a local target, a Docker Compose service, a named cloud endpoint — and you can move between them without editing anything:
+
+```bash
+baton switch postgres staging   # dependents restart with the new DATABASE_URL
+baton status                    # node · provider · status · url
+baton down                      # stops what Baton started, and says what it left
+```
+
+That last part is the promise worth stating plainly: Baton stops only what it started. A container that was already running, or a remote endpoint, is reported as `external` and left alone.
+
+MCP agents use `start_workspace`, `workspace_status`, `switch_provider`, `restart_node` and `stop_workspace` for the same operations. `baton workflow` and `run_workflow` still work as the legacy flat form. Try the dependency-free [two-project delivery lab](examples/workflow-lab/README.md): complete a delivery, inspect its receipt, stop the API to reproduce an outage, then recover it through Baton.
 
 ### Guided discovery and validation
 
