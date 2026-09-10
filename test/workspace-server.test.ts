@@ -169,6 +169,38 @@ test('a project root with a manifest describes its workspace, deterministically'
   await daemon.handle({ method: 'workspaceDown', params: { id: run.id } });
 });
 
+test('a workspace and a legacy workflow can share a root without stealing each other\'s sessions', async (t) => {
+  const daemon = new LaunchDaemon('test', { workspaceHealthIntervalMs: 60_000 });
+  await daemon.listen();
+  t.after(async () => { await daemon.close(); });
+  const root = lab(join(state, 'shared-root'));
+
+  const run = await daemon.handle({ method: 'workspaceUp', params: { cwd: root } }) as WorkspaceRun;
+  const workflow = await daemon.handle({
+    method: 'workflowRun',
+    params: {
+      name: 'Legacy',
+      steps: [{ name: 'api', cwd: join(root, 'api'), target: 'api', until: 'url', timeoutMs: 10000 }],
+    },
+  }) as { ok: boolean; steps: { status: string }[] };
+
+  // The workflow names the same target, so it finds the workspace's live
+  // session. Adopting it is right; quietly taking it over would not be.
+  assert.equal(workflow.ok, true);
+  const status = await daemon.handle({ method: 'workspaceStatus', params: {} }) as { workspaces: WorkspaceRun[] };
+  assert.equal(status.workspaces.length, 2, 'both runs are listed, so a client can disambiguate');
+  const legacy = status.workspaces.find((w) => w.name === 'Legacy')!;
+  assert.equal(legacy.nodes.api.readOnly, true, 'a session another workspace owns is read-only here');
+  assert.equal(legacy.nodes.api.status, 'external');
+
+  const down = await daemon.handle({ method: 'workspaceDown', params: { id: legacy.id } }) as { stopped: string[]; left: string[] };
+  assert.deepEqual(down.stopped, [], 'and putting the workflow down leaves it alone');
+  assert.deepEqual(down.left, ['api']);
+  assert.equal(daemon.registry.get(run.nodes.api.sessionId!)?.status, 'running', 'the workspace still has its API');
+
+  await daemon.handle({ method: 'workspaceDown', params: { id: run.id } });
+});
+
 test('every node change is pushed to connected clients as the whole run', async (t) => {
   const daemon = new LaunchDaemon('test', { workspaceHealthIntervalMs: 60_000 });
   const handshake = await daemon.listen();

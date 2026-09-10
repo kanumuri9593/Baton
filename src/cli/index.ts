@@ -9,6 +9,7 @@ import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 import { regenerationLoss } from '../config/writer.ts';
 import type { RpcMethods } from '../core/api.ts';
 import { parseUntil, parseProviders } from './args.ts';
+import { canonical } from '../workspace/manifest.ts';
 import {
   parseAppearanceList, parseAxisList, parseTextScaleList, formatCellLabel, type ProofCheckName,
 } from '../daemon/proof.ts';
@@ -210,21 +211,43 @@ function parseArgs(argv: string[]) {
   return { flags, positional, providers, nodes };
 }
 
-/** The workspace governing a path, when one is up. */
-async function workspaceRunFor(client: DaemonClient, from: string): Promise<any | undefined> {
+/**
+ * Live runs that could be meant by a path or an id.
+ *
+ * More than one can share a root -- a workspace and a legacy workflow started
+ * from the same folder both root there -- so this returns all of them and lets
+ * the caller decide whether ambiguity matters.
+ */
+async function workspaceRunsFor(client: DaemonClient, from: string): Promise<any[]> {
   const { workspaces } = await client.call('workspaceStatus', {});
-  const here = resolve(from);
-  return workspaces.find((run: any) => here.startsWith(run.root)) ?? workspaces[0];
+  const byId = workspaces.filter((run: any) => run.id === from);
+  if (byId.length) return byId;
+  // Canonical, for the same reason the daemon canonicalises a manifest path:
+  // /tmp and /private/tmp are the same directory, and must be the same workspace.
+  const here = canonical(from);
+  const rooted = workspaces.filter((run: any) => here.startsWith(run.root));
+  return rooted.length ? rooted : (from ? [] : workspaces);
+}
+
+/** The single workspace governing a path, when exactly one is up. */
+async function workspaceRunFor(client: DaemonClient, from: string): Promise<any | undefined> {
+  const runs = await workspaceRunsFor(client, from);
+  return runs.length === 1 ? runs[0] : undefined;
 }
 
 /**
- * The workspace to act on: the one already up for this path, or the manifest
- * found from it — so `baton down` works without anyone remembering an id.
+ * The workspace to act on: the one already up for this path or id -- so `baton
+ * down` works without anyone remembering an id, and refuses to guess when it
+ * genuinely cannot tell which one was meant.
  */
 async function workspaceIdFor(client: DaemonClient, from: string): Promise<string> {
-  const run = await workspaceRunFor(client, from);
-  if (!run) throw new Error(`no workspace is up for ${resolve(from)}. \`baton up\` starts one.`);
-  return run.id;
+  const runs = await workspaceRunsFor(client, from);
+  if (runs.length === 1) return runs[0].id;
+  if (!runs.length) throw new Error(`no workspace is up for ${resolve(from)}. \`baton up\` starts one.`);
+  throw new Error(
+    `${runs.length} workspaces are up here: ${runs.map((r: any) => `${r.id} (${r.name})`).join(', ')}.\n`
+    + 'Name the one you mean by its id.',
+  );
 }
 
 async function main() {
@@ -609,8 +632,8 @@ async function main() {
         const looksLikeAPath = !session || existsSync(resolve(session));
         if (looksLikeAPath) {
           const { workspaces } = await client.call('workspaceStatus', {});
-          const here = resolve(session || cwd);
-          const mine = workspaces.filter((run: any) => here.startsWith(run.root));
+          const here = canonical(session || cwd);
+          const mine = workspaces.filter((run: any) => here.startsWith(run.root) || run.id === session);
           const shown = mine.length ? mine : workspaces;
           if (!shown.length) {
             if (!session) throw new Error('no workspace is up here. `baton up` to start one, or `baton status <session>`.');

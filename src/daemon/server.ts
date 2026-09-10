@@ -107,7 +107,12 @@ export class LaunchDaemon {
     });
     this.workspaces.on('change', (run) => this.#broadcast({ event: 'workspace', run } satisfies PushEvent));
     this.registry.on('network', (id, row) => this.network.store.upsert(id, row));
-    this.registry.on('change', (snapshot) => this.#broadcast({ event: 'session', snapshot } satisfies PushEvent));
+    this.registry.on('change', (snapshot) => {
+      // Before broadcasting: a workspace node whose session just died must stop
+      // claiming to be ready, whoever stopped it.
+      this.workspaces.noticeSession(snapshot);
+      this.#broadcast({ event: 'session', snapshot } satisfies PushEvent);
+    });
     // The registry evicts a finished session when a new run reuses its id (a
     // workspace restarting a node with fresh env). Clean up the same state
     // `forget` would, so nothing is left pointing at a session that is gone.

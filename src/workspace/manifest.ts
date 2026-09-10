@@ -1,5 +1,5 @@
-import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { z } from 'zod';
 
 /** The committed file name. One per umbrella folder. */
@@ -103,11 +103,27 @@ export function parseManifest(input: unknown, baseDir: string): WorkspaceManifes
 }
 
 /**
+ * Canonical form of a path: symlinks resolved, so one manifest is one workspace.
+ *
+ * `/tmp` is a symlink to `/private/tmp` on macOS, and checkouts are routinely
+ * reached through symlinked paths. Without this, `baton up /tmp/x` and a
+ * `baton switch` run from inside that same directory disagree about which
+ * workspace they mean, and the second one finds nothing.
+ */
+export function canonical(path: string): string {
+  try {
+    return realpathSync(resolve(path));
+  } catch {
+    return resolve(path); // does not exist yet; the caller reports that better
+  }
+}
+
+/**
  * The manifest governing a path: the file itself, the one in that directory, or
  * the nearest one above it — so `baton up` works from inside `./api` too.
  */
 export function findManifest(start: string): string | undefined {
-  const from = resolve(start);
+  const from = canonical(start);
   let dir = from;
   try {
     if (statSync(from).isFile()) return from;
@@ -127,10 +143,9 @@ export type LoadedManifest = { manifest: WorkspaceManifest; manifestPath: string
 
 /** Find, read and parse in one step. Throws with the path when there is none. */
 export function readManifest(start: string): LoadedManifest {
-  if (!isAbsolute(start)) start = resolve(start);
   const manifestPath = findManifest(start);
   if (!manifestPath) {
-    throw new Error(`no ${MANIFEST_FILE} in ${start} or any directory above it`);
+    throw new Error(`no ${MANIFEST_FILE} in ${resolve(start)} or any directory above it`);
   }
   const root = dirname(manifestPath);
   let raw: unknown;

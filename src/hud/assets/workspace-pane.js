@@ -9,7 +9,7 @@
 // `workspace*` RPCs: core.js must not learn them, for the same reason it does
 // not know about launch.json editing (see editor.js and test/hud.test.ts).
 (function () {
-  const { call, toast, projects, activeRoot, sessions, workspaces, extend, iconButton } = window.baton;
+  const { call, toast, projects, activeRoot, workspaces, extend, refresh } = window.baton;
 
   /** Build an element in one call — this file makes a lot of small ones. */
   function el(tag, className, text) {
@@ -68,6 +68,9 @@
       toast(label + ' failed: ' + err.message);
     } finally {
       busy = false;
+      // Repaint once the action is over: the renders that happened *during* it
+      // drew disabled buttons, and `up` changes which run a project points at.
+      refresh();
     }
   }
 

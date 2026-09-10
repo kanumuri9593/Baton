@@ -172,6 +172,58 @@ test('up is idempotent: a second call starts only what is not already up', async
   assert.equal(engine.list().length, 1);
 });
 
+test('a node whose session was stopped elsewhere stops claiming to be ready', async () => {
+  const fake = fakeHost();
+  const engine = new WorkspaceEngine({ host: fake.host, healthIntervalMs: 60_000 });
+  after(() => engine.dispose());
+  const manifest = loaded({
+    api: { providers: { local: target('api') } },
+    web: { dependsOn: ['api'], providers: { local: target('web') } },
+  });
+
+  const run = await engine.up(manifest);
+  assert.equal(run.nodes.api.status, 'ready');
+
+  // Somebody ran `baton stop api`, or the process died. Nothing told the engine
+  // directly; the session's own change event is the only signal there is.
+  engine.noticeSession({ id: 'api-session', status: 'stopped' });
+  assert.equal(run.nodes.api.status, 'stopped');
+  assert.equal(run.nodes.api.sessionId, undefined);
+
+  fake.calls.length = 0;
+  await engine.up(manifest);
+  assert.equal(run.nodes.api.status, 'ready');
+  assert.deepEqual(
+    fake.calls.filter((c) => c.startsWith('runTarget')),
+    ['runTarget:api:{}'],
+    'only the node that went away is restarted',
+  );
+});
+
+test('a crashed node is failed, not merely stopped, and says so', async () => {
+  const fake = fakeHost();
+  const engine = new WorkspaceEngine({ host: fake.host, healthIntervalMs: 60_000 });
+  after(() => engine.dispose());
+
+  const run = await engine.up(loaded({ api: { providers: { local: target('api') } } }));
+  engine.noticeSession({ id: 'api-session', status: 'failed' });
+
+  assert.equal(run.nodes.api.status, 'failed');
+  assert.match(run.nodes.api.error!, /exited unexpectedly/);
+});
+
+test('a session ending while a node is still starting leaves the readiness error intact', async () => {
+  const fake = fakeHost();
+  fake.fail.add('api');
+  const engine = new WorkspaceEngine({ host: fake.host, healthIntervalMs: 60_000 });
+  after(() => engine.dispose());
+
+  const run = await engine.up(loaded({ api: { providers: { local: target('api') } } }));
+  engine.noticeSession({ id: 'api-session', status: 'failed' });
+
+  assert.match(run.nodes.api.error!, /api never answered/, 'the useful reason survives');
+});
+
 test('down stops in reverse order and reports what it deliberately left alone', async () => {
   const fake = fakeHost();
   const engine = new WorkspaceEngine({ host: fake.host, healthIntervalMs: 60_000 });

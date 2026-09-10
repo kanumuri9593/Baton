@@ -16,6 +16,20 @@ export const DOCKER_MISSING_HINT =
   'docker was not found on PATH. Install Docker (Baton uses Compose v2 — `docker compose`, not the '
   + 'old `docker-compose`), or point this node somewhere else with `baton switch <node> <provider>`.';
 
+export const COMPOSE_MISSING_HINT =
+  'this docker has no `docker compose` (Compose v2). Install the Compose plugin — the old, separate '
+  + '`docker-compose` binary is not it — or point this node somewhere else with '
+  + '`baton switch <node> <provider>`.';
+
+/**
+ * What a `docker` that cannot do Compose says.
+ *
+ * Docker installed without the Compose plugin is common (a plain CLI from a
+ * package manager), and it fails by treating `compose` as garbage: the user is
+ * shown "unknown shorthand flag: 'f'", which explains nothing at all.
+ */
+const NO_COMPOSE_PLUGIN = /unknown shorthand flag|unknown command|not a docker command|is not a docker/i;
+
 /**
  * One Compose service, as a Baton session.
  *
@@ -63,6 +77,9 @@ export class ComposeSession extends BaseSession {
   async #bringUp(): Promise<void> {
     const running = await this.#run(['ps', '--format', 'json', '--status', 'running', this.options.service]);
     if (running.spawnError) return this.#failToSpawn(running.spawnError);
+    if (running.code !== 0 && NO_COMPOSE_PLUGIN.test(running.stderr)) {
+      return this.#fail(`${COMPOSE_MISSING_HINT}\n${running.stderr.trim()}`);
+    }
 
     if (running.code === 0 && running.stdout.trim() !== '') {
       this.external = true;
@@ -89,7 +106,11 @@ export class ComposeSession extends BaseSession {
   }
 
   #failToSpawn(error: NodeJS.ErrnoException): void {
-    this.appendLog(error.code === 'ENOENT' ? DOCKER_MISSING_HINT : `docker compose failed: ${error.message}`, true);
+    this.#fail(error.code === 'ENOENT' ? DOCKER_MISSING_HINT : `docker compose failed: ${error.message}`);
+  }
+
+  #fail(message: string): void {
+    this.appendLog(message, true);
     this.exitCode = 1;
     this.setStatus('failed');
     this.emit('exit', this.exitCode);

@@ -433,6 +433,34 @@ export class WorkspaceEngine extends EventEmitter {
   }
 
   /**
+   * Take note that a session changed, so a node never claims to be up because
+   * of a process that has since gone.
+   *
+   * A workspace node is an ordinary session underneath, and anything can stop
+   * one: `baton stop`, the HUD's stop button, or the process crashing. Without
+   * this, `up` would look at its own stale record, decide the node was already
+   * ready, and start nothing — reporting a healthy workspace with a dead
+   * service in it.
+   */
+  noticeSession(snapshot: { id: string; status: string }): void {
+    if (snapshot.status !== 'stopped' && snapshot.status !== 'failed') return;
+    for (const live of this.#runs.values()) {
+      for (const [node, state] of Object.entries(live.run.nodes)) {
+        if (state.sessionId !== snapshot.id) continue;
+        // A node still being brought up is the bring path's to report on: it
+        // has the readiness error, which is far more useful than "stopped".
+        if (state.status !== 'ready' && state.status !== 'unhealthy') continue;
+        live.health.forget(node);
+        this.#set(live, node, {
+          status: snapshot.status === 'failed' ? 'failed' : 'stopped',
+          error: snapshot.status === 'failed' ? 'the session exited unexpectedly' : undefined,
+          sessionId: undefined,
+        });
+      }
+    }
+  }
+
+  /**
    * Run one health round now, rather than waiting for the interval.
    *
    * The loops are on a timer precisely so nobody has to poll, but a caller that

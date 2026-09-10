@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { ComposeSession, DOCKER_MISSING_HINT } from '../src/adapters/compose.ts';
+import { ComposeSession, DOCKER_MISSING_HINT, COMPOSE_MISSING_HINT } from '../src/adapters/compose.ts';
 import type { Session } from '../src/core/types.ts';
 
 /** Just enough ChildProcess for the adapter: two output streams and an exit. */
@@ -125,6 +125,23 @@ test('a missing docker says so, and says what to do about it', async () => {
   assert.equal(logs, DOCKER_MISSING_HINT);
   assert.match(logs, /Compose v2/);
   assert.match(logs, /baton switch/);
+});
+
+test('a docker without the Compose plugin is explained, not passed through as flag noise', async () => {
+  // What a plain docker CLI with no compose plugin really says.
+  const { spawnFn, argv } = scripted({
+    ps: { code: 125, stderr: "unknown shorthand flag: 'f' in -f\nUsage:  docker [OPTIONS] COMMAND [ARG...]" },
+  });
+  const compose = session(spawnFn);
+  compose.start();
+  await settles(compose, 'failed');
+
+  const logs = compose.recentLogs().map((l) => l.text).join('\n');
+  assert.match(logs, /Compose v2/, 'the hint has to name what is missing');
+  assert.match(logs, /baton switch/, 'and what to do instead');
+  assert.match(logs, /unknown shorthand flag/, 'without hiding what docker actually said');
+  assert.deepEqual(argv.map((a) => a[4]), ['ps'], 'nothing is started against a docker that cannot');
+  assert.ok(COMPOSE_MISSING_HINT.length > 0);
 });
 
 test('the container dying is noticed through the log stream, not through up -d', async () => {

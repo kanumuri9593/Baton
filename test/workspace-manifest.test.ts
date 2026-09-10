@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { after } from 'node:test';
 import {
-  parseManifest, findManifest, readManifest, chosenProvider, MANIFEST_FILE,
+  parseManifest, findManifest, readManifest, chosenProvider, canonical, MANIFEST_FILE,
 } from '../src/workspace/manifest.ts';
 
 const base = resolve('/repo');
@@ -110,7 +110,9 @@ test('an ambiguous node names its choices instead of guessing', () => {
 });
 
 test('findManifest accepts a file, a directory, or any directory beneath one', () => {
-  const scratch = mkdtempSync(join(tmpdir(), 'baton-manifest-'));
+  // Real path: findManifest canonicalises, and on macOS the temp dir is itself
+  // reached through a symlink (/var -> /private/var).
+  const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'baton-manifest-')));
   after(() => rmSync(scratch, { recursive: true, force: true }));
   const file = join(scratch, MANIFEST_FILE);
   writeFileSync(file, JSON.stringify(example()));
@@ -125,4 +127,27 @@ test('findManifest accepts a file, a directory, or any directory beneath one', (
   assert.equal(read.manifestPath, file);
   assert.equal(read.root, scratch);
   assert.equal(read.manifest.nodes.api.providers.local.target?.cwd, join(scratch, 'api'));
+});
+
+test('a manifest reached through a symlink is the same workspace, not a second one', () => {
+  const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'baton-symlink-')));
+  after(() => rmSync(scratch, { recursive: true, force: true }));
+  const real = join(scratch, 'repo');
+  mkdirSync(join(real, 'api'), { recursive: true });
+  writeFileSync(join(real, MANIFEST_FILE), JSON.stringify(example()));
+
+  const link = join(scratch, 'link-to-repo');
+  symlinkSync(real, link, 'dir');
+
+  // Both spellings must name one manifest, or `baton up <path>` and a `switch`
+  // run from inside that directory would disagree about which workspace it is.
+  assert.equal(findManifest(link), join(real, MANIFEST_FILE));
+  assert.equal(findManifest(join(link, 'api')), join(real, MANIFEST_FILE));
+  assert.equal(readManifest(link).root, real);
+  assert.equal(canonical(link), real);
+});
+
+test('canonical falls back to a plain resolve for a path that does not exist yet', () => {
+  const missing = join(tmpdir(), 'baton-not-here-' + Math.random().toString(36).slice(2));
+  assert.equal(canonical(missing), resolve(missing));
 });
