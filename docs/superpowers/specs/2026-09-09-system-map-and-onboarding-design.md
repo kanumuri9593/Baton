@@ -237,6 +237,31 @@ separate semantic hues for the two attention states.
 Clicking a hop shows its citation; clicking a node shows its providers and its inbound/outbound hops.
 The legend sits above the map, because a key below an 800px-tall diagram is not a key.
 
+### 5.1 The shape diff
+
+A third mode, and the one that gives backend work the loop frontend already has: what did this
+branch do to the shape of the system? Hops added, hops removed, and hops whose endpoints are
+unchanged but whose behaviour is not. Because the map is a committed file, the diff of the map is
+the diff of the system's shape — but the useful version reads the repositories directly, so it works
+before anyone has committed a map at all.
+
+In this mode the evidence encoding is replaced wholesale — added / changed / removed become the
+only colours — rather than layered on top of it. Two encodings on one line is how a diagram becomes
+unreadable.
+
+**The mode must state its baseline, and distrust it.** Running this against Drive360 produced three
+results that would each have made a silent diff actively misleading:
+
+- Two repositories' feature branches have **zero commits**; all the work is uncommitted files. A
+  commit-range diff reports "no changes" for a substantial feature.
+- The mobile repository's `main` is a **README-only stub** (2 commits; merge-base
+  "Updated README.md"). Diffing against it reports 1179 commits. The real base is
+  `origin/development`, at 41.
+- One repository is on `main` with nothing to compare.
+
+So the diff view leads with a per-repository baseline panel — branch, commits ahead of *which* base,
+working-tree state — and flags a baseline it does not trust rather than quietly diffing against it.
+
 **One new RPC**, `workspaceMap(path)`, returning nodes, flows and derived evidence. Deliberately not
 an extension of `ProjectInfo.workspace` (`src/core/api.ts:65`): the project list is polled every
 three seconds (`src/hud/assets/core.js:977`) and the map must not ride along on that. It reads the
@@ -287,13 +312,24 @@ real defect the team has not yet acted on.
 | # | Finding | Cited at |
 |---|---|---|
 | D-1 | Launch config `Dev / Retail (local GCP)` passes `RETAIL_GCP_BASE_URL`, which exists nowhere in the app; the only override read is `LOCAL_RETAIL_URL`. The config silently hits the shared dev cloud. | `.vscode/launch.json:51` vs `lib/api/environment.dart:201` |
-| D-2 | Gap G-E and architecture-map G11 (High, on the architect shortlist) both state the BFF has no location client. It has one, plus the SSE route, plus a Leaflet map in the webapp. Gated, not missing. | `LocationClient.java:11-36`, `RoutePositionsResource.java:23-93`, `application.yml:13` |
+| D-2 | Gap G-E and architecture-map G11 (High, on the architect shortlist) both state the BFF has no location client. It has one, plus the SSE route, plus a Leaflet map in the webapp — all of it **untracked**, on a branch with zero commits. The documents are right about the repository and wrong about the world. Two teams are scheduling work that is finished on one laptop. | `?? client/location/`, `?? resource/RoutePositionsResource.java`, `application.yml:13` |
 | D-3 | Docs place the six MQ queues in the write-back service. It declares none — the queue name is a per-row value; all seven names are constants in the order service. | `MainframeOutboxMessage.java:53`, `FieldCaptureService.java:44-45`, `DeliveryCompleteService.java:47-57` |
 | D-4 | Two services drain the same outbox with no row lock in either; only a same-named flag being off keeps them apart. | order `OutboxRelay.java:36`, writeback `OutboxStore.java:31-40` |
 | D-5 | The flag inventory lists `MAINFRAME_MQ_ENABLED` as off; the dev pipeline sets it true, and a comment four lines above still promises it stays false. | `azure-pipelines.yml:82`, comment at `:78` |
 | D-6 | `MAINFRAME_MQ_BATCH_SIZE` is declared, defaulted, documented and contract-tested, and read by no code. The BFF's dev profile hardcodes the retail URL, so `RETAIL_ORDER_SERVICE_URL` has no effect there. | writeback `application.yml:46` vs `OutboxStore.java:32-40`; bff `application-dev.yml:27-29` |
 
-Also noted, outside the map's scope: a live Apigee API key committed in
+A second pass diffed each repository against its baseline, which produced the shape-diff dataset
+(11 hops added, 4 changed, 2 removed) and three more findings worth naming:
+
+| # | Finding | Cited at |
+|---|---|---|
+| D-7 | AD-71 takes DB2 off the driver's synchronous path: the claim is decided in Cloud SQL and the same three procs are owed asynchronously. The architecture doc still says the driver waits — and so did the first draft of this map, until the diff caught it. | `finalize/LoadClaimService.java:62-139`, `finalize/MainframeAssertWorker.java:62-132`, `V17__load_claim.sql` |
+| D-8 | The webapp's new map pulls tiles straight from the public OpenStreetMap CDN — hardcoded, behind no config key, from the user's browser. Every pan leaks the area a McLane user is viewing to a third party, and there is no CSP allowance or self-hosted alternative. | `live-location.ts:88` |
+| D-9 | `RetailImageReader` fetches a route's stops and then issues one call per stop, and the BFF change lets a routeId-only request trigger it. An N+1 fan-out to the retail service, unbounded by stop count. | `service/RetailImageReader.java:20-24`, `service/ImageService.java:108` |
+
+Also noted, outside the map's scope: `LOCATION_SERVICE_URL` has no non-local default in any profile,
+so a dev or test deploy would fall back to `http://localhost:8083`; the new `EventSource` stream
+cannot attach an `Authorization` header, unlike every other call the webapp makes; a live Apigee API key committed in
 `drive360-mobile-app/.vscode/launch.json`, a hardcoded fallback Ditto JWT at
 `lib/api/environment.dart:74-75`, and label rendering posted to `http://api.labelary.com` over plain
 HTTP with no auth (`lib/utils/printer.dart:214-223`).
