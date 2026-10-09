@@ -84,6 +84,17 @@ npm install -g baton-run
 
 ---
 
+## Claude Code plugin
+
+Baton ships as a Claude Code plugin: the MCP server, a skill that teaches Claude the run → reload → screenshot loop, and `/baton:run` and `/baton:doctor`.
+
+```
+/plugin marketplace add kanumuri9593/Baton
+/plugin install baton@baton
+```
+
+Details: [plugins/baton](plugins/baton/README.md).
+
 ## Connect any agent
 
 Baton is an MCP server. Any compatible agent gets structured tools instead of scraping `flutter run` output. Scripts can use the same `baton` CLI; every command exits non-zero on failure.

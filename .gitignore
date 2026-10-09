@@ -20,3 +20,6 @@ examples/flutter-lab/web/
 examples/flutter-lab/.metadata
 examples/flutter-lab/*.iml
 examples/flutter-lab/pubspec.lock
+
+# Local brainstorm server state (contains a session key).
+.superpowers/

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Claude Code plugin in `plugins/baton`, with this repo as its marketplace:
+  `/plugin marketplace add kanumuri9593/Baton` then `/plugin install baton@baton`.
+  Bundles the `baton-mcp` server (pinned to the npm release), a `using-baton`
+  skill, and `/baton:run` and `/baton:doctor`. CI validates the plugin and fails
+  if its pinned version drifts from `package.json` (`scripts/check-plugin-version.mjs`).
+- Removed committed `.superpowers/` brainstorm state and ignored it.
+
 ## 0.2.6 — 2026-09-09
 
 - GitHub default branch is `main`. `master` stays fast-forwarded to the same

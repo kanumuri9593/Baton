@@ -38,3 +38,16 @@ jobs:
       - run: npm run build
       # Fails the build if the tarball is missing anything the bins import.
       - run: npm pack --dry-run
+
+  claude-plugin:
+    name: Claude Code plugin is valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npx -y @anthropic-ai/claude-code plugin validate --strict .
+      - run: npx -y @anthropic-ai/claude-code plugin validate --strict ./plugins/baton
+      # The plugin pins baton-run in .mcp.json and its skills; keep them in step with package.json.
+      - run: node scripts/check-plugin-version.mjs
