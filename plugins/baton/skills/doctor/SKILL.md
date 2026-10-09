@@ -12,7 +12,7 @@ Check the Baton setup and report what works and what to fix, in plain words.
 2. Check whether the `baton` MCP tools are available. If they are, call `inspect_project`
    with `cwd` set to the absolute project path and summarise its blockers and guidance.
 3. If the tools are not available, run
-   `npx -y --package=baton-run@0.2.6 baton doctor` in the shell and summarise the output.
+   `npx -y --package=baton-run@0.2.7 baton doctor` in the shell and summarise the output.
    Then tell the user to run `/mcp` to see the server's error, or restart Claude Code after
    fixing Node.
 4. For mobile work: note whether Flutter, Xcode (`xcrun simctl`), or the Android SDK

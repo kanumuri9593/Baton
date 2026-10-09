@@ -57,6 +57,12 @@ test('the npm pack includes HUD icon rasteriser and prepare helper', () => {
   }
 });
 
+test('the published build contains the Node tracing preload', () => {
+  // process.ts preloads ../instrumentation/node.mjs for batonTrace targets; tsc does not copy .mjs.
+  assert.equal(existsSync(join(root, 'dist', 'instrumentation', 'node.mjs')), true,
+    'dist/instrumentation/node.mjs is missing, so batonTrace targets cannot start from a published install');
+});
+
 test('the published build contains every control-panel asset', () => {
   const source = join(root, 'src', 'hud', 'assets');
   const built = join(root, 'dist', 'hud', 'assets');

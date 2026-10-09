@@ -46,5 +46,5 @@ You reach it through the `baton` MCP server that this plugin starts.
   a minute.
 - MCP cannot boot simulators yet. Run `baton boot "<device name>"` in the shell (or ask
   the user to), then `run_target` with that device's id.
-- CLI fallback for anything else: `npx -y --package=baton-run@0.2.6 baton <command>`
+- CLI fallback for anything else: `npx -y --package=baton-run@0.2.7 baton <command>`
   (`doctor --json`, `list`, `run`, `ps`, `logs`, `reload --all`, `devices --all`).
