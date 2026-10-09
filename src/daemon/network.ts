@@ -97,7 +97,10 @@ export class NetworkService {
    * available while the app runs, which the error says plainly.
    */
   async detail(sessionId: string, id: string, maxBody?: number): Promise<NetworkRequestDetail> {
-    const captured = this.store.list(sessionId, { tail: 500 }).find((row) => row.id === id);
+    // Resolve a short id first, so it finds OpenTelemetry rows too and an unknown
+    // id is reported as unknown rather than as "no longer capturing".
+    const full = this.#resolveId(sessionId, id);
+    const captured = this.store.list(sessionId, { tail: 500 }).find((row) => row.id === full);
     if (captured?.captureSource === 'otel-node') {
       return { ...captured, requestHeaders: {}, cookies: [], redirects: [], events: [
         { event: 'OpenTelemetry metadata only; bodies, headers and URL queries are not captured', timestamp: captured.startTime },
@@ -110,7 +113,6 @@ export class NetworkService {
           '(the request list itself is still readable)',
       );
     }
-    const full = this.#resolveId(sessionId, id);
     const split = full.lastIndexOf('#');
     if (split <= 0) throw new Error(`"${id}" is not a request id — use the id from the request list`);
     const isolateId = full.slice(0, split);

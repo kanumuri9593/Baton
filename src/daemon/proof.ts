@@ -2,7 +2,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import {
   mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, statSync, copyFileSync,
 } from 'node:fs';
-import { join, dirname, basename } from 'node:path';
+import { join, dirname, basename, resolve } from 'node:path';
 import type { Bootable } from './simulators.ts';
 import type { Device } from './devices.ts';
 import type { Target } from '../config/detect.ts';
@@ -621,12 +621,37 @@ export function writeProofBundle(summary: ProofRunSummary, cellArtifacts: Map<st
   return allSummaries;
 }
 
+/**
+ * Bundles written with `out` live outside the proofs directory, so listing that
+ * directory alone would miss them. Record their paths so `list_proofs` still
+ * finds a proof the moment after it passed.
+ */
+const EXTERNAL_INDEX = 'external.json';
+
+function readExternalBundles(): string[] {
+  try {
+    const paths = JSON.parse(readFileSync(join(proofsDir(), EXTERNAL_INDEX), 'utf8'));
+    return Array.isArray(paths) ? paths.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberExternalBundle(bundlePath: string): void {
+  const root = proofsDir();
+  if (resolve(dirname(bundlePath)) === resolve(root)) return;
+  const known = readExternalBundles().filter((p) => existsSync(join(p, 'proof.json')));
+  const abs = resolve(bundlePath);
+  if (!known.includes(abs)) known.push(abs);
+  writeFileSync(join(root, EXTERNAL_INDEX), JSON.stringify(known, null, 2));
+}
+
 /** List proof bundles newest-first. */
 export function listProofs(limit = 50): ProofListEntry[] {
   const root = proofsDir();
   const entries: ProofListEntry[] = [];
-  for (const name of readdirSync(root)) {
-    const bundlePath = join(root, name);
+  const bundles = [...readdirSync(root).map((name) => join(root, name)), ...readExternalBundles()];
+  for (const bundlePath of new Set(bundles)) {
     const proofFile = join(bundlePath, 'proof.json');
     if (!existsSync(proofFile)) continue;
     try {
@@ -657,6 +682,11 @@ export function getProof(id: string): ProofRunSummary | undefined {
   const matches = readdirSync(root).filter((name) => name.startsWith(id) && existsSync(join(root, name, 'proof.json')));
   if (matches.length === 1) {
     return JSON.parse(readFileSync(join(root, matches[0], 'proof.json'), 'utf8')) as ProofRunSummary;
+  }
+  const external = listProofs(Number.MAX_SAFE_INTEGER)
+    .filter((p) => !p.bundlePath.startsWith(root) && p.id.startsWith(id));
+  if (external.length === 1) {
+    return JSON.parse(readFileSync(join(external[0].bundlePath, 'proof.json'), 'utf8')) as ProofRunSummary;
   }
   return undefined;
 }
@@ -846,6 +876,7 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
   };
 
   writeProofBundle(summary, artifacts);
+  rememberExternalBundle(bundlePath);
 
   emit({ cell: '*', phase: 'packaging', status: 'running', message: 'packaging zip' });
   try {
