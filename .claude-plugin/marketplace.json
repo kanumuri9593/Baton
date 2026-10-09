@@ -1,0 +1,16 @@
+{
+  "name": "baton",
+  "description": "Baton for Claude Code: run, hot-reload, screenshot and debug your apps from Claude.",
+  "owner": {
+    "name": "Yeswanth Varma Kanumuri",
+    "url": "https://github.com/kanumuri9593"
+  },
+  "plugins": [
+    {
+      "name": "baton",
+      "source": "./plugins/baton",
+      "description": "Run, hot-reload, screenshot and debug Flutter, web, React Native and native iOS/Android apps from Claude Code, through Baton's MCP server.",
+      "category": "development"
+    }
+  ]
+}

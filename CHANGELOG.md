@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.7 — 2026-10-09
+
+- `dist/instrumentation/node.mjs` now ships in the npm package. Before, any
+  launch config with `"batonTrace": true` (including the workflow lab) failed
+  with `ERR_MODULE_NOT_FOUND` when Baton was installed from npm or npx.
+- `scripts/render-icons.mjs` resolves its own folder with `fileURLToPath`, so
+  it works on Windows (it looked for `D:\D:\...`) and in paths with spaces.
+  Windows CI is green again.
+- Claude Code plugin in `plugins/baton`, with this repo as its marketplace:
+  `/plugin marketplace add kanumuri9593/Baton` then `/plugin install baton@baton`.
+  Bundles the `baton-mcp` server (pinned to the npm release), a `using-baton`
+  skill, and `/baton:run` and `/baton:doctor`. CI validates the plugin and fails
+  if its pinned version drifts from `package.json` (`scripts/check-plugin-version.mjs`).
+- Removed committed `.superpowers/` brainstorm state and ignored it.
+
 ## 0.2.6 — 2026-09-09
 
 - GitHub default branch is `main`. `master` stays fast-forwarded to the same

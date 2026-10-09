@@ -15,18 +15,18 @@
 
 <p align="center">
   <a href="https://github.com/kanumuri9593/Baton/blob/main/LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0ea5e9"></a>
-  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.6"><img alt="Version 0.2.6" src="https://img.shields.io/badge/version-0.2.6-111827"></a>
+  <a href="https://github.com/kanumuri9593/Baton/releases/tag/v0.2.7"><img alt="Version 0.2.7" src="https://img.shields.io/badge/version-0.2.7-111827"></a>
   <a href="https://nodejs.org/"><img alt="Node 24+" src="https://img.shields.io/badge/node-24%2B-339933"></a>
   <a href="https://modelcontextprotocol.io/"><img alt="MCP server" src="https://img.shields.io/badge/MCP-baton--mcp-7c3aed"></a>
   <a href="https://github.com/kanumuri9593/Baton/issues/new?labels=feedback&title=Feedback"><img alt="Ask for feedback" src="https://img.shields.io/badge/feedback-welcome-f59e0b"></a>
 </p>
 
 ```bash
-npm install -g github:kanumuri9593/Baton#v0.2.6
+npm install -g github:kanumuri9593/Baton#v0.2.7
 baton app
 ```
 
-**Baton 0.2.6** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
+**Baton 0.2.7** is a public developer preview. Clone it, wire `baton-mcp` into your agent, try the labs, and [open an issue](https://github.com/kanumuri9593/Baton/issues) with what broke or what you wanted.
 
 If the only reason you keep an IDE open is its Run & Debug toolbar — the config picker, the ⟳ ⟲ ■ buttons, three simulators at once — this replaces that, and adds the half an IDE can't give you: your agent can press the same buttons. Pick a **branch** (or an agent's worktree) and Baton runs it from a copy, so VS Code never has to stash or switch.
 
@@ -46,9 +46,9 @@ baton app                                   # floating launcher + full control p
 
 | Way | Command |
 |---|---|
-| **GitHub** | `npm install -g github:kanumuri9593/Baton#v0.2.6` |
-| **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton#v0.2.6 baton list` |
-| **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton#v0.2.6 baton-mcp` |
+| **GitHub** | `npm install -g github:kanumuri9593/Baton#v0.2.7` |
+| **One-shot CLI** | `npx -y --package=github:kanumuri9593/Baton#v0.2.7 baton list` |
+| **One-shot MCP** | `npx -y --package=github:kanumuri9593/Baton#v0.2.7 baton-mcp` |
 | **npm** | `npm install -g baton-run` |
 | **Clone** | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
 | **Baton app** | After install: `baton app` — native floating launcher + control panel on macOS; app-style browser window on Linux/Windows. `baton hud` remains an alias. |
@@ -59,10 +59,10 @@ Requires **Node.js 24+**. macOS, Linux, and Windows.
 Pin a release:
 
 ```bash
-npm install -g github:kanumuri9593/Baton#v0.2.6
+npm install -g github:kanumuri9593/Baton#v0.2.7
 ```
 
-Unpinned `github:kanumuri9593/Baton` follows GitHub's default branch (`main`). Prefer `#v0.2.6` or `npm install -g baton-run`.
+Unpinned `github:kanumuri9593/Baton` follows GitHub's default branch (`main`). Prefer `#v0.2.7` or `npm install -g baton-run`.
 
 ### The Baton app
 
@@ -83,6 +83,17 @@ npm install -g baton-run
 ```
 
 ---
+
+## Claude Code plugin
+
+Baton ships as a Claude Code plugin: the MCP server, a skill that teaches Claude the run → reload → screenshot loop, and `/baton:run` and `/baton:doctor`.
+
+```
+/plugin marketplace add kanumuri9593/Baton
+/plugin install baton@baton
+```
+
+Details: [plugins/baton](plugins/baton/README.md).
 
 ## Connect any agent
 
@@ -107,7 +118,7 @@ Without a global install:
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=github:kanumuri9593/Baton#v0.2.6", "baton-mcp"]
+      "args": ["-y", "--package=github:kanumuri9593/Baton#v0.2.7", "baton-mcp"]
     }
   }
 }

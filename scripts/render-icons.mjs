@@ -15,8 +15,10 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(dirname(new URL(import.meta.url).pathname), '..');
+// fileURLToPath, not URL.pathname: on Windows pathname is /D:/... and resolve() turns it into D:\D:\...
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Sizes that cover the common targets, largest last so `--sizes` can trim. */
 const DEFAULT_SIZES = [16, 32, 48, 64, 128, 180, 192, 256, 512, 1024];
