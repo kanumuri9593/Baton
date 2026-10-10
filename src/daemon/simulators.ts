@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 
 /**
  * A device that is not running yet but could be started.
@@ -42,14 +42,33 @@ export function listSimulators(exec: Exec = defaultExec): Bootable[] {
   // Real simulator discovery is macOS-only. Keep injected executors usable on
   // every platform so recorded simctl output can be tested in CI.
   if (process.platform !== 'darwin' && exec === defaultExec) return [];
-
-  let parsed: any;
   try {
-    parsed = JSON.parse(exec('xcrun', ['simctl', 'list', 'devices', 'available', '-j']));
+    return parseSimulators(exec('xcrun', ['simctl', 'list', 'devices', 'available', '-j']));
   } catch {
     return []; // no Xcode command line tools; Android and web still work
   }
+}
 
+/**
+ * The same list without blocking: `simctl list` can take seconds, and the
+ * daemon answers every other client on this thread meanwhile.
+ */
+export function listSimulatorsAsync(): Promise<Bootable[]> {
+  if (process.platform !== 'darwin') return Promise.resolve([]);
+  return new Promise((resolve) => {
+    execFile('xcrun', ['simctl', 'list', 'devices', 'available', '-j'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
+      if (err) return resolve([]);
+      try {
+        resolve(parseSimulators(stdout));
+      } catch {
+        resolve([]);
+      }
+    });
+  });
+}
+
+function parseSimulators(json: string): Bootable[] {
+  const parsed: any = JSON.parse(json);
   const bootables: Bootable[] = [];
   for (const [runtime, devices] of Object.entries(parsed.devices ?? {})) {
     for (const device of devices as any[]) {
