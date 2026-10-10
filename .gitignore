@@ -23,3 +23,6 @@ examples/flutter-lab/pubspec.lock
 
 # Local brainstorm server state (contains a session key).
 .superpowers/
+
+# Claude Code lays the mod API types here when it loads the plugin.
+plugins/baton/.claude-plugin/types/

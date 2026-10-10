@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.8 — 2026-10-10
+
+- The Claude Code plugin now shows Baton above the prompt. A band lists every
+  live run (project, simulator or URL, status) with Reload all, and `/baton`
+  opens a panel with each run's CPU and memory plus Reload, Restart,
+  Screenshot and Stop. In the desktop app the panel shows the last screenshot.
+  It reads the same daemon as the MCP tools, so runs started by Claude, the
+  CLI or the Baton app all appear. Source: `plugins/baton/hooks/register.tsx`;
+  CI runs its tests with `claude plugin test`.
+- Running a target again after it stopped no longer fails with "already
+  running on this device". A relaunch reuses the session id, and the stopped
+  record now makes way for it instead of needing `forget_session` first.
+
 ## 0.2.7 — 2026-10-09
 
 - `dist/instrumentation/node.mjs` now ships in the npm package. Before, any

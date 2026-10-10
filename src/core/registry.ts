@@ -96,7 +96,12 @@ export class SessionRegistry extends EventEmitter {
     // can be watched side by side without their sessions blurring together.
     if (root !== undefined) (session as { root?: string }).root = root;
 
-    if (this.#sessions.has(session.id)) {
+    // A relaunch reuses its id, so a stopped or failed record of the same run
+    // makes way for the new one; only a live session blocks the device.
+    const existing = this.#sessions.get(session.id);
+    if (existing && (existing.status === 'stopped' || existing.status === 'failed')) {
+      this.#sessions.delete(session.id);
+    } else if (existing) {
       throw new Error(
         `a session for "${session.name}" is already running on this device (${session.id})`,
       );

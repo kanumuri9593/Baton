@@ -2,7 +2,7 @@
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=baton-run@0.2.7", "baton-mcp"]
+      "args": ["-y", "--package=baton-run@0.2.8", "baton-mcp"]
     }
   }
 }

@@ -49,5 +49,7 @@ jobs:
           node-version: '24'
       - run: npx -y @anthropic-ai/claude-code plugin validate --strict .
       - run: npx -y @anthropic-ai/claude-code plugin validate --strict ./plugins/baton
+      # The band above the prompt and the Baton panel (hooks/register.tsx).
+      - run: npx -y @anthropic-ai/claude-code plugin test ./plugins/baton
       # The plugin pins baton-run in .mcp.json and its skills; keep them in step with package.json.
       - run: node scripts/check-plugin-version.mjs
