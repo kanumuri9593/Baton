@@ -472,6 +472,17 @@ async function dashboardState(extra: Partial<DashboardState> = {}): Promise<Dash
   return { runs, at: Date.now(), ...extra };
 }
 
+/** Settle within `ms`: a card waiting on slow device discovery would look frozen. */
+function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      () => { clearTimeout(timer); resolve(fallback); },
+    );
+  });
+}
+
 /** Projects Baton knows with what each can run, and every simulator or emulator it can run on or boot. */
 async function dashboardCatalog(): Promise<DashboardCatalog> {
   const d = await daemon();
@@ -479,22 +490,21 @@ async function dashboardCatalog(): Promise<DashboardCatalog> {
   const devices = new Map<string, DashboardCatalog['devices'][number]>();
   const platform = (p: string) => (/ios/i.test(p) ? 'ios' : /android/i.test(p) ? 'android' : 'other') as 'ios' | 'android' | 'other';
   const cwd = projects[0]?.root;
-  try {
-    for (const dev of (await d.call('devices', { cwd })) as Array<{ id: string; name: string; platformType?: string; platform?: string }>) {
-      devicesByTarget.set(dev.id, dev.name);
-      devices.set(dev.id, { id: dev.id, name: dev.name, platform: platform(dev.platformType ?? dev.platform ?? ''), running: true });
-    }
-  } catch {
-    // No Flutter tooling: booted devices still come from the bootable list below.
+  // Both lists are best-effort: without Flutter or Xcode they can be slow or
+  // fail, and the form still works for targets that need no device.
+  type Live = Array<{ id: string; name: string; platformType?: string; platform?: string }>;
+  type Boot = Array<{ id: string; name: string; platformType: 'ios' | 'android'; running: boolean; runtime?: string }>;
+  const [live, bootable] = await Promise.all([
+    within(d.call('devices', { cwd }) as Promise<Live>, 6000, [] as Live),
+    within(d.call('bootables', { cwd }) as Promise<Boot>, 6000, [] as Boot),
+  ]);
+  for (const dev of live) {
+    devicesByTarget.set(dev.id, dev.name);
+    devices.set(dev.id, { id: dev.id, name: dev.name, platform: platform(dev.platformType ?? dev.platform ?? ''), running: true });
   }
-  try {
-    for (const b of (await d.call('bootables', { cwd })) as Array<{ id: string; name: string; platformType: 'ios' | 'android'; running: boolean; runtime?: string }>) {
-      const known = devices.get(b.id);
-      if (known) continue;
-      devices.set(b.id, { id: b.id, name: b.name, platform: b.platformType, running: b.running, runtime: b.runtime });
-    }
-  } catch {
-    // Nothing bootable on this machine.
+  for (const b of bootable) {
+    if (devices.has(b.id)) continue;
+    devices.set(b.id, { id: b.id, name: b.name, platform: b.platformType, running: b.running, runtime: b.runtime });
   }
   return {
     projects: projects
@@ -532,11 +542,9 @@ server.registerTool(
   async () => {
     try {
       const state = await dashboardState();
-      try {
-        state.catalog = await dashboardCatalog();
-      } catch {
-        // The card still shows runs; New run asks again when opened.
-      }
+      // The card still shows runs without it; New run asks again when opened.
+      const catalog = await within(dashboardCatalog(), 3000, undefined);
+      if (catalog) state.catalog = catalog;
       return card(state);
     } catch (err) {
       return fail((err as Error).message);
