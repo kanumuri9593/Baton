@@ -23,6 +23,16 @@ export type DashboardRun = {
   cpuPct?: number;
   rssBytes?: number;
   capabilities: string[];
+  /** The app's processes are stopped (SIGSTOP); Resume continues them. */
+  paused?: boolean;
+  canPause?: boolean;
+  canFront?: boolean;
+};
+
+/** What the New run form offers: projects with their targets, and devices to run on or boot. */
+export type DashboardCatalog = {
+  projects: Array<{ root: string; name: string; targets: Array<{ name: string; kind: string }> }>;
+  devices: Array<{ id: string; name: string; platform: 'ios' | 'android' | 'other'; running: boolean; runtime?: string }>;
 };
 
 export type DashboardState = {
@@ -31,9 +41,17 @@ export type DashboardState = {
   message?: string;
   /** Last screenshot taken from the card, as a PNG data URL. */
   shot?: { session: string; name: string; dataUrl: string };
+  /** Sent only when asked for (show_dashboard, or the card opening New run): it is slow to gather. */
+  catalog?: DashboardCatalog;
+  /** Recent log lines of one run, when the card asked for them. */
+  logs?: { session: string; name: string; lines: Array<{ text: string; error: boolean }> };
 };
 
-export function toDashboardRun(s: SessionSnapshot, devices: Map<string, string>): DashboardRun {
+export function toDashboardRun(
+  s: SessionSnapshot,
+  devices: Map<string, string>,
+  extra: Pick<DashboardRun, 'paused' | 'canPause' | 'canFront'> = {},
+): DashboardRun {
   const root = (s.root ?? '').replace(/[\\/]+$/, '');
   const known = s.target ? devices.get(s.target) : undefined;
   const device = known ?? (s.target && !/^(https?:|web|chrome|edge|browser)/i.test(s.target) && s.target.length <= 24 ? s.target : undefined);
@@ -49,6 +67,7 @@ export function toDashboardRun(s: SessionSnapshot, devices: Map<string, string>)
     cpuPct: s.cpuPct,
     rssBytes: s.rssBytes,
     capabilities: s.capabilities,
+    ...extra,
   };
 }
 
@@ -57,7 +76,8 @@ export function dashboardText(state: DashboardState): string {
   if (state.runs.length === 0) return 'Baton: nothing is running.';
   const lines = state.runs.map((r) => {
     const where = r.device ?? r.url ?? r.kind;
-    return `${r.status === 'running' ? '●' : r.status === 'failed' ? '✕' : '○'} ${r.project}/${r.name} · ${where} · ${r.status}`;
+    const status = r.paused ? 'paused' : r.status;
+    return `${r.status === 'running' ? (r.paused ? '‖' : '●') : r.status === 'failed' ? '✕' : '○'} ${r.project}/${r.name} · ${where} · ${status}`;
   });
   return [`Baton: ${state.runs.filter((r) => r.status === 'running').length} running`, ...lines].join('\n');
 }
@@ -67,29 +87,42 @@ export function dashboardHtml(version: string): string {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Baton</title>
 <style>
-:root{--bg:#ffffff;--card:#f6f7fb;--line:#e3e6ee;--fg:#141824;--muted:#5d6577;--ok:#0e9f6e;--warn:#b7791f;--err:#d64545;--accent:#4f46e5;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#1a1b1f;--card:#23252b;--line:#33363f;--fg:#eef0f5;--muted:#9aa1b2;--ok:#34d399;--warn:#fbbf24;--err:#f87171;--accent:#818cf8;color-scheme:dark}}
+:root{--bg:#ffffff;--card:#f6f7fb;--line:#e3e6ee;--fg:#141824;--muted:#5d6577;--ok:#0e9f6e;--warn:#b7791f;--err:#d64545;--accent:#4f46e5;--code:#0f1220;--codefg:#d7dbe6;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#1a1b1f;--card:#23252b;--line:#33363f;--fg:#eef0f5;--muted:#9aa1b2;--ok:#34d399;--warn:#fbbf24;--err:#f87171;--accent:#818cf8;--code:#111216;--codefg:#d7dbe6;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
 .wrap{padding:14px;display:grid;gap:10px}
-header{display:flex;align-items:center;gap:8px}
+header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 header b{font-size:15px}
 .count{color:var(--muted);font-size:13px}
-header .sp{flex:1}
-button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:8px;padding:5px 10px;cursor:pointer}
-button:hover{border-color:var(--accent)}
+.sp{flex:1}
+button,select{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:8px;padding:5px 10px}
+button{cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
 button:disabled{opacity:.5;cursor:default}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--err)}
+button.danger.armed{background:var(--err);border-color:var(--err);color:#fff}
+select{min-width:0;max-width:100%}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+.panel h4{margin:0;font-size:13px;color:var(--muted);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row select{flex:1 1 140px}
 .run{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
 .top{display:flex;align-items:center;gap:8px;min-width:0}
 .dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--muted)}
 .running .dot{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.paused .dot{background:var(--warn);box-shadow:none}
 .starting .dot{background:var(--warn)}
 .failed .dot{background:var(--err)}
 .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{font-size:11.5px;color:var(--warn);border:1px solid currentColor;border-radius:6px;padding:0 5px}
 .where{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meta{color:var(--muted);font-size:12.5px}
 .acts{display:flex;flex-wrap:wrap;gap:6px}
+pre.logs{margin:0;background:var(--code);color:var(--codefg);border-radius:8px;padding:8px 10px;font:11.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+pre.logs .e{color:#f87171}
 .empty{color:var(--muted);padding:6px 0}
 .msg{font-size:12.5px;color:var(--muted)}
 .msg.err{color:var(--err)}
@@ -98,7 +131,14 @@ figure img{max-width:220px;max-height:420px;border-radius:14px;border:1px solid 
 figcaption{font-size:12px;color:var(--muted)}
 </style></head>
 <body><div class="wrap">
-<header><b>Baton</b><span class="count" id="count"></span><span class="sp"></span><button id="reloadAll" hidden>Reload all</button><button id="refresh">Refresh</button></header>
+<header><b>Baton</b><span class="count" id="count"></span><span class="sp"></span><button id="newRun" class="primary">New run</button><button id="refresh">Refresh</button></header>
+<div class="quick" id="quick"></div>
+<div class="panel" id="form" hidden>
+  <h4>Start a run</h4>
+  <div class="row"><select id="fProject"></select><select id="fTarget"></select><select id="fDevice"></select><button class="primary" id="fRun">Run</button></div>
+  <h4>Boot a simulator or emulator</h4>
+  <div class="row"><select id="fBoot"></select><button id="fBootBtn">Boot</button></div>
+</div>
 <div id="runs"></div>
 <div class="msg" id="msg"></div>
 <figure id="shot" hidden><img id="shotImg" alt=""><figcaption id="shotCap"></figcaption></figure>
@@ -110,6 +150,9 @@ figcaption{font-size:12px;color:var(--muted)}
   const pending = new Map();
   let state = { runs: [], at: 0 };
   let busy = null;
+  let openLogs = null;
+  let armed = null;
+  const $ = (id) => document.getElementById(id);
 
   function send(msg) { parent.postMessage({ jsonrpc: '2.0', ...msg }, '*'); }
   function request(method, params) {
@@ -117,7 +160,7 @@ figcaption{font-size:12px;color:var(--muted)}
     send({ id, method, params });
     return new Promise((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      setTimeout(() => { if (pending.delete(id)) reject(new Error('timed out')); }, 120000);
+      setTimeout(() => { if (pending.delete(id)) reject(new Error('timed out')); }, 180000);
     });
   }
   function notify(method, params) { send({ method, params }); }
@@ -136,17 +179,19 @@ figcaption{font-size:12px;color:var(--muted)}
 
   function take(result) {
     const s = result && result.structuredContent;
-    if (s && Array.isArray(s.runs)) { state = { ...s, shot: s.shot || state.shot }; draw(); }
-    else if (result && result.isError) { say(textOf(result), true); }
+    if (s && Array.isArray(s.runs)) {
+      state = { ...s, shot: s.shot || state.shot, catalog: s.catalog || state.catalog, logs: s.logs || (openLogs ? state.logs : undefined) };
+      if (s.catalog) fillForm();
+      draw();
+    } else if (result && result.isError) { say(textOf(result), true); }
   }
   function textOf(r) { return (r && r.content || []).map(c => c.text || '').join(' ').trim(); }
-  function say(text, isErr) { const el = document.getElementById('msg'); el.textContent = text || ''; el.className = 'msg' + (isErr ? ' err' : ''); size(); }
+  function say(text, isErr) { const el = $('msg'); el.textContent = text || ''; el.className = 'msg' + (isErr ? ' err' : ''); size(); }
 
-  async function act(action, session, label) {
-    const quiet = action === 'refresh';
-    if (!quiet) { busy = (session || '') + ':' + action; draw(); }
+  async function act(args, label, quiet) {
+    if (!quiet) { busy = (args.session || '') + ':' + args.action; draw(); say(''); }
     try {
-      const r = await request('tools/call', { name: 'dashboard_action', arguments: session ? { action, session } : { action } });
+      const r = await request('tools/call', { name: 'dashboard_action', arguments: args });
       take(r);
       if (r && !r.isError && label) say(label);
     } catch (e) { say('Baton: ' + e.message, true); }
@@ -155,50 +200,132 @@ figcaption{font-size:12px;color:var(--muted)}
 
   function mb(b) { return b == null ? '' : Math.round(b / 1048576) + ' MB'; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  function opt(value, text, selected) { return '<option value="' + esc(value) + '"' + (selected ? ' selected' : '') + '>' + esc(text) + '</option>'; }
+  const needsDevice = (kind) => kind === 'flutter' || kind === 'ios' || kind === 'android' || kind === 'react-native' || kind === 'expo';
+
+  function fillForm() {
+    const c = state.catalog || { projects: [], devices: [] };
+    const fp = $('fProject');
+    const keep = fp.value;
+    fp.innerHTML = c.projects.length ? c.projects.map(p => opt(p.root, p.name, p.root === keep)).join('') : opt('', 'No projects yet');
+    fillTargets();
+    const boot = c.devices.filter(d => !d.running);
+    $('fBoot').innerHTML = boot.length ? boot.map(d => opt(d.id, d.name + (d.runtime ? ' · ' + d.runtime : ''))).join('') : opt('', 'Everything is already booted');
+    $('fBootBtn').disabled = !boot.length || !!busy;
+  }
+  function fillTargets() {
+    const c = state.catalog || { projects: [], devices: [] };
+    const p = c.projects.find(x => x.root === $('fProject').value) || c.projects[0];
+    const ft = $('fTarget');
+    const keep = ft.value;
+    ft.innerHTML = p && p.targets.length ? p.targets.map(t => opt(t.name, t.name + ' (' + t.kind + ')', t.name === keep)).join('') : opt('', 'Nothing to run');
+    fillDevices();
+  }
+  function fillDevices() {
+    const c = state.catalog || { projects: [], devices: [] };
+    const p = c.projects.find(x => x.root === $('fProject').value) || c.projects[0];
+    const t = p && p.targets.find(x => x.name === $('fTarget').value);
+    const fd = $('fDevice');
+    if (!t || !needsDevice(t.kind)) { fd.hidden = true; fd.innerHTML = ''; return; }
+    fd.hidden = false;
+    const want = t.kind === 'ios' ? ['ios'] : t.kind === 'android' ? ['android'] : ['ios', 'android', 'other'];
+    const live = c.devices.filter(d => d.running && want.includes(d.platform));
+    fd.innerHTML = live.length ? live.map(d => opt(d.id, d.name)).join('') : opt('', 'No device booted: boot one below');
+  }
+  $('fProject').onchange = fillTargets;
+  $('fTarget').onchange = fillDevices;
+  $('fRun').onclick = () => {
+    const root = $('fProject').value, target = $('fTarget').value, device = $('fDevice').hidden ? undefined : $('fDevice').value;
+    if (!root || !target) return say('Pick a project and something to run.', true);
+    if (!$('fDevice').hidden && !device) return say('Boot a simulator or emulator first.', true);
+    act({ action: 'run', root, target, device: device || undefined }, 'Started ' + target);
+  };
+  $('fBootBtn').onclick = () => {
+    const id = $('fBoot').value; if (!id) return;
+    const name = $('fBoot').selectedOptions[0] ? $('fBoot').selectedOptions[0].textContent : id;
+    act({ action: 'boot', device: id }, 'Booted ' + name);
+  };
+  $('newRun').onclick = () => {
+    const f = $('form'); f.hidden = !f.hidden;
+    $('newRun').textContent = f.hidden ? 'New run' : 'Close';
+    if (!f.hidden) act({ action: 'catalog' }, '', true);
+    size();
+  };
 
   function draw() {
     const runs = state.runs || [];
     const live = runs.filter(r => r.status === 'running');
-    document.getElementById('count').textContent = runs.length ? live.length + ' running' : '';
-    const reloadable = live.filter(r => r.capabilities.includes('hotReload'));
-    const ra = document.getElementById('reloadAll');
-    ra.hidden = reloadable.length === 0; ra.disabled = !!busy;
-    ra.textContent = busy === ':reload_all' ? 'Reloading…' : 'Reload all';
-    const box = document.getElementById('runs');
-    if (!runs.length) { box.innerHTML = '<div class="empty">Nothing is running. Ask Claude to run an app and it shows here.</div>'; size(); return; }
+    $('count').textContent = runs.length ? live.length + ' running' + (live.some(r => r.paused) ? ', ' + live.filter(r => r.paused).length + ' paused' : '') : '';
+    const dis = busy ? ' disabled' : '';
+    const q = [];
+    if (live.some(r => r.capabilities.includes('hotReload'))) q.push('<button data-q="reload_all"' + dis + '>' + (busy === ':reload_all' ? 'Reloading…' : 'Reload all') + '</button>');
+    if (live.length) q.push('<button data-q="restart_all"' + dis + '>' + (busy === ':restart_all' ? 'Restarting…' : 'Restart all') + '</button>');
+    if (live.some(r => r.canPause && !r.paused)) q.push('<button data-q="pause_all"' + dis + '>Pause all</button>');
+    if (live.some(r => r.paused)) q.push('<button data-q="resume_all"' + dis + '>Resume all</button>');
+    if (live.some(r => r.canFront)) q.push('<button data-q="front_all"' + dis + '>Bring to front</button>');
+    if (runs.some(r => r.status === 'running' || r.status === 'starting')) q.push('<button data-q="stop_all" class="danger' + (armed === 'stop_all' ? ' armed' : '') + '"' + dis + '>' + (armed === 'stop_all' ? 'Stop all: click to confirm' : 'Stop all') + '</button>');
+    $('quick').innerHTML = q.join('');
+    $('fRun').disabled = !!busy; $('fBootBtn').disabled = !!busy || !(state.catalog && state.catalog.devices.some(d => !d.running));
+    if (busy === ':run') $('fRun').textContent = 'Starting…'; else $('fRun').textContent = 'Run';
+    if (busy === ':boot') $('fBootBtn').textContent = 'Booting…'; else $('fBootBtn').textContent = 'Boot';
+
+    const box = $('runs');
+    if (!runs.length) { box.innerHTML = '<div class="empty">Nothing is running. Press New run, or ask Claude to run an app.</div>'; size(); return; }
     box.innerHTML = runs.map(r => {
-      const can = c => r.status === 'running' && r.capabilities.includes(c);
-      const stats = r.status === 'running' ? [r.cpuPct != null ? Math.round(r.cpuPct) + '% CPU' : '', mb(r.rssBytes)].filter(Boolean).join(' · ') : (r.progress || r.status);
-      const b = (a, text, busyText) => '<button data-a="' + a + '" data-s="' + esc(r.id) + '"' + (busy ? ' disabled' : '') + '>' + (busy === r.id + ':' + a ? busyText : text) + '</button>';
-      return '<div class="run ' + esc(r.status) + '">'
-        + '<div class="top"><span class="dot"></span><span class="name">' + esc(r.project === r.name ? r.name : r.project + ' · ' + r.name) + '</span></div>'
+      const on = r.status === 'running';
+      const can = c => on && !r.paused && r.capabilities.includes(c);
+      const stats = on ? [r.paused ? 'Paused' : '', r.cpuPct != null ? Math.round(r.cpuPct) + '% CPU' : '', mb(r.rssBytes)].filter(Boolean).join(' · ') : (r.progress || r.status);
+      const b = (a, text, busyText, cls) => '<button data-a="' + a + '" data-s="' + esc(r.id) + '"' + (cls ? ' class="' + cls + '"' : '') + dis + '>' + (busy === r.id + ':' + a ? busyText : text) + '</button>';
+      const logs = openLogs === r.id && state.logs && state.logs.session === r.id
+        ? '<pre class="logs">' + (state.logs.lines.length ? state.logs.lines.map(l => '<span' + (l.error ? ' class="e"' : '') + '>' + esc(l.text) + '</span>').join('\\n') : 'No output yet.') + '</pre>'
+        : '';
+      return '<div class="run ' + esc(r.paused ? 'paused' : r.status) + '">'
+        + '<div class="top"><span class="dot"></span><span class="name">' + esc(r.project === r.name ? r.name : r.project + ' · ' + r.name) + '</span>' + (r.paused ? '<span class="tag">Paused</span>' : '') + '</div>'
         + '<div class="where">' + esc([r.device, r.url, r.kind].filter(Boolean).join(' · ')) + '</div>'
         + '<div class="meta">' + esc(stats) + '</div>'
         + '<div class="acts">'
         + (can('hotReload') ? b('reload', 'Reload', 'Reloading…') : '')
         + (can('hotRestart') || can('restartProcess') ? b('restart', 'Restart', 'Restarting…') : '')
+        + (on && r.canPause ? (r.paused ? b('resume', 'Resume', 'Resuming…', 'primary') : b('pause', 'Pause', 'Pausing…')) : '')
+        + (on && r.canFront ? b('front', 'Bring to front', 'Opening…') : '')
         + (can('screenshot') ? b('screenshot', 'Screenshot', 'Capturing…') : '')
-        + (r.status === 'running' || r.status === 'starting' ? b('stop', 'Stop', 'Stopping…') : '')
-        + '</div></div>';
+        + b('logs', openLogs === r.id ? 'Hide logs' : 'Logs', 'Loading…')
+        + (on || r.status === 'starting' ? b('stop', 'Stop', 'Stopping…', 'danger') : b('dismiss', 'Dismiss', 'Dismissing…'))
+        + '</div>' + logs + '</div>';
     }).join('');
-    const f = document.getElementById('shot');
+    const f = $('shot');
     if (state.shot) {
       f.hidden = false;
-      document.getElementById('shotImg').src = state.shot.dataUrl;
-      document.getElementById('shotImg').alt = 'Screenshot of ' + state.shot.name;
-      document.getElementById('shotCap').textContent = state.shot.name;
+      $('shotImg').src = state.shot.dataUrl;
+      $('shotImg').alt = 'Screenshot of ' + state.shot.name;
+      $('shotCap').textContent = state.shot.name;
     }
     size();
   }
 
+  const labels = { reload: 'Reloaded', restart: 'Restarted', screenshot: 'Captured', stop: 'Stopped', dismiss: 'Dismissed', pause: 'Paused', resume: 'Resumed', front: 'Brought forward' };
+  const quickLabels = { reload_all: 'Reloaded every app', restart_all: 'Restarted every app', pause_all: 'Paused every app', resume_all: 'Resumed every app', front_all: 'Brought the simulators forward', stop_all: 'Stopped every app' };
   document.addEventListener('click', (e) => {
+    const q = e.target.closest('button[data-q]');
+    if (q) {
+      const a = q.dataset.q;
+      if (a === 'stop_all' && armed !== 'stop_all') { armed = 'stop_all'; draw(); setTimeout(() => { if (armed === 'stop_all') { armed = null; draw(); } }, 4000); return; }
+      armed = null;
+      return act({ action: a }, quickLabels[a]);
+    }
     const t = e.target.closest('button[data-a]');
-    if (t) { const a = t.dataset.a; const r = state.runs.find(x => x.id === t.dataset.s); act(a, t.dataset.s, r ? labels[a] + ' ' + r.name : ''); }
+    if (!t) return;
+    const a = t.dataset.a, s = t.dataset.s;
+    const r = state.runs.find(x => x.id === s);
+    if (a === 'logs') {
+      if (openLogs === s) { openLogs = null; state.logs = undefined; draw(); return; }
+      openLogs = s;
+      return act({ action: 'logs', session: s });
+    }
+    act({ action: a, session: s }, r ? labels[a] + ' ' + r.name : '');
   });
-  const labels = { reload: 'Reloaded', restart: 'Restarted', screenshot: 'Captured', stop: 'Stopped' };
-  document.getElementById('refresh').onclick = () => act('refresh');
-  document.getElementById('reloadAll').onclick = () => act('reload_all', null, 'Reloaded every running app');
-  document.getElementById('shotImg').onload = size;
+  $('refresh').onclick = () => act({ action: 'refresh' }, '', true);
+  $('shotImg').onload = size;
 
   let lastH = 0;
   function size() {
@@ -214,7 +341,11 @@ figcaption{font-size:12px;color:var(--muted)}
     notify('ui/notifications/initialized', {});
     draw();
     // Live without a model turn: the card asks the server, not Claude.
-    setInterval(() => { if (!busy && !document.hidden) act('refresh'); }, 3000);
+    // Open logs follow along too.
+    setInterval(() => {
+      if (busy || document.hidden) return;
+      act(openLogs ? { action: 'logs', session: openLogs } : { action: 'refresh' }, '', true);
+    }, 3000);
   }).catch(() => draw());
 })();
 </script></body></html>`;
