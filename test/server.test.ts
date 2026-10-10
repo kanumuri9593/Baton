@@ -391,13 +391,16 @@ test('logHistory shows a real run, logRead returns its lines, and logs falls bac
 
   const session = await daemon.registry.run(target);
   await waitForExit(session);
-  // Let LogSink's queued `writer.close()` actually finish flushing before
-  // reading it back through logHistory -- the session reporting `stopped` and
-  // its exit record having reached disk are two different, async, events.
-  await new Promise((resolve) => setTimeout(resolve, 50));
-
-  const history: any = await daemon.handle({ method: 'logHistory', params: {} });
-  const entry = history.find((r: any) => r.sessionId === session.id);
+  // The session reporting `stopped` and its exit record reaching disk are two
+  // different async events, so wait for the record rather than a fixed delay:
+  // 50ms was not always enough for LogSink's queued `writer.close()` on CI.
+  let entry: any;
+  for (let i = 0; i < 100; i++) {
+    const history: any = await daemon.handle({ method: 'logHistory', params: {} });
+    entry = history.find((r: any) => r.sessionId === session.id);
+    if (entry?.exitCode !== undefined) break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
   assert.ok(entry, 'the run must show up in logHistory once it has exited');
   assert.equal(entry.exitCode, 0);
   assert.equal(entry.root, scratch);
