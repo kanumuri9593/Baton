@@ -14,6 +14,11 @@
   simulator or URL, status, CPU and memory, refreshes every 3 seconds, and has
   Reload all plus per-run Reload, Restart, Screenshot and Stop. Screenshots
   show in the card. Its buttons call `dashboard_action`, which only the card sees.
+- The card is a control panel: New run starts any project target on a chosen
+  simulator or device, or boots one first; each run adds Pause/Resume (macOS,
+  read back from the OS so every card agrees), Bring to front, Logs and
+  Dismiss; and a quick-actions row reloads, restarts, pauses, resumes, brings
+  forward or stops every app at once.
 - Running a target again after it stopped no longer fails with "already
   running on this device". A relaunch reuses the session id, and the stopped
   record now makes way for it instead of needing `forget_session` first.

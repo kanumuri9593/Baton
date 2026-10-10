@@ -290,7 +290,7 @@ figcaption{font-size:12px;color:var(--muted)}
         + (on && r.canFront ? b('front', 'Bring to front', 'Opening…') : '')
         + (can('screenshot') ? b('screenshot', 'Screenshot', 'Capturing…') : '')
         + b('logs', openLogs === r.id ? 'Hide logs' : 'Logs', 'Loading…')
-        + (on || r.status === 'starting' ? b('stop', 'Stop', 'Stopping…', 'danger') : '')
+        + (on || r.status === 'starting' ? b('stop', 'Stop', 'Stopping…', 'danger') : b('dismiss', 'Dismiss', 'Dismissing…'))
         + '</div>' + logs + '</div>';
     }).join('');
     const f = $('shot');
@@ -303,7 +303,7 @@ figcaption{font-size:12px;color:var(--muted)}
     size();
   }
 
-  const labels = { reload: 'Reloaded', restart: 'Restarted', screenshot: 'Captured', stop: 'Stopped', pause: 'Paused', resume: 'Resumed', front: 'Brought forward' };
+  const labels = { reload: 'Reloaded', restart: 'Restarted', screenshot: 'Captured', stop: 'Stopped', dismiss: 'Dismissed', pause: 'Paused', resume: 'Resumed', front: 'Brought forward' };
   const quickLabels = { reload_all: 'Reloaded every app', restart_all: 'Restarted every app', pause_all: 'Paused every app', resume_all: 'Resumed every app', front_all: 'Brought the simulators forward', stop_all: 'Stopped every app' };
   document.addEventListener('click', (e) => {
     const q = e.target.closest('button[data-q]');

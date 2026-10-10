@@ -26,7 +26,7 @@ Requires **Node.js 24+**. The first tool call downloads `baton-run` from npm wit
 | Part | What it does |
 |---|---|
 | `baton` MCP server | Tools to inspect, run, wait, hot reload/restart, read logs, take screenshots, watch network, diagnose and prove |
-| Baton card | Ask "show Baton" in the Claude app: a live card in the chat with every run and Reload, Restart, Screenshot and Stop |
+| Baton card | Ask "show Baton" in the Claude app: a live control panel in the chat. Start a run on any simulator or boot one, then Reload, Restart, Pause/Resume, Bring to front, Logs, Screenshot and Stop per app, or all at once |
 | `using-baton` skill | Teaches Claude the run → wait → check → edit → reload loop, used automatically |
 | `/baton:run [target]` | Run a target, wait until it is ready, report URL/device/errors |
 | `/baton:doctor` | Check Node, the MCP server and the project setup, with fixes |

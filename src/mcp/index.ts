@@ -546,7 +546,7 @@ server.registerTool(
 
 const DASHBOARD_ACTIONS = [
   'refresh', 'catalog', 'run', 'boot', 'logs',
-  'reload', 'restart', 'pause', 'resume', 'front', 'screenshot', 'stop',
+  'reload', 'restart', 'pause', 'resume', 'front', 'screenshot', 'stop', 'dismiss',
   'reload_all', 'restart_all', 'pause_all', 'resume_all', 'front_all', 'stop_all',
 ] as const;
 
@@ -556,7 +556,7 @@ server.registerTool(
     title: 'Baton card action',
     description:
       'Used by the Baton card: refresh; catalog (projects and devices for New run); run a project target on a device; boot a device; ' +
-      'logs, reload, restart, pause, resume, front, screenshot or stop one session; or reload/restart/pause/resume/front/stop all. Returns the card state.',
+      'logs, reload, restart, pause, resume, front, screenshot, stop or dismiss (forget a finished run) one session; or reload/restart/pause/resume/front/stop all. Returns the card state.',
     inputSchema: {
       action: z.enum(DASHBOARD_ACTIONS),
       session: z.string().optional(),
@@ -621,6 +621,9 @@ server.registerTool(
           break;
         case 'stop':
           await d.call('stop', { session: one().id });
+          break;
+        case 'dismiss':
+          await d.call('forget', { session: one().id });
           break;
         case 'screenshot': {
           const s = one();
