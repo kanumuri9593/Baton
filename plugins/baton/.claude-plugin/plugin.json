@@ -1,7 +1,7 @@
 {
   "name": "baton",
   "displayName": "Baton",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Run, hot-reload, screenshot and debug Flutter, web, React Native and native iOS/Android apps from Claude Code. Claude presses the same Run / Reload / Stop buttons you do.",
   "author": {
     "name": "Yeswanth Varma Kanumuri",
@@ -10,5 +10,17 @@
   "homepage": "https://kanumuri9593.github.io/Baton/",
   "repository": "https://github.com/kanumuri9593/Baton",
   "license": "MIT",
-  "keywords": ["flutter", "hot-reload", "simulator", "react-native", "nextjs", "vite", "mcp", "dev-server", "screenshot", "launch.json"]
+  "keywords": [
+    "flutter",
+    "hot-reload",
+    "simulator",
+    "react-native",
+    "nextjs",
+    "vite",
+    "mcp",
+    "dev-server",
+    "screenshot",
+    "launch.json"
+  ],
+  "types": "./types/index.d.ts"
 }
