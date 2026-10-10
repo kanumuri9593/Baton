@@ -1,4 +1,4 @@
-import { execFile, execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 
 /**
  * A device that is not running yet but could be started.
@@ -53,17 +53,29 @@ export function listSimulators(exec: Exec = defaultExec): Bootable[] {
  * The same list without blocking: `simctl list` can take seconds, and the
  * daemon answers every other client on this thread meanwhile.
  */
-export function listSimulatorsAsync(): Promise<Bootable[]> {
+export function listSimulatorsAsync(timeoutMs = 15000): Promise<Bootable[]> {
   if (process.platform !== 'darwin') return Promise.resolve([]);
   return new Promise((resolve) => {
-    execFile('xcrun', ['simctl', 'list', 'devices', 'available', '-j'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
-      if (err) return resolve([]);
+    let out = '';
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       try {
-        resolve(parseSimulators(stdout));
+        resolve(parseSimulators(out));
       } catch {
         resolve([]);
       }
-    });
+    };
+    const child = spawn('xcrun', ['simctl', 'list', 'devices', 'available', '-j'], { stdio: ['ignore', 'pipe', 'ignore'] });
+    child.stdout!.setEncoding('utf8').on('data', (chunk: string) => { out += chunk; });
+    child.on('error', finish);
+    child.on('close', finish);
+    // simctl can start CoreSimulator services that inherit its stdout, so the
+    // pipe may stay open after simctl itself is done: settle on exit too.
+    child.on('exit', () => setTimeout(finish, 200));
+    const timer = setTimeout(() => { child.kill(); finish(); }, timeoutMs);
   });
 }
 
