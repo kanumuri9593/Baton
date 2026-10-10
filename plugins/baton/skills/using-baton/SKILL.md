@@ -42,8 +42,10 @@ You reach it through the `baton` MCP server that this plugin starts.
 ## Showing the user their runs
 
 When the user asks to see Baton, their running apps or simulators, call `show_dashboard`.
-In the Claude app it draws a live card in the chat with Reload, Restart, Screenshot and Stop
-buttons; elsewhere it returns one line per run. Don't repeat the card's contents in text.
+In the Claude app it draws a live control panel in the chat: New run (project, target, device,
+or boot a simulator), and per app Reload, Restart, Pause/Resume, Bring to front, Logs,
+Screenshot and Stop, plus the same for all apps at once. Elsewhere it returns one line per run.
+Don't repeat the card's contents in text.
 
 ## When the tools are missing or fail
 
