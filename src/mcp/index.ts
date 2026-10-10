@@ -10,8 +10,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { SessionSnapshot } from '../core/types.ts';
 import {
-  DASHBOARD_URI, MCP_APP_MIME, dashboardHtml, dashboardText, toDashboardRun, type DashboardState,
+  DASHBOARD_URI, MCP_APP_MIME, dashboardHtml, dashboardText, toDashboardRun, type DashboardCatalog, type DashboardState,
 } from './dashboard.ts';
+import { Controls } from './controls.ts';
 
 /**
  * MCP surface over the daemon.
@@ -446,6 +447,7 @@ server.tool(
 // --- Live card in chat hosts that draw MCP Apps (the Claude app, claude.ai) ---
 
 const devicesByTarget = new Map<string, string>();
+const controls = new Controls();
 async function dashboardState(extra: Partial<DashboardState> = {}): Promise<DashboardState> {
   const d = await daemon();
   const sessions = (await d.call('sessions')) as SessionSnapshot[];
@@ -461,7 +463,45 @@ async function dashboardState(extra: Partial<DashboardState> = {}): Promise<Dash
       }
     }
   }
-  return { runs: sessions.map((s) => toDashboardRun(s, devicesByTarget)), at: Date.now(), ...extra };
+  const paused = controls.pausedIds(sessions);
+  const runs = sessions.map((s) => toDashboardRun(s, devicesByTarget, {
+    paused: paused.has(s.id),
+    canPause: controls.canPause(s),
+    canFront: controls.canFront(s),
+  }));
+  return { runs, at: Date.now(), ...extra };
+}
+
+/** Projects Baton knows with what each can run, and every simulator or emulator it can run on or boot. */
+async function dashboardCatalog(): Promise<DashboardCatalog> {
+  const d = await daemon();
+  const { projects } = (await d.call('projects', {})) as { projects: Array<{ root: string; name: string; targets?: Array<{ name: string; kind: string }> }> };
+  const devices = new Map<string, DashboardCatalog['devices'][number]>();
+  const platform = (p: string) => (/ios/i.test(p) ? 'ios' : /android/i.test(p) ? 'android' : 'other') as 'ios' | 'android' | 'other';
+  const cwd = projects[0]?.root;
+  try {
+    for (const dev of (await d.call('devices', { cwd })) as Array<{ id: string; name: string; platformType?: string; platform?: string }>) {
+      devicesByTarget.set(dev.id, dev.name);
+      devices.set(dev.id, { id: dev.id, name: dev.name, platform: platform(dev.platformType ?? dev.platform ?? ''), running: true });
+    }
+  } catch {
+    // No Flutter tooling: booted devices still come from the bootable list below.
+  }
+  try {
+    for (const b of (await d.call('bootables', { cwd })) as Array<{ id: string; name: string; platformType: 'ios' | 'android'; running: boolean; runtime?: string }>) {
+      const known = devices.get(b.id);
+      if (known) continue;
+      devices.set(b.id, { id: b.id, name: b.name, platform: b.platformType, running: b.running, runtime: b.runtime });
+    }
+  } catch {
+    // Nothing bootable on this machine.
+  }
+  return {
+    projects: projects
+      .filter((p) => (p.targets ?? []).length > 0)
+      .map((p) => ({ root: p.root, name: p.name, targets: (p.targets ?? []).map((t) => ({ name: t.name, kind: t.kind })) })),
+    devices: [...devices.values()].sort((a, b) => Number(b.running) - Number(a.running) || a.name.localeCompare(b.name)),
+  };
 }
 
 function card(state: DashboardState) {
@@ -474,7 +514,7 @@ function card(state: DashboardState) {
 server.registerResource(
   'baton-dashboard',
   DASHBOARD_URI,
-  { title: 'Baton', description: 'Live Baton runs with Reload, Restart, Screenshot and Stop.', mimeType: MCP_APP_MIME },
+  { title: 'Baton', description: 'Live Baton control panel: start, pause, reload, restart, logs, screenshots and stop.', mimeType: MCP_APP_MIME },
   async () => ({ contents: [{ uri: DASHBOARD_URI, mimeType: MCP_APP_MIME, text: dashboardHtml(pkg.version) }] }),
 );
 
@@ -483,60 +523,148 @@ server.registerTool(
   {
     title: 'Show Baton',
     description:
-      'Show a live Baton card in the chat: every running app with its simulator or URL, status, CPU and memory, ' +
-      'and Reload, Restart, Screenshot and Stop buttons. Use when the user asks to see or show Baton, their runs or simulators.',
+      'Show a live Baton control panel in the chat: every running app with its simulator or URL, status, CPU and memory; ' +
+      'per-app Reload, Restart, Pause/Resume, Bring to front, Logs, Screenshot and Stop; quick actions for all apps; ' +
+      'and New run (pick a project, target and device, or boot a simulator). Use when the user asks to see or show Baton, their runs or simulators.',
     inputSchema: {},
     _meta: { ui: { resourceUri: DASHBOARD_URI }, 'ui/resourceUri': DASHBOARD_URI },
   },
   async () => {
     try {
-      return card(await dashboardState());
+      const state = await dashboardState();
+      try {
+        state.catalog = await dashboardCatalog();
+      } catch {
+        // The card still shows runs; New run asks again when opened.
+      }
+      return card(state);
     } catch (err) {
       return fail((err as Error).message);
     }
   },
 );
 
+const DASHBOARD_ACTIONS = [
+  'refresh', 'catalog', 'run', 'boot', 'logs',
+  'reload', 'restart', 'pause', 'resume', 'front', 'screenshot', 'stop',
+  'reload_all', 'restart_all', 'pause_all', 'resume_all', 'front_all', 'stop_all',
+] as const;
+
 server.registerTool(
   'dashboard_action',
   {
     title: 'Baton card action',
-    description: 'Used by the Baton card: refresh, reload_all, or reload/restart/stop/screenshot one session. Returns the card state.',
+    description:
+      'Used by the Baton card: refresh; catalog (projects and devices for New run); run a project target on a device; boot a device; ' +
+      'logs, reload, restart, pause, resume, front, screenshot or stop one session; or reload/restart/pause/resume/front/stop all. Returns the card state.',
     inputSchema: {
-      action: z.enum(['refresh', 'reload_all', 'reload', 'restart', 'stop', 'screenshot']),
+      action: z.enum(DASHBOARD_ACTIONS),
       session: z.string().optional(),
+      root: z.string().optional(),
+      target: z.string().optional(),
+      device: z.string().optional(),
     },
     _meta: { ui: { resourceUri: DASHBOARD_URI, visibility: ['app'] } },
   },
-  async ({ action, session }) => {
+  async ({ action, session, root, target, device }) => {
     try {
       const d = await daemon();
-      const need = () => {
-        if (!session) throw new Error(`${action} needs a session`);
-        return session;
+      const runs = (await d.call('sessions')) as SessionSnapshot[];
+      const one = () => {
+        const s = runs.find((r) => r.id === session);
+        if (!s) throw new Error(session ? `no run ${session}` : `${action} needs a session`);
+        return s;
       };
+      const live = runs.filter((s) => s.status === 'running');
       let message: string | undefined;
-      let shot: DashboardState['shot'];
-      if (action === 'reload_all') {
-        const runs = (await d.call('sessions')) as SessionSnapshot[];
-        const ids = runs.filter((s) => s.status === 'running' && s.capabilities.includes('hotReload')).map((s) => s.id);
-        if (ids.length) await d.call('reload', { ids, reason: 'Baton card' });
-      } else if (action === 'reload' || action === 'restart') {
-        const results = (await d.call(action, { session: need(), reason: 'Baton card' })) as Array<{ code: number; message?: string }>;
+      const extra: Partial<DashboardState> = {};
+      const failures = (results: Array<{ code: number; message?: string }>) => {
         const failed = results.find((r) => r.code !== 0);
         if (failed) message = failed.message ?? `${action} failed`;
-      } else if (action === 'stop') {
-        await d.call('stop', { session: need() });
-      } else if (action === 'screenshot') {
-        const { path } = await d.call('screenshot', { session: need() });
-        const runs = (await d.call('sessions')) as SessionSnapshot[];
-        shot = {
-          session: need(),
-          name: runs.find((s) => s.id === session)?.name ?? need(),
-          dataUrl: `data:image/png;base64,${readFileSync(path).toString('base64')}`,
-        };
+      };
+
+      switch (action) {
+        case 'refresh':
+          break;
+        case 'catalog':
+          extra.catalog = await dashboardCatalog();
+          break;
+        case 'run': {
+          if (!root || !target) throw new Error('run needs a project and a target');
+          await d.call('run', { cwd: root, target, deviceId: device || undefined });
+          break;
+        }
+        case 'boot': {
+          if (!device) throw new Error('boot needs a device');
+          await d.call('boot', { id: device });
+          extra.catalog = await dashboardCatalog();
+          break;
+        }
+        case 'logs': {
+          const s = one();
+          const lines = (await d.call('logs', { session: s.id, tail: 80 })) as Array<{ text: string; error: boolean }>;
+          extra.logs = { session: s.id, name: s.name, lines: lines.map((l) => ({ text: l.text, error: l.error })) };
+          break;
+        }
+        case 'reload':
+        case 'restart':
+          failures((await d.call(action, { session: one().id, reason: 'Baton card' })) as Array<{ code: number; message?: string }>);
+          break;
+        case 'pause':
+          controls.pause(one());
+          break;
+        case 'resume':
+          controls.resume(one());
+          break;
+        case 'front':
+          controls.front(one());
+          break;
+        case 'stop':
+          await d.call('stop', { session: one().id });
+          break;
+        case 'screenshot': {
+          const s = one();
+          const { path } = (await d.call('screenshot', { session: s.id })) as { path: string };
+          extra.shot = { session: s.id, name: s.name, dataUrl: `data:image/png;base64,${readFileSync(path).toString('base64')}` };
+          break;
+        }
+        case 'reload_all': {
+          const ids = live.filter((s) => s.capabilities.includes('hotReload')).map((s) => s.id);
+          if (ids.length) failures((await d.call('reload', { ids, reason: 'Baton card' })) as Array<{ code: number; message?: string }>);
+          break;
+        }
+        case 'restart_all': {
+          const ids = live.filter((s) => s.capabilities.includes('hotRestart') || s.capabilities.includes('restartProcess')).map((s) => s.id);
+          if (ids.length) failures((await d.call('restart', { ids, reason: 'Baton card' })) as Array<{ code: number; message?: string }>);
+          break;
+        }
+        case 'pause_all':
+        case 'resume_all': {
+          const paused = controls.pausedIds(live);
+          const errors: string[] = [];
+          for (const s of live.filter((r) => controls.canPause(r) && paused.has(r.id) === (action === 'resume_all'))) {
+            try {
+              if (action === 'pause_all') controls.pause(s); else controls.resume(s);
+            } catch (err) {
+              errors.push((err as Error).message);
+            }
+          }
+          if (errors.length) message = errors.join('; ');
+          break;
+        }
+        case 'front_all': {
+          const sims = live.filter((s) => controls.isSimulator(s) && controls.canFront(s));
+          if (sims[0]) controls.front(sims[0]);
+          for (const s of live.filter((r) => !controls.isSimulator(r) && controls.canFront(r))) controls.front(s);
+          break;
+        }
+        case 'stop_all': {
+          const ids = runs.filter((s) => s.status === 'running' || s.status === 'starting').map((s) => s.id);
+          if (ids.length) await d.call('stop', { ids });
+          break;
+        }
       }
-      return card(await dashboardState({ message, shot }));
+      return card(await dashboardState({ message, ...extra }));
     } catch (err) {
       return fail((err as Error).message);
     }

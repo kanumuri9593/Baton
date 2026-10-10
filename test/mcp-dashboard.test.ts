@@ -63,6 +63,11 @@ test('show_dashboard points at the card and returns the runs', async () => {
     assert.deepEqual(result.structuredContent.runs, []);
     const refreshed: any = await client.callTool({ name: 'dashboard_action', arguments: { action: 'refresh' } });
     assert.deepEqual(refreshed.structuredContent.runs, []);
+    const catalog: any = await client.callTool({ name: 'dashboard_action', arguments: { action: 'catalog' } });
+    assert.ok(Array.isArray(catalog.structuredContent.catalog.projects));
+    assert.ok(Array.isArray(catalog.structuredContent.catalog.devices));
+    const missing: any = await client.callTool({ name: 'dashboard_action', arguments: { action: 'pause' } });
+    assert.equal(missing.isError, true);
   } finally {
     await client.close();
   }
