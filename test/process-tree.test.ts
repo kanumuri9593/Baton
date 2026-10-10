@@ -18,8 +18,12 @@ test('stop ends what the script started, not just the script (npm run dev → vi
     command: 'sh', args: ['-c', `sleep 60 & echo $! > ${pidFile}; wait`], cwd: dir,
   });
   session.start();
-  for (let i = 0; i < 50 && !existsSync(pidFile); i++) await new Promise((r) => setTimeout(r, 50));
-  const grandchild = Number(readFileSync(pidFile, 'utf8').trim());
+  // The shell creates the file before `echo` fills it, so wait for the pid
+  // itself: Number('') is 0, and kill(0, 0) would probe our own process group.
+  const readPid = () => (existsSync(pidFile) ? Number(readFileSync(pidFile, 'utf8').trim()) : 0);
+  for (let i = 0; i < 100 && !readPid(); i++) await new Promise((r) => setTimeout(r, 50));
+  const grandchild = readPid();
+  assert.ok(grandchild > 0, 'the shell wrote the grandchild pid');
   assert.ok(alive(grandchild), 'the grandchild is running before stop');
 
   await session.stop();
