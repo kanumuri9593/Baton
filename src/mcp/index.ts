@@ -8,6 +8,10 @@ import { DaemonClient } from '../core/client.ts';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { SessionSnapshot } from '../core/types.ts';
+import {
+  DASHBOARD_URI, MCP_APP_MIME, dashboardHtml, dashboardText, toDashboardRun, type DashboardState,
+} from './dashboard.ts';
 
 /**
  * MCP surface over the daemon.
@@ -437,6 +441,106 @@ server.tool(
         })
         .join('\n');
     }),
+);
+
+// --- Live card in chat hosts that draw MCP Apps (the Claude app, claude.ai) ---
+
+const devicesByTarget = new Map<string, string>();
+async function dashboardState(extra: Partial<DashboardState> = {}): Promise<DashboardState> {
+  const d = await daemon();
+  const sessions = (await d.call('sessions')) as SessionSnapshot[];
+  const unknown = sessions.some((s) => s.target && !devicesByTarget.has(s.target));
+  if (unknown) {
+    for (const cwd of [...new Set(sessions.map((s) => s.root).filter((r): r is string => !!r))].slice(0, 4)) {
+      try {
+        for (const dev of (await d.call('devices', { cwd })) as Array<{ id: string; name: string }>) {
+          devicesByTarget.set(dev.id, dev.name);
+        }
+      } catch {
+        // A project without device tooling shows its URL instead.
+      }
+    }
+  }
+  return { runs: sessions.map((s) => toDashboardRun(s, devicesByTarget)), at: Date.now(), ...extra };
+}
+
+function card(state: DashboardState) {
+  return {
+    content: [{ type: 'text' as const, text: dashboardText(state) }],
+    structuredContent: state as unknown as Record<string, unknown>,
+  };
+}
+
+server.registerResource(
+  'baton-dashboard',
+  DASHBOARD_URI,
+  { title: 'Baton', description: 'Live Baton runs with Reload, Restart, Screenshot and Stop.', mimeType: MCP_APP_MIME },
+  async () => ({ contents: [{ uri: DASHBOARD_URI, mimeType: MCP_APP_MIME, text: dashboardHtml(pkg.version) }] }),
+);
+
+server.registerTool(
+  'show_dashboard',
+  {
+    title: 'Show Baton',
+    description:
+      'Show a live Baton card in the chat: every running app with its simulator or URL, status, CPU and memory, ' +
+      'and Reload, Restart, Screenshot and Stop buttons. Use when the user asks to see or show Baton, their runs or simulators.',
+    inputSchema: {},
+    _meta: { ui: { resourceUri: DASHBOARD_URI }, 'ui/resourceUri': DASHBOARD_URI },
+  },
+  async () => {
+    try {
+      return card(await dashboardState());
+    } catch (err) {
+      return fail((err as Error).message);
+    }
+  },
+);
+
+server.registerTool(
+  'dashboard_action',
+  {
+    title: 'Baton card action',
+    description: 'Used by the Baton card: refresh, reload_all, or reload/restart/stop/screenshot one session. Returns the card state.',
+    inputSchema: {
+      action: z.enum(['refresh', 'reload_all', 'reload', 'restart', 'stop', 'screenshot']),
+      session: z.string().optional(),
+    },
+    _meta: { ui: { resourceUri: DASHBOARD_URI, visibility: ['app'] } },
+  },
+  async ({ action, session }) => {
+    try {
+      const d = await daemon();
+      const need = () => {
+        if (!session) throw new Error(`${action} needs a session`);
+        return session;
+      };
+      let message: string | undefined;
+      let shot: DashboardState['shot'];
+      if (action === 'reload_all') {
+        const runs = (await d.call('sessions')) as SessionSnapshot[];
+        const ids = runs.filter((s) => s.status === 'running' && s.capabilities.includes('hotReload')).map((s) => s.id);
+        if (ids.length) await d.call('reload', { ids, reason: 'Baton card' });
+      } else if (action === 'reload' || action === 'restart') {
+        const results = (await d.call(action, { session: need(), reason: 'Baton card' })) as Array<{ code: number; message?: string }>;
+        const failed = results.find((r) => r.code !== 0);
+        if (failed) message = failed.message ?? `${action} failed`;
+      } else if (action === 'stop') {
+        await d.call('stop', { session: need() });
+      } else if (action === 'screenshot') {
+        const { path } = await d.call('screenshot', { session: need() });
+        const runs = (await d.call('sessions')) as SessionSnapshot[];
+        shot = {
+          session: need(),
+          name: runs.find((s) => s.id === session)?.name ?? need(),
+          dataUrl: `data:image/png;base64,${readFileSync(path).toString('base64')}`,
+        };
+      }
+      return card(await dashboardState({ message, shot }));
+    } catch (err) {
+      return fail((err as Error).message);
+    }
+  },
 );
 
 await server.connect(new StdioServerTransport());
