@@ -9,6 +9,11 @@
   It reads the same daemon as the MCP tools, so runs started by Claude, the
   CLI or the Baton app all appear. Source: `plugins/baton/hooks/register.tsx`;
   CI runs its tests with `claude plugin test`.
+- `show_dashboard`: a live Baton card inside the chat, drawn by hosts that
+  support MCP Apps (the Claude app and claude.ai). It lists every run with its
+  simulator or URL, status, CPU and memory, refreshes every 3 seconds, and has
+  Reload all plus per-run Reload, Restart, Screenshot and Stop. Screenshots
+  show in the card. Its buttons call `dashboard_action`, which only the card sees.
 - Running a target again after it stopped no longer fails with "already
   running on this device". A relaunch reuses the session id, and the stopped
   record now makes way for it instead of needing `forget_session` first.

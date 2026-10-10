@@ -39,6 +39,12 @@ You reach it through the `baton` MCP server that this plugin starts.
 - Do not put secrets in launch files that will be committed. `write_launch_config` edits
   real files the user's IDE also reads; confirm before changing them.
 
+## Showing the user their runs
+
+When the user asks to see Baton, their running apps or simulators, call `show_dashboard`.
+In the Claude app it draws a live card in the chat with Reload, Restart, Screenshot and Stop
+buttons; elsewhere it returns one line per run. Don't repeat the card's contents in text.
+
 ## When the tools are missing or fail
 
 - No `baton` tools at all, or the server fails to start: run `/baton:doctor`.
