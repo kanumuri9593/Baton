@@ -21,12 +21,14 @@ You reach it through the `baton` MCP server that this plugin starts.
    an existing worktree. Never `git checkout` the user's folder to do this.
 4. `wait_for` the returned session (`running`, `url`, or `{ "log": "<regex>" }`) instead of
    polling logs.
-5. Check the result: `session_summary`, `read_logs`, `diagnose`, and `screenshot` for
-   simulators and devices. For web targets, open the session URL with whatever browser
-   tool you have.
-6. After an edit: `hot_reload` (Flutter keeps state). If the capability is missing for the
-   target, use `hot_restart`. A failed reload returns the compiler errors; fix them and
-   reload again.
+5. Check the result: `screenshot` (iOS simulators, Android, and web URLs; pass
+   `viewport: "phone"` to see a web app at phone size), `session_summary`, `read_logs`,
+   `diagnose`.
+6. After every edit: `check_change`. One call applies the change (hot reload for Flutter,
+   HMR for web and React Native, restart for the rest) and returns only what is new: the
+   reload result, error lines, failed requests and a screenshot. Read `NOT OK` results,
+   fix, and call it again. Use `hot_reload` / `hot_restart` directly only when you need
+   just that step.
 7. Leave sessions running unless the user asks to stop them. `stop_session` stops one;
    `forget_session` removes it from the list.
 
@@ -34,7 +36,7 @@ You reach it through the `baton` MCP server that this plugin starts.
 
 - A screenshot proves an image was captured, not that the UI is right. Look at it and
   say what you see, and say when you could not check something.
-- Baton launches and reports evidence. It does not tap the UI.
+- Baton launches and reports evidence. It does not tap the UI or judge the screenshot.
 - Respect refusals: a Vite session does not have Flutter hot reload, so do not claim it.
 - Do not put secrets in launch files that will be committed. `write_launch_config` edits
   real files the user's IDE also reads; confirm before changing them.
@@ -44,7 +46,10 @@ You reach it through the `baton` MCP server that this plugin starts.
 - No `baton` tools at all, or the server fails to start: run `/baton:doctor`.
 - Baton needs Node.js 24+. The first call downloads `baton-run` with npx, which can take
   a minute.
-- MCP cannot boot simulators yet. Run `baton boot "<device name>"` in the shell (or ask
-  the user to), then `run_target` with that device's id.
-- CLI fallback for anything else: `npx -y --package=baton-run@0.2.8 baton <command>`
+- No simulator running: `boot_device` with a name like "iPhone 17 Pro" (call it with no
+  name to list what can boot), then `run_target` with the returned `deviceId`.
+- Web screenshots need Chrome, Chromium, Edge or Brave on the machine (or `BATON_CHROME`
+  pointing at one). Baton does not tap or type: pair it with a browser or device tool
+  (Playwright MCP, Chrome DevTools MCP, mobile-mcp) when the flow needs input.
+- CLI fallback for anything else: `npx -y --package=baton-run@0.2.9 baton <command>`
   (`doctor --json`, `list`, `run`, `ps`, `logs`, `reload --all`, `devices --all`).

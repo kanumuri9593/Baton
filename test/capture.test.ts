@@ -68,11 +68,11 @@ test('an unknown or missing target throws, without shelling out to anything', as
 
   await assert.rejects(
     screenshotSession(snapshot('some-desktop-window'), join(tmpdir(), 'x.png'), exec),
-    /iOS simulator or Android device/,
+    /iOS simulator, an Android device/,
   );
   await assert.rejects(
     screenshotSession(snapshot(undefined), join(tmpdir(), 'x.png'), exec),
-    /iOS simulator or Android device/,
+    /iOS simulator, an Android device/,
   );
   assert.equal(calls.length, 0, 'an unsupported target must not run any external tool');
 });
@@ -129,4 +129,81 @@ test('with no hint at all, a UDID-shaped target still resolves to iOS by guessin
   await screenshotSession(snapshot(IOS_UDID), outPath, exec);
 
   assert.equal(calls[0].cmd, 'xcrun');
+});
+
+function webSnapshot(url: string, kind = 'web-dev'): SessionSnapshot {
+  return { id: 'proj/web', name: 'web', kind, status: 'running', url, capabilities: ['url'], startedAt: Date.now() };
+}
+
+test('a web session is captured from its URL by the browser, at a phone viewport when asked', async () => {
+  const outPath = join(mkdtempSync(join(tmpdir(), 'baton-cap-')), 'web.png');
+  const seen: unknown[] = [];
+  const exec: ExecFn = async () => { throw new Error('a web capture must not shell out to device tools'); };
+  const { writeFileSync } = await import('node:fs');
+
+  const result = await screenshotSession(webSnapshot('http://localhost:5173/'), outPath, exec, undefined, {
+    browser: '/fake/chrome',
+    viewport: 'phone',
+    capture: async (browser, url, viewport, path) => { seen.push(browser, url, viewport); writeFileSync(path, 'png'); },
+  });
+
+  assert.equal(result.path, outPath);
+  assert.deepEqual(seen, ['/fake/chrome', 'http://localhost:5173/', { width: 390, height: 844, mobile: true, scale: 2 }]);
+});
+
+test('a web capture that writes no file, or throws, is a failure naming the URL', async () => {
+  const outPath = join(mkdtempSync(join(tmpdir(), 'baton-cap-')), 'none.png');
+  await assert.rejects(
+    screenshotSession(webSnapshot('http://localhost:3000'), outPath, undefined, undefined, {
+      browser: '/fake/chrome', capture: async () => {},
+    }),
+    /screenshot of http:\/\/localhost:3000 failed: no image was written/,
+  );
+  await assert.rejects(
+    screenshotSession(webSnapshot('http://localhost:3000'), outPath, undefined, undefined, {
+      browser: '/fake/chrome', capture: async () => { throw new Error('ERR_CONNECTION_REFUSED'); },
+    }),
+    /localhost:3000 failed: ERR_CONNECTION_REFUSED/,
+  );
+});
+
+test('a React Native URL is the Metro bundler, so it is never captured as the app', async () => {
+  const exec: ExecFn = async () => ({ code: 0, stdout: '', stderr: '' });
+  await assert.rejects(
+    screenshotSession(webSnapshot('http://localhost:8081', 'react-native'), undefined, exec, undefined, { browser: '/x' }),
+    /screenshots need/,
+  );
+});
+
+test('a Flutter web device id is not mistaken for an Android serial', async () => {
+  const outPath = join(mkdtempSync(join(tmpdir(), 'baton-cap-')), 'fw.png');
+  const { writeFileSync } = await import('node:fs');
+  let captured = '';
+  const snap = { ...webSnapshot('http://localhost:55555', 'flutter'), target: 'chrome' };
+  await screenshotSession(snap, outPath, undefined, undefined, {
+    browser: '/fake/chrome', capture: async (_b, url, _v, path) => { captured = url; writeFileSync(path, 'png'); },
+  });
+  assert.equal(captured, 'http://localhost:55555');
+});
+
+test('viewports: names, WIDTHxHEIGHT, and a clear error for anything else', async () => {
+  const { parseViewport } = await import('../src/daemon/capture.ts');
+  assert.deepEqual(parseViewport(), { width: 1280, height: 800 });
+  assert.deepEqual(parseViewport('Phone'), { width: 390, height: 844 });
+  assert.deepEqual(parseViewport('1440x900'), { width: 1440, height: 900 });
+  assert.throws(() => parseViewport('huge'), /viewport must be/);
+  const { webViewport } = await import('../src/daemon/capture.ts');
+  assert.deepEqual(webViewport('desktop'), { width: 1280, height: 800, mobile: false, scale: 1 });
+  assert.deepEqual(webViewport('1440x900'), { width: 1440, height: 900, mobile: false, scale: 1 });
+  assert.equal(webViewport('tablet').mobile, true);
+});
+
+test('findBrowser honours BATON_CHROME and otherwise searches PATH', async () => {
+  const { findBrowser } = await import('../src/daemon/capture.ts');
+  assert.equal(findBrowser({ BATON_CHROME: '/opt/my/chrome' }, 'linux'), '/opt/my/chrome');
+  const dir = mkdtempSync(join(tmpdir(), 'baton-path-'));
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(join(dir, 'chromium'), '');
+  assert.equal(findBrowser({ PATH: dir }, 'linux'), join(dir, 'chromium'));
+  assert.equal(findBrowser({ PATH: mkdtempSync(join(tmpdir(), 'baton-empty-')) }, 'linux'), undefined);
 });

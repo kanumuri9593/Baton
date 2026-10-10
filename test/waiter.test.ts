@@ -154,7 +154,7 @@ test('a malformed until condition is refused rather than silently matching every
 
 test('clampTimeout applies the default and the cap', () => {
   assert.equal(clampTimeout(undefined), 60_000);
-  assert.equal(clampTimeout(1_000_000), 300_000);
+  assert.equal(clampTimeout(1_000_000), 900_000);
   assert.equal(clampTimeout(500), 500);
   assert.equal(clampTimeout(-5), 60_000);
 });
