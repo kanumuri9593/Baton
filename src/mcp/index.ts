@@ -435,6 +435,8 @@ server.tool(
   },
 );
 
+const BOOT_ANSWER_MS = Number(process.env.BATON_BOOT_ANSWER_MS ?? 45000);
+
 server.tool(
   'boot_device',
   'Boot an iOS simulator or Android emulator by name (e.g. "iPhone 17 Pro", "Pixel_8") or id, ' +
@@ -461,7 +463,18 @@ server.tool(
           bootables.map((b) => `  ${b.name}`).join('\n'));
       }
       if (match.running) return { id: match.id, name: match.name, alreadyRunning: true };
-      const device = await client.call('boot', { id: match.id, cwd });
+      // An Android emulator can take minutes; many MCP clients give up on a
+      // tool call after 60s. Answer before that and let the boot carry on.
+      const booting = client.call('boot', { id: match.id, cwd });
+      booting.catch(() => undefined);
+      const device = await Promise.race([
+        booting,
+        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), BOOT_ANSWER_MS).unref()),
+      ]);
+      if (!device) {
+        return { id: match.id, name: match.name, booting: true,
+          next: `still starting; call boot_device with name "${match.name}" again until it reports alreadyRunning, then use list_devices for its run id` };
+      }
       return { id: device.id, name: device.name, booted: true };
     }),
 );
