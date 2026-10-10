@@ -53,6 +53,14 @@ export class ProcessSession extends BaseSession {
   protected options: ProcessSessionOptions;
   protected child?: ChildProcess;
   #stopping = false;
+  /**
+   * Whether the child leads its own process group, so stop can signal the
+   * whole tree. Only for real spawns on POSIX: a test double's pid is fake,
+   * and signalling a fake group could hit a real one.
+   */
+  get #ownGroup(): boolean {
+    return process.platform !== 'win32' && !this.options.spawnFn;
+  }
 
   constructor(
     id: string,
@@ -96,6 +104,9 @@ export class ProcessSession extends BaseSession {
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: executable.shell,
+      // Its own process group, so stop reaches what `npm run dev` started
+      // (vite, next...) and not only npm, which leaves them holding the port.
+      detached: this.#ownGroup,
     });
     this.child = child;
     this.pid = child.pid;
@@ -158,12 +169,12 @@ export class ProcessSession extends BaseSession {
         // Windows has no signals; taskkill is the reliable way to end a tree.
         spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore' });
       } else {
-        child.kill('SIGTERM');
+        signalTree(child, 'SIGTERM', this.#ownGroup);
       }
 
       // Escalate if the child ignores a polite request.
       const timer = setTimeout(() => {
-        try { child.kill('SIGKILL'); } catch { /* already gone */ }
+        signalTree(child, 'SIGKILL', this.#ownGroup);
         resolve();
       }, 5000);
       timer.unref?.();
@@ -172,4 +183,19 @@ export class ProcessSession extends BaseSession {
 
     this.setStatus('stopped');
   }
+}
+
+/** Signal the child's whole process group when it leads one, else just the child. */
+function signalTree(
+  child: { pid?: number; kill: (signal?: NodeJS.Signals) => boolean },
+  signal: NodeJS.Signals,
+  group: boolean,
+): void {
+  try {
+    if (group && child.pid) {
+      process.kill(-child.pid, signal);
+      return;
+    }
+  } catch { /* not a group leader, or already gone */ }
+  try { child.kill(signal); } catch { /* already gone */ }
 }

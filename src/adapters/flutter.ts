@@ -47,6 +47,7 @@ export class FlutterSession extends BaseSession {
   appId?: string;
   vmServiceUri?: string;
   devToolsUri?: string;
+  webUrl?: string;
   supportsRestart = true;
 
   #codec = new MachineCodec();
@@ -151,7 +152,7 @@ export class FlutterSession extends BaseSession {
   /** Framework toggles: debug paint, performance overlay, platform override... */
   callServiceExtension(methodName: string, params: Record<string, unknown> = {}) {
     return this.#request('app.callServiceExtension', {
-      appId: this.#requireAppId(), methodName, params,
+      appId: this.#requireAppId(), methodName, params: stringParams(params),
     });
   }
 
@@ -167,7 +168,9 @@ export class FlutterSession extends BaseSession {
   protected extraSnapshot(): Partial<SessionSnapshot> {
     // `vmServiceUri` is what the network inspector attaches to; publishing it on
     // the snapshot is also what tells the daemon a session is worth attaching to.
-    return { target: this.deviceId, devToolsUri: this.devToolsUri, vmServiceUri: this.vmServiceUri };
+    return {
+      target: this.deviceId, devToolsUri: this.devToolsUri, vmServiceUri: this.vmServiceUri, url: this.webUrl,
+    };
   }
 
   #requireAppId(): string {
@@ -213,6 +216,10 @@ export class FlutterSession extends BaseSession {
       case 'app.devTools':
         this.devToolsUri = e.params.uri;
         break;
+      case 'app.webLaunchUrl':
+        // Flutter web: where the app is served, so it can be opened and captured.
+        if (typeof e.params.url === 'string') this.webUrl = e.params.url;
+        break;
       case 'app.progress':
         this.progress = e.params.finished ? undefined : e.params.message;
         break;
@@ -245,4 +252,17 @@ export class FlutterSession extends BaseSession {
     for (const [, p] of this.#pending) p.reject(new Error(message));
     this.#pending.clear();
   }
+}
+
+/**
+ * Flutter's service extensions read every parameter as a string: debugPaint
+ * turns on only for `enabled: "true"`. An agent naturally sends a JSON `true`,
+ * which Flutter reads as "not 'true'" and quietly leaves the flag off.
+ */
+export function stringParams(params: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(params)
+      .filter(([, v]) => v !== undefined && v !== null)
+      .map(([k, v]) => [k, typeof v === 'string' ? v : typeof v === 'object' ? JSON.stringify(v) : String(v)]),
+  );
 }

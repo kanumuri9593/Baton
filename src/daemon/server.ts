@@ -25,6 +25,7 @@ import { LogSink } from './log-sink.ts';
 import { NetworkStore } from '../core/network-store.ts';
 import { NetworkService, type CreateVmClient } from './network.ts';
 import { screenshotSession } from './capture.ts';
+import { checkChange } from './check.ts';
 import { waitForSession, type WaitableSession } from './waiter.ts';
 import {
   getProof, listProofs, runProof, type ProofHost,
@@ -694,13 +695,42 @@ export class LaunchDaemon {
       case 'screenshot': {
         const params = p as RpcMethods['screenshot']['params'];
         const session = this.#require(params.session);
-        if (!session.capabilities.has('screenshot' as Capability)) {
-          throw new Error(`${session.kind} sessions have no screenshot capability`);
-        }
         const snapshot = session.snapshot();
+        if (!session.capabilities.has('screenshot' as Capability) && !snapshot.url) {
+          throw new Error(`${session.kind} sessions have no screenshot capability and no URL yet`);
+        }
         return screenshotSession(
-          snapshot, params.out, undefined, this.#devicePlatform(snapshot),
+          snapshot, params.out, undefined, this.#devicePlatform(snapshot), { viewport: params.viewport },
         ) satisfies Promise<RpcMethods['screenshot']['result']>;
+      }
+
+      case 'check': {
+        const params = p as RpcMethods['check']['params'];
+        const session = this.#require(params.session);
+        return checkChange(session, params, {
+          apply: async (s, action) => {
+            const [result] = await this.handle({
+              method: action, params: { session: s.id, reason: 'check' },
+            }) as RpcMethods['reload']['result'];
+            return result;
+          },
+          waitReady: async (s, timeoutMs) => {
+            const waitable = s as unknown as WaitableSession;
+            await waitForSession(waitable, 'running', timeoutMs, recentErrors);
+            if (s.capabilities.has('url' as Capability)) {
+              await waitForSession(waitable, 'url', timeoutMs, recentErrors);
+            }
+          },
+          network: (s, since) => this.network.store.list(s.id, { since, tail: 500 }),
+          screenshot: async (s, opts) => {
+            const snapshot = s.snapshot();
+            return screenshotSession(
+              snapshot, opts.out, undefined, this.#devicePlatform(snapshot), { viewport: opts.viewport },
+            );
+          },
+          sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+          now: () => Date.now(),
+        }) satisfies Promise<RpcMethods['check']['result']>;
       }
 
       case 'wait': {

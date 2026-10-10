@@ -1,7 +1,7 @@
 {
   "name": "baton",
   "displayName": "Baton",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Run, hot-reload, screenshot and debug Flutter, web, React Native and native iOS/Android apps from Claude Code. Claude presses the same Run / Reload / Stop buttons you do.",
   "author": {
     "name": "Yeswanth Varma Kanumuri",
