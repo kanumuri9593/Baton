@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.9 — 2026-10-10
+
+Built for the loop a coding agent actually runs: edit, check, fix, check again.
+
+- New `check_change` tool (and `baton check <session>`). One call applies an
+  edit (hot reload for Flutter, HMR for web and React Native, restart for
+  native and plain processes) and answers OK / NOT OK with only what is new
+  since the call: the reload result, error lines, failed requests and a
+  screenshot. It replaces five round trips per edit.
+- Web screenshots. `screenshot` and `check_change` capture Vite, Next.js,
+  Flutter web and any session with a URL in a throwaway headless Chrome,
+  Edge or Brave (or `BATON_CHROME`). `viewport` takes `phone` (a true
+  390×844 mobile layout, not Chrome's 500px minimum), `tablet`, `desktop`
+  or `WIDTHxHEIGHT`. The page's console errors, uncaught exceptions and
+  failed requests come back with the image, so an edit that leaves a blank
+  page is reported, not passed. Web `run_proof` cells get screenshots too.
+- New `boot_device` tool: boot an iOS simulator or Android emulator by name
+  over MCP. With no name it lists what can boot.
+- `wait_for` accepts up to 15 minutes (was 5), enough for a first native build.
+- Every tool carries MCP hints (`readOnlyHint` / `destructiveHint`), so
+  clients that honour them can stop asking before the 15 read-only tools.
+- Stopping or restarting a web dev server now ends the whole process tree.
+  Before, stopping `npm run dev` left Vite or Next.js running and holding
+  the port, so the next restart failed with "port already in use".
+- `set_debug_flag` sends parameter values as the strings Flutter's service
+  extensions read (`enabled: "true"`).
+- `npx -y baton-run` now starts the MCP server directly, and the package
+  carries an MCP Registry listing (`server.json`, `mcpName`).
+- New [docs/clients.md](docs/clients.md): copy-paste setup for Claude Code,
+  Codex, Cursor, VS Code, Gemini CLI, Windsurf and Claude Desktop, plus a
+  rules snippet that teaches any agent the loop.
+
 ## 0.2.8 — 2026-10-10
 
 - The Claude Code plugin now shows Baton above the prompt. A band lists every

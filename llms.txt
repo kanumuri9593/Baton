@@ -1,14 +1,16 @@
 # Baton
 
-> Local run control plane and MCP server for launching, hot-reloading, inspecting, and capturing evidence across Flutter and web apps.
+> Local run control plane and MCP server (27 tools) for launching, hot-reloading, screenshotting and checking Flutter, web, React Native and native iOS/Android apps from any coding agent.
 
 Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `baton` and `baton app`. Any MCP-compatible agent uses `baton-mcp` or the same CLI.
 
 ## Install
 
-- GitHub: `npm install -g github:kanumuri9593/Baton#v0.2.8`
+- GitHub: `npm install -g github:kanumuri9593/Baton#v0.2.9`
 - npm: `npm install -g baton-run`
-- MCP: command `baton-mcp`
+- MCP: `npx -y baton-run@0.2.9` (or `baton-mcp` after a global install). Per-client setup: https://github.com/kanumuri9593/Baton/blob/main/docs/clients.md
+- After every edit, agents call `check_change`: one call applies the change and returns new errors (including the browser console for web apps), failed requests and a screenshot, with an OK / NOT OK verdict.
+- Claude Code plugin: `/plugin marketplace add kanumuri9593/Baton` then `/plugin install baton@baton`
 - Control panel: `baton app` (`baton hud` is a compatibility alias)
 - Node.js 24+, MIT license, macOS / Linux / Windows
 - Repo: https://github.com/kanumuri9593/Baton

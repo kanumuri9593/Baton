@@ -13,7 +13,8 @@ export type WaitResult = {
 };
 
 const DEFAULT_TIMEOUT_MS = 60_000;
-const MAX_TIMEOUT_MS = 300_000;
+// Long enough for a first native iOS or Android build, which can take ten minutes.
+const MAX_TIMEOUT_MS = 900_000;
 
 /** Applies the RPC's default and cap, so a caller cannot block the daemon forever. */
 export function clampTimeout(timeoutMs?: number): number {

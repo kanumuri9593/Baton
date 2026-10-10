@@ -22,6 +22,14 @@ const pkg = JSON.parse(
 ) as { version: string };
 const server = new McpServer({ name: 'baton', version: pkg.version });
 
+/**
+ * MCP tool hints, so a client can auto-approve what only looks and warn before
+ * what throws something away. Nothing here reaches beyond this machine.
+ */
+const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const;
+const ACTS = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
+const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
+
 let client: DaemonClient | undefined;
 async function daemon(): Promise<DaemonClient> {
   if (!client) {
@@ -51,6 +59,7 @@ server.tool(
   'diagnose',
   'Search bounded log and network evidence across projects. Defaults to errors only and 20 findings. Pass a trace ID and errorsOnly=false to follow a request across Node services. Use exact session IDs to limit scope.',
   diagnoseSchema.shape,
+  READ_ONLY,
   async (params) => guarded(async () => (await daemon()).call('diagnose', params)),
 );
 
@@ -58,6 +67,7 @@ server.tool(
   'run_workflow',
   'Launch up to eight project targets in dependency order and wait for each to become ready, in one call. Stops launching dependents on failure. Returns compact session IDs, URLs and errors; retains sessions for debugging. Use browser/device tools next to validate the actual flow. Paths must be absolute.',
   workflowSchema.shape,
+  ACTS,
   async (plan) => guarded(async () => (await daemon()).call('workflowRun', plan)),
 );
 
@@ -65,6 +75,7 @@ server.tool(
   'inspect_project',
   'Read fresh launch sources, configuration problems, nested projects and guidance file paths. Does not run commands or expose environment values. Use before choosing an environment, checkout and device; review screenshot evidence rather than treating capture as visual approval.',
   { cwd: z.string().optional() },
+  READ_ONLY,
   async ({ cwd }) => guarded(async () => (await daemon()).call('inspectProject', { cwd })),
 );
 
@@ -72,6 +83,7 @@ server.tool(
   'list_targets',
   'List everything runnable in a project: launch.json configs, package.json dev scripts, Flutter entrypoints.',
   { cwd: z.string().optional().describe('Project directory. Defaults to the daemon working directory.') },
+  READ_ONLY,
   async ({ cwd }) => guarded(async () => (await daemon()).call('targets', { cwd })),
 );
 
@@ -79,6 +91,7 @@ server.tool(
   'list_sessions',
   'List running sessions with their status, capabilities, URLs and device.',
   {},
+  READ_ONLY,
   async () => guarded(async () => (await daemon()).call('sessions')),
 );
 
@@ -86,6 +99,7 @@ server.tool(
   'list_checkouts',
   'List git checkouts this project can run from: This checkout, linked worktrees, local branches, remotes.',
   { cwd: z.string().optional().describe('Project directory. Defaults to the daemon working directory.') },
+  READ_ONLY,
   async ({ cwd }) => guarded(async () => (await daemon()).call('checkouts', { cwd, fetch: true })),
 );
 
@@ -99,6 +113,7 @@ server.tool(
     branch: z.string().optional().describe('Git branch or remote ref to run from a Baton-owned copy. Mutually exclusive with checkout.'),
     checkout: z.string().optional().describe('Path to an existing worktree to attach. Mutually exclusive with branch.'),
   },
+  ACTS,
   async ({ target, cwd, deviceId, branch, checkout }) =>
     guarded(async () => (await daemon()).call('run', { target, cwd, deviceId, branch, checkout })),
 );
@@ -111,6 +126,7 @@ server.tool(
     all: z.boolean().optional().describe('Reload every running session.'),
     reason: z.string().optional(),
   },
+  ACTS,
   async ({ session, all, reason }) =>
     guarded(async () => (await daemon()).call('reload', { session, all, reason: reason ?? 'agent' })),
 );
@@ -123,6 +139,7 @@ server.tool(
     all: z.boolean().optional(),
     reason: z.string().optional(),
   },
+  ACTS,
   async ({ session, all, reason }) =>
     guarded(async () => (await daemon()).call('restart', { session, all, reason: reason ?? 'agent' })),
 );
@@ -131,6 +148,7 @@ server.tool(
   'stop_session',
   'Stop one session, or every running session with all=true.',
   { session: z.string().optional(), all: z.boolean().optional() },
+  DESTRUCTIVE,
   async ({ session, all }) => guarded(async () => (await daemon()).call('stop', { session, all })),
 );
 
@@ -138,6 +156,7 @@ server.tool(
   'forget_session',
   'Remove stopped sessions from the list. Running sessions must be stopped first. Use all=true to clear every stopped session.',
   { session: z.string().optional(), all: z.boolean().optional() },
+  DESTRUCTIVE,
   async ({ session, all }) =>
     guarded(async () => {
       const result = await (await daemon()).call('forget', { session, all });
@@ -156,6 +175,7 @@ server.tool(
     tail: z.number().optional().describe('How many lines (default 200).'),
     filter: z.string().optional().describe('Case-insensitive regular expression.'),
   },
+  READ_ONLY,
   async ({ session, tail, filter }) =>
     guarded(async () => {
       const lines = await (await daemon()).call('logs', { session, tail, filter });
@@ -172,6 +192,7 @@ server.tool(
     cwd: z.string().optional().describe('Project directory; limits the list to that project.'),
     limit: z.number().optional().describe('Maximum runs to return (default 50).'),
   },
+  READ_ONLY,
   async ({ cwd, limit }) =>
     guarded(async () => {
       const runs = await (await daemon()).call('logHistory', { root: cwd, limit });
@@ -208,6 +229,7 @@ server.tool(
     tail: z.number().optional().describe('How many requests (default 200).'),
     filter: z.string().optional().describe('Case-insensitive regular expression over "METHOD uri".'),
   },
+  READ_ONLY,
   async ({ session, tail, filter }) =>
     guarded(async () => {
       const requests = await (await daemon()).call('network', { session, tail, filter });
@@ -233,6 +255,7 @@ server.tool(
     id: z.string().describe('Request id from list_network_requests (the short number works too).'),
     includeBodies: z.boolean().optional().describe('Include request and response bodies (capped at 256 KB).'),
   },
+  READ_ONLY,
   async ({ session, id, includeBodies }) =>
     guarded(async () => {
       const detail = await (await daemon()).call('networkDetail', {
@@ -249,6 +272,7 @@ server.tool(
   'Forget every captured request for a session, in the daemon and in the app itself. ' +
     'Useful before reproducing one specific call.',
   { session: z.string() },
+  DESTRUCTIVE,
   async ({ session }) => guarded(async () => (await daemon()).call('networkClear', { session })),
 );
 
@@ -265,6 +289,7 @@ server.tool(
     'configurations it defines and any pre-flight problems with them. Returns file: null when the ' +
     'project has none; a file that does not parse still returns its text, with the parse errors.',
   { cwd: z.string().optional().describe('Project directory. Defaults to the daemon\'s current project.') },
+  READ_ONLY,
   async ({ cwd }) =>
     guarded(async () => {
       const view = await (await daemon()).call('readLaunchConfig', { root: cwd });
@@ -294,6 +319,7 @@ server.tool(
       .describe('Which convention to create for a project that has neither. A project that already ' +
         'has a launch.json is written back to that same file.'),
   },
+  DESTRUCTIVE,
   async ({ cwd, text, file }) =>
     guarded(async () => {
       const result = await (await daemon()).call('writeLaunchConfig', { root: cwd, text, file });
@@ -307,43 +333,133 @@ server.tool(
 
 server.tool(
   'list_devices',
-  'List connected devices, simulators and emulators available to Flutter.',
+  'List connected devices, simulators and emulators available to Flutter. Use boot_device to start one that is not running.',
   { cwd: z.string().optional() },
+  READ_ONLY,
   async ({ cwd }) => guarded(async () => (await daemon()).call('devices', { cwd })),
 );
 
 server.tool(
   'set_debug_flag',
-  'Toggle a framework debug flag on a running Flutter session, e.g. ext.flutter.debugPaint or ext.flutter.timeDilation.',
+  'Toggle a framework debug flag on a running Flutter session, e.g. ext.flutter.debugPaint with {enabled: true} or ext.flutter.timeDilation with {timeDilation: 5}. Values are sent as the strings Flutter expects.',
   {
     session: z.string(),
     method: z.string().describe('Service extension name, e.g. ext.flutter.debugPaint'),
     params: z.record(z.string(), z.any()).optional(),
   },
+  ACTS,
   async ({ session, method, params }) =>
     guarded(async () => (await daemon()).call('serviceExtension', { session, method, params })),
 );
 
+const VIEWPORT = z.string().optional().describe(
+  'Web sessions only: phone (390x844), tablet (820x1180), desktop (1280x800, the default) or WIDTHxHEIGHT.',
+);
+
+/** The PNG itself, so the model can look at it, plus where it was saved. */
+function imageResult(path: string, caption: string) {
+  return {
+    content: [
+      { type: 'image' as const, data: readFileSync(path).toString('base64'), mimeType: 'image/png' },
+      { type: 'text' as const, text: `${caption}\nsaved: ${path}` },
+    ],
+  };
+}
+
 server.tool(
   'screenshot',
   'Capture the screen of a running session so the visual result of a change can be checked. ' +
-    'Works for iOS simulators and Android devices.',
+    'iOS simulators and Android devices capture the device screen. Web sessions (Vite, Next.js, ' +
+    'Flutter web...) load their URL in a headless Chrome, Edge or Brave at the viewport given, and ' +
+    'also report the page\'s console errors and failed requests. ' +
+    'A capture proves an image was written, not that the UI is right: look at it.',
   {
     session: z.string(),
     out: z.string().optional().describe('Where to save the PNG. Defaults to a path under the daemon\'s state directory.'),
+    viewport: VIEWPORT,
   },
-  async ({ session, out }) => {
+  READ_ONLY,
+  async ({ session, out, viewport }) => {
     try {
-      const { path } = await (await daemon()).call('screenshot', { session, out });
-      return {
-        content: [
-          { type: 'image' as const, data: readFileSync(path).toString('base64'), mimeType: 'image/png' },
-        ],
-      };
+      const shot = await (await daemon()).call('screenshot', { session, out, viewport });
+      const lines = [`screenshot of ${session}`];
+      if (shot.consoleErrors?.length) lines.push('browser console errors:', ...shot.consoleErrors.map((e) => `  ${e}`));
+      if (shot.failedRequests?.length) lines.push('failed requests:', ...shot.failedRequests.map((e) => `  ${e}`));
+      return imageResult(shot.path, lines.join('\n'));
     } catch (err) {
       return fail(`screenshot failed: ${(err as Error).message}`);
     }
   },
+);
+
+server.tool(
+  'check_change',
+  'After editing code: apply the change and return the evidence in one call, instead of ' +
+    'hot_reload + wait_for + read_logs + list_network_requests + screenshot. action=auto hot reloads ' +
+    'Flutter, leaves web and React Native to HMR / Fast Refresh, and restarts everything else. ' +
+    'Answers ok/not ok with only what is new since the call began: reload result, error lines ' +
+    '(for web, including the browser console), failed requests, and a screenshot. Prefer this as ' +
+    'the default step after every edit.',
+  {
+    session: z.string(),
+    action: z.enum(['auto', 'reload', 'restart', 'none']).optional().describe('Default auto.'),
+    settleMs: z.number().optional().describe('Wait after the action before collecting evidence (default 1500).'),
+    screenshot: z.boolean().optional().describe('Default true.'),
+    viewport: VIEWPORT,
+  },
+  ACTS,
+  async ({ session, action, settleMs, screenshot, viewport }) => {
+    try {
+      const r = await (await daemon()).call('check', { session, action, settleMs, screenshot, viewport });
+      const lines = [
+        `${r.ok ? 'OK' : 'NOT OK'}  ${r.session}  action=${r.action}  status=${r.status}  ${r.elapsedMs}ms`,
+      ];
+      if (r.operation && r.operation.code !== 0) {
+        lines.push(`${r.action} failed: ${r.operation.message ?? `code ${r.operation.code}`}`);
+        for (const e of r.operation.errors ?? []) lines.push(`  ${e}`);
+      }
+      if (r.newErrors.length) lines.push(`new errors (${r.newErrors.length}):`, ...r.newErrors.map((e) => `  ${e}`));
+      if (r.failedRequests.length) {
+        lines.push(`failed requests (${r.failedRequests.length}):`, ...r.failedRequests.map((e) => `  ${e}`));
+      }
+      if (r.screenshotError) lines.push(`screenshot: ${r.screenshotError}`);
+      if (r.screenshotPath) return imageResult(r.screenshotPath, lines.join('\n'));
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }], isError: !r.ok || undefined };
+    } catch (err) {
+      return fail((err as Error).message);
+    }
+  },
+);
+
+server.tool(
+  'boot_device',
+  'Boot an iOS simulator or Android emulator by name (e.g. "iPhone 17 Pro", "Pixel_8") or id, ' +
+    'and wait until it is up. Returns the device id to pass to run_target as deviceId. Call with no ' +
+    'name to list what can be booted.',
+  {
+    name: z.string().optional().describe('Device name, an unambiguous part of it, or its id.'),
+    cwd: z.string().optional(),
+  },
+  ACTS,
+  async ({ name, cwd }) =>
+    guarded(async () => {
+      const client = await daemon();
+      const bootables = await client.call('bootables', { cwd });
+      if (!name) {
+        if (!bootables.length) return '(nothing to boot: no simulators or emulators found)';
+        return bootables.map((b) => `${b.running ? '●' : '○'}  ${b.name}  ${b.id}`).join('\n');
+      }
+      const lower = name.toLowerCase();
+      const match = bootables.find((b) => b.name === name || b.id === name)
+        ?? bootables.find((b) => b.name.toLowerCase().includes(lower));
+      if (!match) {
+        throw new Error(`no bootable device matching "${name}". Available:\n` +
+          bootables.map((b) => `  ${b.name}`).join('\n'));
+      }
+      if (match.running) return { id: match.id, name: match.name, alreadyRunning: true };
+      const device = await client.call('boot', { id: match.id, cwd });
+      return { id: device.id, name: device.name, booted: true };
+    }),
 );
 
 server.tool(
@@ -357,8 +473,9 @@ server.tool(
         z.object({ log: z.string().describe('Case-insensitive regular expression matched against new log lines.') }),
       ])
       .default('running'),
-    timeoutMs: z.number().optional().describe('Default 60000, capped at 300000.'),
+    timeoutMs: z.number().optional().describe('Default 60000, capped at 900000 (15 minutes, enough for a first native build).'),
   },
+  READ_ONLY,
   async ({ session, until, timeoutMs }) =>
     guarded(async () => (await daemon()).call('wait', { session, until, timeoutMs })),
 );
@@ -367,6 +484,7 @@ server.tool(
   'session_summary',
   'Cheap structured overview -- call this before deciding what to do next.',
   { session: z.string() },
+  READ_ONLY,
   async ({ session }) => guarded(async () => (await daemon()).call('summary', { session })),
 );
 
@@ -390,6 +508,7 @@ server.tool(
     settleMs: z.number().optional().describe('Milliseconds to wait after navigation before screenshot (default 2000).'),
     timeoutMs: z.number().optional().describe('Per-cell running timeout (default 120000).'),
   },
+  ACTS,
   async (params) =>
     guarded(async () => {
       const checks = params.checks?.split(',').map((c) => c.trim()).filter(Boolean);
@@ -426,6 +545,7 @@ server.tool(
   'list_proofs',
   'List past proof bundles, newest first.',
   { limit: z.number().optional().describe('Maximum entries (default 20).') },
+  READ_ONLY,
   async ({ limit }) =>
     guarded(async () => {
       const proofs = await (await daemon()).call('proofList', { limit: limit ?? 20 });

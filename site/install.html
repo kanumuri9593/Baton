@@ -44,19 +44,19 @@
       <div class="code">
         <header>
           <span>Current public path</span>
-          <button class="copy-btn" type="button" data-copy="npm install -g github:kanumuri9593/Baton#v0.2.8">Copy</button>
+          <button class="copy-btn" type="button" data-copy="npm install -g github:kanumuri9593/Baton#v0.2.9">Copy</button>
         </header>
-        <pre>npm install -g github:kanumuri9593/Baton#v0.2.8
+        <pre>npm install -g github:kanumuri9593/Baton#v0.2.9
 baton app</pre>
       </div>
       <div class="code" style="margin-top:14px">
         <header>
           <span>Pin a release</span>
-          <button class="copy-btn" type="button" data-copy="npm install -g github:kanumuri9593/Baton#v0.2.8">Copy</button>
+          <button class="copy-btn" type="button" data-copy="npm install -g github:kanumuri9593/Baton#v0.2.9">Copy</button>
         </header>
-        <pre>npm install -g github:kanumuri9593/Baton#v0.2.8</pre>
+        <pre>npm install -g github:kanumuri9593/Baton#v0.2.9</pre>
       </div>
-      <p class="footnote">On npm: <code>npm install -g baton-run</code>. One-shot without a global install: <code>npx -y --package=github:kanumuri9593/Baton#v0.2.8 baton list</code>.</p>
+      <p class="footnote">On npm: <code>npm install -g baton-run</code>. One-shot without a global install: <code>npx -y --package=github:kanumuri9593/Baton#v0.2.9 baton list</code>.</p>
     </section>
 
     <section class="section">
@@ -78,19 +78,20 @@ baton app</pre>
         <div class="code">
           <header>
             <span>npx</span>
-            <button class="copy-btn" type="button" data-copy='{"mcpServers":{"baton":{"command":"npx","args":["-y","--package=github:kanumuri9593/Baton#v0.2.8","baton-mcp"]}}}'>Copy</button>
+            <button class="copy-btn" type="button" data-copy='{"mcpServers":{"baton":{"command":"npx","args":["-y","--package=github:kanumuri9593/Baton#v0.2.9","baton-mcp"]}}}'>Copy</button>
           </header>
           <pre>{
   "mcpServers": {
     "baton": {
       "command": "npx",
-      "args": ["-y", "--package=github:kanumuri9593/Baton#v0.2.8", "baton-mcp"]
+      "args": ["-y", "--package=github:kanumuri9593/Baton#v0.2.9", "baton-mcp"]
     }
   }
 }</pre>
         </div>
       </div>
-      <p class="footnote">MCP cannot boot simulators yet. Use the CLI <code>baton boot "iPhone 17 Pro"</code>, or run against a device that is already up. <code>run_target</code> waits only briefly for a device.</p>
+      <p class="footnote">Claude Code: <code>/plugin marketplace add kanumuri9593/Baton</code> then <code>/plugin install baton@baton</code>. Codex, Cursor, VS Code, Gemini CLI and Windsurf: <a href="https://github.com/kanumuri9593/Baton/blob/main/docs/clients.md">copy-paste setup for each →</a></p>
+      <p class="footnote">After every edit, have your agent call <code>check_change</code>: one call returns new errors (including the browser console for web apps), failed requests and a screenshot. No simulator up? <code>boot_device</code> starts one by name.</p>
     </section>
 
     <section class="section">
@@ -115,10 +116,10 @@ baton app</pre>
       <div class="code">
         <header>
           <span>Repair</span>
-          <button class="copy-btn" type="button" data-copy="npm uninstall -g baton-run && npm install -g github:kanumuri9593/Baton#v0.2.8">Copy</button>
+          <button class="copy-btn" type="button" data-copy="npm uninstall -g baton-run && npm install -g github:kanumuri9593/Baton#v0.2.9">Copy</button>
         </header>
         <pre>npm uninstall -g baton-run
-npm install -g github:kanumuri9593/Baton#v0.2.8</pre>
+npm install -g github:kanumuri9593/Baton#v0.2.9</pre>
       </div>
       <p class="footnote">Do not put secrets in launch files that will be committed. Do not expose the daemon port.</p>
     </section>

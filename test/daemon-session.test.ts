@@ -182,7 +182,7 @@ test('service extensions drive the toolbar overflow options', () => {
   const sent = JSON.parse(written.at(-1)!)[0];
   assert.equal(sent.method, 'app.callServiceExtension');
   assert.equal(sent.params.methodName, 'ext.flutter.debugPaint');
-  assert.deepEqual(sent.params.params, { enabled: true });
+  assert.deepEqual(sent.params.params, { enabled: 'true' });
 });
 
 test('config.env is forwarded to the injected spawn seam', () => {

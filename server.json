@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.kanumuri9593/baton",
+  "title": "Baton",
+  "description": "Run, hot-reload and screenshot Flutter, web, React Native and native iOS/Android apps.",
+  "repository": {
+    "url": "https://github.com/kanumuri9593/Baton",
+    "source": "github"
+  },
+  "websiteUrl": "https://kanumuri9593.github.io/Baton/",
+  "version": "0.2.9",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "baton-run",
+      "version": "0.2.9",
+      "runtimeHint": "npx",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}
