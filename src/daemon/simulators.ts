@@ -42,14 +42,45 @@ export function listSimulators(exec: Exec = defaultExec): Bootable[] {
   // Real simulator discovery is macOS-only. Keep injected executors usable on
   // every platform so recorded simctl output can be tested in CI.
   if (process.platform !== 'darwin' && exec === defaultExec) return [];
-
-  let parsed: any;
   try {
-    parsed = JSON.parse(exec('xcrun', ['simctl', 'list', 'devices', 'available', '-j']));
+    return parseSimulators(exec('xcrun', ['simctl', 'list', 'devices', 'available', '-j']));
   } catch {
     return []; // no Xcode command line tools; Android and web still work
   }
+}
 
+/**
+ * The same list without blocking: `simctl list` can take seconds, and the
+ * daemon answers every other client on this thread meanwhile.
+ */
+export function listSimulatorsAsync(timeoutMs = 15000): Promise<Bootable[]> {
+  if (process.platform !== 'darwin') return Promise.resolve([]);
+  return new Promise((resolve) => {
+    let out = '';
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        resolve(parseSimulators(out));
+      } catch {
+        resolve([]);
+      }
+    };
+    const child = spawn('xcrun', ['simctl', 'list', 'devices', 'available', '-j'], { stdio: ['ignore', 'pipe', 'ignore'] });
+    child.stdout!.setEncoding('utf8').on('data', (chunk: string) => { out += chunk; });
+    child.on('error', finish);
+    child.on('close', finish);
+    // simctl can start CoreSimulator services that inherit its stdout, so the
+    // pipe may stay open after simctl itself is done: settle on exit too.
+    child.on('exit', () => setTimeout(finish, 200));
+    const timer = setTimeout(() => { child.kill(); finish(); }, timeoutMs);
+  });
+}
+
+function parseSimulators(json: string): Bootable[] {
+  const parsed: any = JSON.parse(json);
   const bootables: Bootable[] = [];
   for (const [runtime, devices] of Object.entries(parsed.devices ?? {})) {
     for (const device of devices as any[]) {

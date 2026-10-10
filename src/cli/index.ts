@@ -35,7 +35,11 @@ Usage
       --clear                    forget what has been captured
   baton devices [--all]          connected devices; --all adds bootable ones
   baton boot <device>            start a simulator or emulator
-  baton screenshot <session> [-o path]  capture the screen (iOS sim / Android)
+  baton screenshot <session> [-o path] [--viewport phone|tablet|desktop|WxH]
+                                 capture the screen (iOS sim, Android, or a web URL)
+  baton check <session> [--action auto|reload|restart|none] [--viewport phone]
+                                 apply an edit, then report new errors, failed
+                                 requests and a screenshot in one step
   baton wait <session> [--until running|stopped|url|log:<regex>] [--timeout ms]
                                  block until a session reaches a state
   baton status <session>         cheap structured overview: status, uptime,
@@ -60,6 +64,7 @@ Examples
   baton run dev --checkout ~/wt/agent-a
   baton run dev                  # matches "npm run dev"
   baton reload --all
+  baton check webapp --viewport phone  # did my edit break anything?
   baton boot "iPhone 17 Pro Max" # boot it, then run on it
   baton network mclane360 --filter 'POST|4\\d\\d'
   baton add ~/code/storefront    # watch three projects in one control panel
@@ -169,6 +174,8 @@ function parseArgs(argv: string[]) {
     else if (arg === '--allow') flags.allow = argv[++i];
     else if (arg === '--settle') flags.settle = argv[++i];
     else if (arg === '--keep') flags.keep = true;
+    else if (arg === '--viewport') flags.viewport = argv[++i];
+    else if (arg === '--action') flags.action = argv[++i];
     else if (arg.startsWith('-')) flags[arg.replace(/^-+/, '')] = true;
     else positional.push(arg);
   }
@@ -485,9 +492,41 @@ async function main() {
         const session = positional.join(' ');
         if (!session) throw new Error('which session? try `baton ps`');
         const result = await client.call('screenshot', {
-          session, out: typeof flags.out === 'string' ? flags.out : undefined,
+          session,
+          out: typeof flags.out === 'string' ? flags.out : undefined,
+          viewport: typeof flags.viewport === 'string' ? flags.viewport : undefined,
         });
         console.log(`${green('✓')} ${result.path}`);
+        break;
+      }
+
+      case 'check': {
+        const session = positional.join(' ');
+        if (!session) throw new Error('which session? try `baton ps`');
+        const action = typeof flags.action === 'string' ? flags.action : undefined;
+        if (action && !['auto', 'reload', 'restart', 'none'].includes(action)) {
+          throw new Error('--action must be auto, reload, restart or none');
+        }
+        const r = await client.call('check', {
+          session,
+          action: action as 'auto' | 'reload' | 'restart' | 'none' | undefined,
+          viewport: typeof flags.viewport === 'string' ? flags.viewport : undefined,
+          out: typeof flags.out === 'string' ? flags.out : undefined,
+        });
+        if (flags.json) {
+          console.log(JSON.stringify(r, null, 2));
+        } else {
+          console.log(`${r.ok ? green('✓ ok') : c('31', '✗ not ok')}  ${bold(r.session)}  ${dim(`${r.action} · ${r.status} · ${r.elapsedMs}ms`)}`);
+          if (r.operation && r.operation.code !== 0) {
+            console.log(`  ${r.action} failed: ${r.operation.message ?? `code ${r.operation.code}`}`);
+            for (const e of r.operation.errors ?? []) console.log(dim(`    ${e}`));
+          }
+          for (const e of r.newErrors) console.log(`  ${c('31', 'error')} ${e}`);
+          for (const e of r.failedRequests) console.log(`  ${c('31', 'request')} ${e}`);
+          if (r.screenshotPath) console.log(`  ${dim('screenshot')} ${r.screenshotPath}`);
+          if (r.screenshotError) console.log(`  ${dim('screenshot')} ${r.screenshotError}`);
+        }
+        if (!r.ok) process.exitCode = 1;
         break;
       }
 

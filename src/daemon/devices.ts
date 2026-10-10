@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { MachineCodec, encodeRequest, type DaemonEvent, type DaemonResponse } from './protocol.ts';
 import { resolveFlutter } from '../config/flutter.ts';
 import {
-  listSimulators, bootSimulator, mergeBootables,
+  listSimulatorsAsync, bootSimulator, mergeBootables,
   type Bootable, type FlutterEmulator,
 } from './simulators.ts';
 
@@ -103,14 +103,15 @@ export class DeviceRegistry {
    * while the Flutter daemon knows the Android AVDs and works on every platform.
    */
   async bootables(): Promise<Bootable[]> {
-    let emulators: FlutterEmulator[] = [];
-    try {
-      emulators = (await this.#request<FlutterEmulator[]>('emulator.getEmulators', {}, 15000)) ?? [];
-    } catch {
-      // No Flutter SDK reachable, or no Android tooling: simulators still list.
-    }
+    const [simulators, emulators] = await Promise.all([
+      listSimulatorsAsync(),
+      this.#request<FlutterEmulator[]>('emulator.getEmulators', {}, 15000)
+        .then((list) => list ?? [])
+        // No Flutter SDK reachable, or no Android tooling: simulators still list.
+        .catch((): FlutterEmulator[] => []),
+    ]);
 
-    return mergeBootables(listSimulators(), emulators, {
+    return mergeBootables(simulators, emulators, {
       deviceIds: new Set(this.list().map((d) => d.id)),
       emulatorIds: new Set(this.list().map((d) => d.emulatorId).filter(Boolean) as string[]),
     });

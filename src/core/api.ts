@@ -13,6 +13,8 @@ import type {
   LogLine, NetworkRequestDetail, NetworkRequestSnapshot, OperationResult, SessionSnapshot, SessionStatus,
 } from './types.ts';
 import type { ProjectInspection } from '../config/guide.ts';
+import type { CheckParams, CheckResult } from '../daemon/check.ts';
+import type { ScreenshotResult } from '../daemon/capture.ts';
 import type { Target } from '../config/detect.ts';
 import type { ValidationIssue } from '../config/validate.ts';
 import type { LaunchConfig } from '../config/loader.ts';
@@ -280,8 +282,12 @@ export type RpcMethods = {
   };
   /** Capture the screen of a running session. iOS simulators and Android devices only. */
   screenshot: {
-    params: { session: string; out?: string };
-    result: { path: string };
+    params: { session: string; out?: string; viewport?: string };
+    result: ScreenshotResult;
+  };
+  check: {
+    params: CheckParams;
+    result: CheckResult;
   };
   /**
    * Block until a session reaches a state, instead of polling `logs`.

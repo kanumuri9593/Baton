@@ -764,7 +764,7 @@ export async function runProof(host: ProofHost, params: ProofRunParams): Promise
       if (settleMs > 0) await sleep(settleMs);
 
       screenshotPath = join(cellDir, 'screenshot.png');
-      if (checks.includes('screenshot') && session.capabilities.has('screenshot')) {
+      if (checks.includes('screenshot') && (session.capabilities.has('screenshot') || session.snapshot?.().url)) {
         try {
           await host.screenshot(session, screenshotPath);
           cell.screenshotPath = screenshotPath;

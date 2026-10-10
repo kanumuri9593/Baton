@@ -1,13 +1,15 @@
 {
   "name": "baton-run",
-  "version": "0.2.8",
-  "description": "Local run control plane for people and coding agents: launch, hot-reload, inspect, and capture evidence across Flutter and web apps.",
+  "version": "0.2.9",
+  "description": "Local run control plane for people and coding agents: launch, hot-reload, screenshot and check Flutter, web, React Native and native iOS/Android apps.",
   "author": "kanumuri9593",
   "type": "module",
   "engines": {
     "node": ">=24"
   },
+  "mcpName": "io.github.kanumuri9593/baton",
   "bin": {
+    "baton-run": "bin/baton-mcp.js",
     "baton": "bin/baton.js",
     "baton-daemon": "bin/baton-daemon.js",
     "baton-mcp": "bin/baton-mcp.js"
