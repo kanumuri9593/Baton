@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Catalog, Form, Logs, Run, Shot } from '../types'
+import type { Logs, Run } from '../types'
 import { appProcesses, canFront, canPause, frontCommand, isSimulator, parsePs, pausedIds } from './controls.ts'
 
 // Baton's live state above the prompt. The mod reads the same daemon the MCP
@@ -11,19 +11,12 @@ import { appProcesses, canFront, canPause, frontCommand, isSimulator, parsePs, p
 const PANE = 'baton'
 const POLL_MS = 2000
 const DEVICE_POLL_MS = 15000
-const SVG_LIMIT = 120_000
 
 const runs = atom({ plugin: 'baton', key: 'runs' } as const, [])
 const isOnline = atom({ plugin: 'baton', key: 'isOnline' } as const, false)
 const busy = atom({ plugin: 'baton', key: 'busy' } as const, null)
-const shot = atom({ plugin: 'baton', key: 'shot' } as const, null)
 const isBandHidden = atom({ plugin: 'baton', key: 'isBandHidden' } as const, false)
-const catalog = atom({ plugin: 'baton', key: 'catalog' } as const, null)
-const form = atom({ plugin: 'baton', key: 'form' } as const, {})
 const logs = atom({ plugin: 'baton', key: 'logs' } as const, null)
-const armedStop = atom({ plugin: 'baton', key: 'armedStop' } as const, null)
-const isCollapsed = atom({ plugin: 'baton', key: 'isCollapsed' } as const, false)
-const isNewOpen = atom({ plugin: 'baton', key: 'isNewOpen' } as const, false)
 
 type Handshake = { port: number; token: string }
 type Snapshot = {
@@ -41,7 +34,6 @@ type Snapshot = {
   pid?: number
 }
 type Device = { id: string; name: string; platformType?: string; platform?: string }
-type Bootable = { id: string; name: string; platformType: 'ios' | 'android'; running: boolean }
 type Dollar = EngineInterface
 
 const DOT: Record<Run['status'], string> = {
@@ -246,80 +238,9 @@ async function loadLogs($: Dollar, runId: string, name: string) {
   }
 }
 
-const platformOf = (p: string) => (/ios/i.test(p) ? 'ios' : /android/i.test(p) ? 'android' : 'other') as 'ios' | 'android' | 'other'
-
-/** Projects with their targets, and every device to run on or boot. Best-effort on devices. */
-async function loadCatalog($: Dollar) {
-  try {
-    const { projects } = await rpc<{ projects: Array<{ root: string; name: string; targets?: Array<{ name: string; kind: string }> }> }>($, 'projects')
-    const cwd = projects[0]?.root
-    const [live, bootable] = await Promise.all([
-      rpc<Device[]>($, 'devices', { cwd }).catch(() => [] as Device[]),
-      rpc<Bootable[]>($, 'bootables', { cwd }).catch(() => [] as Bootable[]),
-    ])
-    const byId = new Map<string, Catalog['devices'][number]>()
-    for (const d of live) {
-      devices.set(d.id, d.name)
-      byId.set(d.id, { id: d.id, name: d.name, platform: platformOf(d.platformType ?? d.platform ?? ''), running: true })
-    }
-    for (const b of bootable) if (!byId.has(b.id)) byId.set(b.id, { id: b.id, name: b.name, platform: b.platformType, running: b.running })
-    const next: Catalog = {
-      projects: projects
-        .filter(p => (p.targets ?? []).length > 0)
-        .map(p => ({ root: p.root, name: p.name, targets: (p.targets ?? []).map(t => ({ name: t.name, kind: t.kind })) })),
-      devices: [...byId.values()].sort((a, b) => Number(b.running) - Number(a.running) || a.name.localeCompare(b.name)),
-    }
-    await update($, catalog, () => next)
-  } catch (err) {
-    $.ui.toast(`Baton: ${(err as Error).message}`)
-  }
-}
-
 async function openPanel($: Dollar) {
   await update($, isBandHidden, () => false)
   await $.ui.open({ id: PANE, title: 'Baton' })
-  if (!(await read($, catalog))) await loadCatalog($)
-}
-
-async function screenshot($: Dollar, run: Run) {
-  await update($, busy, () => `shot:${run.id}`)
-  try {
-    const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? ''
-    const out = `${home}/.baton/claude/${run.id}.png`
-    const { path } = await rpc<{ path: string }>($, 'screenshot', { session: run.id, out })
-    const next: Shot = { runId: run.id, path, at: Date.now() }
-    next.svg = await thumbnail($, path)
-    await update($, shot, () => next)
-    $.ui.toast(`Baton: screenshot of ${run.name} saved`)
-  } catch (err) {
-    $.ui.toast(`Baton: ${(err as Error).message}`)
-  } finally {
-    await update($, busy, () => null)
-  }
-}
-
-// The desktop app draws an Svg; a small JPEG inside one is the screenshot.
-// macOS ships `sips`, which shrinks it below the Svg size limit.
-async function thumbnail($: Dollar, path: string): Promise<string | undefined> {
-  const small = path.replace(/\.png$/, '.thumb.jpg')
-  let source = path
-  let mime = 'image/png'
-  try {
-    const made = await $.process.run(['sips', '-Z', '520', '-s', 'format', 'jpeg', '-s', 'formatOptions', '60', path, '--out', small])
-    if (made.exitCode === 0) {
-      source = small
-      mime = 'image/jpeg'
-    }
-  } catch {
-    // Not macOS: fall back to the PNG when it is small enough.
-  }
-  try {
-    const { base64 } = (await $.fs.read(source, { as: 'bytes' })) as { base64: string }
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 520"><image width="260" height="520" preserveAspectRatio="xMidYMid meet" href="data:${mime};base64,${base64}"/></svg>`
-    return svg.length <= SVG_LIMIT ? svg : undefined
-  } catch {
-    return undefined
-  }
 }
 
 type DeviceKind = 'phone' | 'tablet' | 'android' | 'web' | 'process'
@@ -371,187 +292,135 @@ type Site = 'band' | 'pane'
 
 const LIVE = (r: Run) => r.status === 'running' || r.status === 'starting'
 
+// Media-player glyphs every developer reads at a glance. U+FE0E keeps them as
+// text, so they take the colour given instead of turning into emoji.
+const G = {
+  play: '▶︎',
+  pause: '⏸︎',
+  stop: '⏹︎',
+  logs: '☰',
+  debug: '🐞',
+  front: '⧉',
+  add: '＋',
+  dismiss: '✕',
+} as const
+
+/** What ▶ does for this run: run it again, resume it, or apply the latest edit. */
+function playAction(run: Run): 'again' | 'resume' | 'reload' | 'restart' | null {
+  if (!LIVE(run)) return run.root ? 'again' : null
+  if (run.paused) return 'resume'
+  if (run.status !== 'running') return null
+  if (run.capabilities.includes('hotReload')) return 'reload'
+  if (run.capabilities.includes('hotRestart') || run.capabilities.includes('restartProcess')) return 'restart'
+  return null
+}
+
+async function play($: Dollar, run: Run, site: Site): Promise<string | undefined> {
+  const name = shortName(run)
+  switch (playAction(run)) {
+    case 'again':
+      // The finished session holds its id until it is forgotten; the new run reuses it.
+      await rpc($, 'forget', { session: run.id }).catch(() => undefined)
+      await rpc($, 'run', { cwd: run.root, target: run.name, deviceId: run.deviceId })
+      return `Baton: starting ${name}`
+    case 'resume':
+      return signal($, [run.id], false)
+    case 'reload':
+      await rpc($, 'reload', { session: run.id, reason: `Claude Code ${site}` })
+      return `Baton: reloaded ${name}`
+    case 'restart':
+      await rpc($, 'restart', { session: run.id, reason: `Claude Code ${site}` })
+      return `Baton: restarted ${name}`
+    default:
+      return undefined
+  }
+}
+
+/** Hand the run to Claude: one turn that reads its errors and logs and fixes the cause. */
+async function debug($: Dollar, run: Run) {
+  await $.prompt.submit({
+    text: `Debug ${run.name}${run.device ? ` on ${run.device}` : ''} (Baton session ${run.id}): read its recent errors and logs with Baton, find the cause, fix it, then check_change to confirm.`,
+  })
+}
+
+/** Put Baton's run command in the prompt box, ready for a target name. */
+async function startNew($: Dollar) {
+  const { isFilled } = await $.prompt.fill({ text: '/baton:run ', mode: 'replace' })
+  if (!isFilled) $.ui.toast('Baton: type /baton:run <target> to start a run')
+}
+
 /**
  * Baton's one workspace, drawn in the band above the prompt and in the /baton
- * pane alike: a header with the all-apps actions, a row per run with its own
- * controls, an inline New run row, and a run's logs or screenshot opened under
- * its row. A tree taller than the band scrolls in it.
+ * pane alike: a header whose buttons act on every run, then one row per run
+ * with the same buttons for that run alone. Every button is one click and sits
+ * in the same place on every row; one that does not apply is drawn dim.
  */
 async function workspace($: Dollar, e: any, site: Site) {
   const { Box, Text, Button } = $.ui.resolve(e)
-  const els = $.ui.resolve(e) as { Select?: any; Svg?: any }
-  const Select = els.Select
-  const Svg = e.surface === 'desktop' || e.surface === 'vscode' || e.surface === 'mobile' ? els.Svg : undefined
+  const Svg = e.surface === 'desktop' || e.surface === 'vscode' || e.surface === 'mobile' ? ($.ui.resolve(e) as { Svg?: any }).Svg : undefined
   const list = await read($, runs)
   const working = await read($, busy)
-  const armed = await read($, armedStop)
-  const collapsed = site === 'band' && (await read($, isCollapsed))
-  const newOpen = site === 'pane' || (await read($, isNewOpen))
   const log = await read($, logs)
-  const last = await read($, shot)
-  const cat = await read($, catalog)
-  const picks = await read($, form)
   const width: number = e.props.bodyColumns ?? 100
-  const wide = width >= 90
+  const wide = width >= 80
 
   const running = list.filter(r => r.status === 'running')
   const live = list.filter(LIVE)
-  const reloadable = running.filter(r => r.capabilities.includes('hotReload') && !r.paused)
-  const pausable = running.filter(r => r.canPause)
-  const allPaused = pausable.length > 0 && pausable.every(r => r.paused)
-  const pausedCount = running.filter(r => r.paused).length
-  const starting = live.length - running.length
+  const pausable = running.filter(r => r.canPause && !r.paused)
+  const paused = running.filter(r => r.paused)
+  const playable = list.filter(r => playAction(r) !== null)
+  const frontable = running.filter(r => r.canFront)
   const failed = list.filter(r => r.status === 'failed').length
 
-  // An icon control: a coloured glyph on a quiet button, its name as the
-  // accessible label and as a tooltip that shows while the pointer is on it.
-  const icon = (key: string, glyph: string, tip: string, color: string, onPress: () => unknown, opts: { on?: boolean } = {}) => (
-    <Box key={`i:${key}`} position="relative" marginLeft={1}>
-      <Button key={key} plain label={tip} onPress={onPress}>
-        <Text color={color} bold inverse={opts.on}>{glyph}</Text>
+  // One button: a coloured glyph, its name for screen readers. Dim and inert
+  // when it does not apply, so the row keeps its shape.
+  const btn = (key: string, glyph: string, name: string, color: string, enabled: boolean, onPress: () => unknown) => (
+    <Box key={`b:${key}`} marginLeft={1}>
+      <Button key={key} plain label={name} onPress={enabled ? onPress : () => undefined}>
+        <Text color={enabled ? color : undefined} dimColor={!enabled} bold={enabled}>{working === key ? '…' : glyph}</Text>
       </Button>
-      <Box position="absolute" top={1} left={0} display="none" hover={{ display: 'flex' }}>
-        <Text inverse> {tip} </Text>
-      </Box>
     </Box>
   )
-  const confirmStop = async (id: string, ids: string[], done: string) => {
-    if (armed !== id) {
-      await update($, armedStop, () => id)
-      $.clock.after(4000, async () => {
-        if ((await read($, armedStop)) === id) await update($, armedStop, () => null)
-      })
-      return
-    }
-    await update($, armedStop, () => null)
-    await act($, `stop:${id}`, 'stop', ids.length === 1 && id !== 'all' ? { session: ids[0] } : { ids }, done)
-  }
-
-  const chip = (key: string, glyph: string, n: number, color: string, label: string) =>
-    n > 0 && <Text key={key} color={color}>  {glyph} {n}<Text dimColor> {label}</Text></Text>
 
   const header = (
-    <Box key="head" flexDirection="row" justifyContent="space-between" flexWrap="wrap">
+    <Box key="head" flexDirection="row" justifyContent="space-between" alignItems="center">
       <Text>
         <Text bold color="claude">◆ Baton</Text>
-        {chip('c-run', '●', running.length - pausedCount, 'success', 'running')}
-        {chip('c-pause', '❚❚', pausedCount, 'warning', 'paused')}
-        {chip('c-start', '◐', starting, 'warning', 'starting')}
-        {chip('c-fail', '✕', failed, 'error', 'failed')}
+        {running.length - paused.length > 0 && <Text color="success">  ● {running.length - paused.length}</Text>}
+        {paused.length > 0 && <Text color="warning">  {G.pause} {paused.length}</Text>}
+        {live.length > running.length && <Text color="warning">  ◐ {live.length - running.length}</Text>}
+        {failed > 0 && <Text color="error">  ✕ {failed}</Text>}
       </Text>
-      <Box flexDirection="row" flexWrap="wrap">
-        {icon('new', newOpen && site === 'band' ? '－' : '＋', newOpen && site === 'band' ? 'Close New run' : 'New run', 'claude',
-          () => (site === 'band' ? openNew($, !newOpen) : loadCatalogGuarded($)), { on: newOpen && site === 'band' })}
-        {reloadable.length > 1 && icon('reload-all', '⚡︎', 'Reload all', 'warning',
-          () => act($, 'reload-all', 'reload', { ids: reloadable.map(r => r.id), reason: `Claude Code ${site}` }, 'Baton: reloaded'))}
-        {pausable.length > 1 && icon('pause-all', allPaused ? '▶' : '❚❚', allPaused ? 'Resume all' : 'Pause all', allPaused ? 'success' : 'warning',
-          () => guarded($, 'pause-all', () => signal($, pausable.filter(r => r.paused === allPaused).map(r => r.id), !allPaused)))}
-        {running.filter(r => r.canFront).length > 1 && icon('front-all', '⧉', 'Bring all to front', 'suggestion', () => guarded($, 'front-all', () => front($, running)))}
-        {live.length > 1 && icon('stop-all', armed === 'all' ? `■ Stop ${live.length}?` : '■', armed === 'all' ? `Press again to stop all ${live.length}` : 'Stop all', 'error',
-          () => confirmStop('all', live.map(r => r.id), 'Baton: stopped all'), { on: armed === 'all' })}
-        {site === 'band' && icon('collapse', collapsed ? '▾' : '▴', collapsed ? 'Expand' : 'Collapse', 'subtle', () => update($, isCollapsed, c => !c))}
-        {site === 'band' && icon('open', '⤢', 'Open in a side panel', 'subtle', () => openPanel($))}
-        {site === 'band' && icon('hide', '✕', 'Hide until /baton', 'subtle', () => update($, isBandHidden, () => true))}
+      <Box flexDirection="row">
+        {btn('add', G.add, 'New run', 'claude', true, () => startNew($))}
+        {btn('play-all', G.play, 'Play all', 'success', playable.length > 0, () => guarded($, 'play-all', async () => {
+          for (const r of playable) await play($, r, site).catch(() => undefined)
+          return `Baton: played ${playable.length} ${playable.length === 1 ? 'run' : 'runs'}`
+        }))}
+        {btn('pause-all', G.pause, 'Pause all', 'warning', pausable.length > 0, () => guarded($, 'pause-all', () => signal($, pausable.map(r => r.id), true)))}
+        {btn('stop-all', G.stop, 'Stop all', 'error', live.length > 0, () => act($, 'stop-all', 'stop', { ids: live.map(r => r.id) }, 'Baton: stopped all'))}
+        {btn('front-all', G.front, 'Bring all to front', 'suggestion', frontable.length > 0, () => guarded($, 'front-all', () => front($, frontable)))}
+        {site === 'band' && btn('hide', G.dismiss, 'Hide until /baton', 'subtle', true, () => update($, isBandHidden, () => true))}
       </Box>
-    </Box>
-  )
-  if (collapsed) return <Box flexDirection="column">{header}</Box>
-
-  // New run, inline: project, target, device, Run; and boot a simulator.
-  const project = cat?.projects.find(p => p.root === picks.root) ?? cat?.projects[0]
-  const target = project?.targets.find(t => t.name === picks.target) ?? project?.targets[0]
-  const runnable = cat?.devices.filter(d => d.running) ?? []
-  const device = runnable.find(d => d.id === picks.device)
-  const bootable = cat?.devices.filter(d => !d.running && d.platform !== 'other') ?? []
-  const toBoot = bootable.find(d => d.id === picks.boot) ?? bootable[0]
-  const pick = (patch: Form) => update($, form, f => ({ ...f, ...patch }))
-  const newRow = newOpen && (
-    <Box key="newrun" flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
-      {!cat && <Text dimColor>{working === 'catalog' ? 'Finding projects and simulators…' : 'Loading projects…'}</Text>}
-      {cat && cat.projects.length === 0 && <Text dimColor>No projects yet. Ask Claude to run one and it shows here.</Text>}
-      {cat && project && target && (
-        <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={2}>
-          {Select ? (
-            <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
-              <Select key="project" label="Project" value={project.root}
-                options={cat.projects.map(p => ({ value: p.root, label: p.name }))}
-                onSelect={(v: string) => pick({ root: v, target: undefined })} />
-              <Select key="target" label="Target" value={target.name}
-                options={project.targets.map(t => ({ value: t.name, label: `${t.name} · ${t.kind}` }))}
-                onSelect={(v: string) => pick({ target: v })} />
-              <Select key="device" label="On" value={device?.id ?? ''}
-                options={[{ value: '', label: 'Default' }, ...runnable.map(d => ({ value: d.id, label: d.name }))]}
-                onSelect={(v: string) => pick({ device: v || undefined })} />
-            </Box>
-          ) : (
-            <Text dimColor>{project.name} · {target.name}{device ? ` · ${device.name}` : ''}  </Text>
-          )}
-          <Button key="run" variant="primary" label={working === 'run' ? 'Starting…' : '▶ Run'}
-            onPress={() => guarded($, 'run', async () => {
-              await rpc($, 'run', { cwd: project.root, target: target.name, deviceId: device?.id })
-              if (site === 'band') await update($, isNewOpen, () => false)
-              return `Baton: starting ${target.name}${device ? ` on ${device.name}` : ''}`
-            })} />
-        </Box>
-      )}
-      {cat && toBoot && (
-        <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={2}>
-          {Select ? (
-            <Select key="boot" label="Boot" value={toBoot.id}
-              options={bootable.map(d => ({ value: d.id, label: d.name }))}
-              onSelect={(v: string) => pick({ boot: v })} />
-          ) : <Text dimColor>Boot {toBoot.name}  </Text>}
-          <Button key="boot-device" dimColor label={working === 'boot' ? 'Booting…' : 'Boot'}
-            onPress={() => guarded($, 'boot', async () => {
-              await rpc($, 'boot', { id: toBoot.id })
-              await loadCatalog($)
-              return `Baton: ${toBoot.name} is booting`
-            })} />
-          <Button key="refresh" dimColor label={working === 'catalog' ? 'Refreshing…' : 'Refresh'} onPress={() => loadCatalogGuarded($)} />
-        </Box>
-      )}
     </Box>
   )
 
   const rows = list.map(run => {
-    const can = (c: string) => run.status === 'running' && !run.paused && run.capabilities.includes(c)
     const kind = deviceKind(run)
+    const ended = !LIVE(run)
     const state = run.paused ? 'paused' : run.status === 'running'
       ? [run.cpuPct != null ? `${Math.round(run.cpuPct)}%` : '', memory(run.rssBytes)].filter(Boolean).join(' · ')
       : run.progress ?? run.status
     const dotColor = run.paused || run.status === 'starting' ? 'warning' : COLOR[run.status]
-    const full = `${run.project} · ${run.name}${run.device ? ` · ${run.device}` : ''}`
-    const ended = !LIVE(run)
-    const controls = (
-      <Box flexDirection="row" flexWrap="wrap">
-        {can('hotReload') && icon(`reload:${run.id}`, working === `reload:${run.id}` ? '…' : '⚡︎', 'Hot reload', 'warning',
-          () => act($, `reload:${run.id}`, 'reload', { session: run.id, reason: `Claude Code ${site}` }, `Baton: reloaded ${shortName(run)}`))}
-        {(can('hotRestart') || can('restartProcess')) && icon(`restart:${run.id}`, working === `restart:${run.id}` ? '…' : '↻', 'Restart', 'suggestion',
-          () => act($, `restart:${run.id}`, 'restart', { session: run.id, reason: `Claude Code ${site}` }, `Baton: restarted ${shortName(run)}`))}
-        {run.status === 'running' && run.canPause && icon(`pause:${run.id}`, run.paused ? '▶' : '❚❚', run.paused ? 'Resume' : 'Pause', run.paused ? 'success' : 'warning',
-          () => guarded($, `pause:${run.id}`, () => signal($, [run.id], !run.paused)))}
-        {can('screenshot') && icon(`shot:${run.id}`, working === `shot:${run.id}` ? '…' : '◉', 'Screenshot', 'merged', () => screenshot($, run))}
-        {icon(`logs:${run.id}`, '☰', log?.runId === run.id ? 'Hide logs' : 'Logs', 'text',
-          () => (log?.runId === run.id ? update($, logs, () => null) : loadLogs($, run.id, run.name)), { on: log?.runId === run.id })}
-        {run.status === 'running' && run.canFront && icon(`front:${run.id}`, '⧉', 'Bring to front', 'suggestion', () => guarded($, `front:${run.id}`, () => front($, [run])))}
-        {!ended && icon(`stop:${run.id}`, armed === run.id ? '■ Stop?' : '■', armed === run.id ? 'Press again to stop' : 'Stop', 'error',
-          () => confirmStop(run.id, [run.id], `Baton: stopped ${shortName(run)}`), { on: armed === run.id })}
-        {ended && run.root && icon(`again:${run.id}`, working === `again:${run.id}` ? '…' : '▶', 'Run again', 'success', () => guarded($, `again:${run.id}`, async () => {
-          await rpc($, 'run', { cwd: run.root, target: run.name, deviceId: run.deviceId })
-          await rpc($, 'forget', { session: run.id }).catch(() => undefined)
-          return `Baton: starting ${shortName(run)} again`
-        }))}
-        {ended && icon(`dismiss:${run.id}`, '✕', 'Dismiss', 'subtle', () => act($, `dismiss:${run.id}`, 'forget', { session: run.id }, `Baton: dismissed ${shortName(run)}`))}
-      </Box>
-    )
+    const action = playAction(run)
     const glyph = Svg
       ? <Svg key={`dev:${run.id}`} source={DEVICE_SVG[kind]} alt={kind} width={14} height={14} />
       : <Text dimColor>{DEVICE_GLYPH[kind]}</Text>
     const info = (
-      <Box key={`info:${run.id}`} flexDirection="row" flexGrow={1} flexShrink={1} alignItems="center" position="relative">
-        <Text color={dotColor}>{run.paused ? '❚❚' : DOT[run.status]} </Text>
+      <Box key={`info:${run.id}`} flexDirection="row" flexGrow={1} flexShrink={1} alignItems="center">
+        <Text color={dotColor}>{DOT[run.status]} </Text>
         {glyph}
-        <Box width={wide ? 22 : undefined} flexShrink={1} marginLeft={1}>
+        <Box width={wide ? 20 : undefined} flexShrink={1} marginLeft={1}>
           <Text bold={!ended} dimColor={ended} wrap="truncate-end">{shortName(run)}</Text>
         </Box>
         <Box width={wide ? 20 : undefined} flexShrink={1} marginLeft={1}>
@@ -560,13 +429,24 @@ async function workspace($: Dollar, e: any, site: Site) {
         <Box flexShrink={1} marginLeft={1}>
           <Text color={run.paused ? 'warning' : run.status === 'failed' ? 'error' : undefined} dimColor={!run.paused && run.status !== 'failed'} wrap="truncate-end">{state}</Text>
         </Box>
-        <Box position="absolute" top={1} left={2} display="none" hover={{ display: 'flex' }}>
-          <Text inverse> {full}{run.url ? ` · ${run.url}` : ''} </Text>
-        </Box>
       </Box>
     )
-    const openLog = log?.runId === run.id ? log : null
-    const openShot = last?.runId === run.id ? last : null
+    const showingLogs = log?.runId === run.id
+    const controls = (
+      <Box flexDirection="row" flexShrink={0}>
+        {btn(`logs:${run.id}`, G.logs, showingLogs ? 'Hide logs' : 'Logs', showingLogs ? 'claude' : 'text', true,
+          () => (showingLogs ? update($, logs, () => null) : loadLogs($, run.id, run.name)))}
+        {btn(`debug:${run.id}`, G.debug, 'Debug with Claude', 'error', true, () => debug($, run))}
+        {btn(`play:${run.id}`, G.play, action === 'again' ? 'Run again' : action === 'resume' ? 'Resume' : action === 'restart' ? 'Restart' : 'Hot reload', 'success',
+          action !== null, () => guarded($, `play:${run.id}`, () => play($, run, site)))}
+        {btn(`pause:${run.id}`, G.pause, 'Pause', 'warning', run.status === 'running' && run.canPause && !run.paused,
+          () => guarded($, `pause:${run.id}`, () => signal($, [run.id], true)))}
+        {ended
+          ? btn(`dismiss:${run.id}`, G.dismiss, 'Dismiss', 'subtle', true, () => act($, `dismiss:${run.id}`, 'forget', { session: run.id }, `Baton: dismissed ${shortName(run)}`))
+          : btn(`stop:${run.id}`, G.stop, 'Stop', 'error', true, () => act($, `stop:${run.id}`, 'stop', { session: run.id }, `Baton: stopped ${shortName(run)}`))}
+        {btn(`front:${run.id}`, G.front, 'Bring to front', 'suggestion', run.status === 'running' && run.canFront, () => guarded($, `front:${run.id}`, () => front($, [run])))}
+      </Box>
+    )
     return (
       <Box key={`run:${run.id}`} flexDirection="column">
         {wide ? (
@@ -577,22 +457,13 @@ async function workspace($: Dollar, e: any, site: Site) {
         ) : (
           <Box flexDirection="column">{info}{controls}</Box>
         )}
-        {openLog && (
+        {showingLogs && (
           <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1} marginLeft={2}>
-            {openLog.lines.length === 0
+            {log.lines.length === 0
               ? <Text dimColor>No output yet.</Text>
-              : openLog.lines.slice(site === 'band' ? -8 : -40).map((l, i) => (
+              : log.lines.slice(site === 'band' ? -8 : -40).map((l, i) => (
                 <Text key={`l${i}`} color={l.error ? 'error' : undefined} dimColor={!l.error} wrap="truncate-end">{l.text}</Text>
               ))}
-          </Box>
-        )}
-        {openShot && (
-          <Box flexDirection="row" alignItems="flex-start" marginLeft={2}>
-            {Svg && openShot.svg && <Svg key={`img:${run.id}`} source={openShot.svg} alt={`Screenshot of ${run.name}`} width={site === 'band' ? 120 : 260} />}
-            <Box flexDirection="column" marginLeft={1}>
-              <Text dimColor wrap="truncate-middle">{openShot.path}</Text>
-              {icon(`shotclose:${run.id}`, '✕', 'Close screenshot', 'subtle', () => update($, shot, () => null))}
-            </Box>
           </Box>
         )}
       </Box>
@@ -602,23 +473,10 @@ async function workspace($: Dollar, e: any, site: Site) {
   return (
     <Box flexDirection="column">
       {header}
-      {newRow}
       {rows}
-      {list.length === 0 && <Text dimColor>No runs yet. Pick a project above and press Run, or ask Claude to run an app.</Text>}
+      {list.length === 0 && <Text dimColor>No runs yet. Press {G.add} to start one, or ask Claude to run an app.</Text>}
     </Box>
   )
-}
-
-async function openNew($: Dollar, open: boolean) {
-  await update($, isNewOpen, () => open)
-  if (open && !(await read($, catalog))) await loadCatalogGuarded($)
-}
-
-async function loadCatalogGuarded($: Dollar) {
-  await guarded($, 'catalog', async () => {
-    await loadCatalog($)
-    return undefined
-  })
 }
 
 export const register: Register = on => {

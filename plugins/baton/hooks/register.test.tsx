@@ -25,6 +25,14 @@ function daemon(on: On, sessions: unknown[] | null, calls: Array<{ method: strin
   on('command.register', async ($, e) => ({ value: { command: e.name } }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
   on('ui.toast', async () => ({ value: undefined }))
+  on('prompt.fill', async ($, e) => {
+    calls.push({ method: 'prompt.fill', params: { text: e.text, mode: e.mode } })
+    return { isFilled: true }
+  })
+  on('prompt.submit', async ($, e) => {
+    calls.push({ method: 'prompt.submit', params: { text: e.text } })
+    return { text: e.text }
+  })
   on('session.start', async ($, e) => ({ cwd: e.cwd }))
   on('ui.render', async ($, e) => {
     const { Box } = $.ui.resolve(e)
@@ -85,45 +93,37 @@ test('the band stays out of the way with nothing running', async ($, on) => {
   await $.session.start(START)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'baton', surface, ...BAND })
-    expect(await ui.find({ key: 'open' })).toBeUndefined()
+    expect(await ui.find({ key: 'add' })).toBeUndefined()
     await ui.unmount()
   }
 })
 
-test('the band lists live runs from the daemon and hides on request', async ($, on) => {
+
+const ROW = ['logs', 'debug', 'play', 'pause', 'stop', 'front']
+const ALL = ['add', 'play-all', 'pause-all', 'stop-all', 'front-all']
+
+test('every run gets the same six buttons, and the header acts on all', async ($, on) => {
   daemon(on, SESSIONS)
   await $.session.start(START)
   for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ plugin: 'baton', surface, ...BAND })
-    expect(await ui.find({ type: 'Text', text: /iPhone 17 Pro/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /mclane360 · app/ })).toBeDefined()
-    expect(await ui.find({ key: 'open' })).toBeDefined()
-    // Each run has its own row of controls; mclane360 is still building, so only Stop and Logs.
-    expect(await ui.find({ key: 'restart:s1' })).toBeDefined()
-    expect(await ui.find({ key: 'stop:s2' })).toBeDefined()
-    expect(await ui.find({ key: 'reload:s2' })).toBeUndefined()
-    expect(await ui.find({ key: 'reload-all' })).toBeUndefined()
-    await ui.unmount()
+    for (const site of [BAND, PANE]) {
+      const ui = await $.ui.mount({ plugin: 'baton', surface, ...site })
+      for (const id of ['s1', 's2']) for (const b of ROW) expect(await ui.find({ key: `${b}:${id}` })).toBeDefined()
+      for (const b of ALL) expect(await ui.find({ key: b })).toBeDefined()
+      expect(await ui.find({ type: 'Text', text: /iPhone 17 Pro/ })).toBeDefined()
+      expect(await ui.find({ type: 'Text', text: /200 MB/ })).toBeDefined()
+      await ui.unmount()
+    }
   }
-  const ui = await $.ui.mount({ plugin: 'baton', surface: 'terminal', ...BAND })
-  await ui.press({ key: 'hide' })
-  expect(await ui.find({ key: 'open' })).toBeUndefined()
-  await ui.unmount()
 })
 
-test('the panel shows per-run controls by capability', async ($, on) => {
-  daemon(on, [SESSIONS[0], { ...SESSIONS[1], status: 'running' }])
+test('hide takes the band away until /baton', async ($, on) => {
+  daemon(on, SESSIONS)
   await $.session.start(START)
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ plugin: 'baton', surface, ...PANE })
-    expect(await ui.find({ key: 'restart:s1' })).toBeDefined()
-    expect(await ui.find({ key: 'reload:s1' })).toBeUndefined()
-    expect(await ui.find({ key: 'reload:s2' })).toBeDefined()
-    expect(await ui.find({ key: 'shot:s2' })).toBeDefined()
-    expect(await ui.find({ key: 'stop:s1' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /200 MB/ })).toBeDefined()
-    await ui.unmount()
-  }
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'hide' })
+  expect(await ui.find({ key: 'add' })).toBeUndefined()
+  await ui.unmount()
 })
 
 test('the panel explains itself when Baton is not running', async ($, on) => {
@@ -134,13 +134,55 @@ test('the panel explains itself when Baton is not running', async ($, on) => {
   await ui.unmount()
 })
 
-test('pressing Restart restarts that one run', async ($, on) => {
+test('play applies the edit: hot reload where it can, restart where it cannot', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, [SESSIONS[0], { ...SESSIONS[1], status: 'running' }], calls)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'play:s1' })
+  expect(calls.find(c => c.method === 'restart')?.params).toEqual({ session: 's1', reason: 'Claude Code band' })
+  await ui.press({ key: 'play:s2' })
+  expect(calls.find(c => c.method === 'reload')?.params).toEqual({ session: 's2', reason: 'Claude Code band' })
+  await ui.unmount()
+})
+
+test('stop is one click, for a run and for all', async ($, on) => {
   const calls: Array<{ method: string; params: unknown }> = []
   daemon(on, SESSIONS, calls)
   await $.session.start(START)
-  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...PANE })
-  await ui.press({ key: 'restart:s1' })
-  expect(calls.find(c => c.method === 'restart')?.params).toEqual({ session: 's1', reason: 'Claude Code pane' })
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'stop:s1' })
+  expect(calls.find(c => c.method === 'stop')?.params).toEqual({ session: 's1' })
+  await ui.press({ key: 'stop-all' })
+  expect(calls.filter(c => c.method === 'stop').at(-1)?.params).toEqual({ ids: ['s1', 's2'] })
+  await ui.unmount()
+})
+
+test('a finished run plays again and can be dismissed', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, [{ ...SESSIONS[0], status: 'failed' }], calls)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'play:s1' })
+  expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'CoreRun', deviceId: 'UDID-1' })
+  await ui.press({ key: 'dismiss:s1' })
+  expect(calls.find(c => c.method === 'forget')?.params).toEqual({ session: 's1' })
+  await ui.unmount()
+})
+
+test('logs open under the row, debug hands the run to Claude, + puts the run command in the prompt', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, SESSIONS, calls)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'logs:s1' })
+  expect(await ui.find({ type: 'Text', text: /Firebase error/ })).toBeDefined()
+  await ui.press({ key: 'logs:s1' })
+  expect(await ui.find({ type: 'Text', text: /Firebase error/ })).toBeUndefined()
+  await ui.press({ key: 'debug:s1' })
+  expect((calls.find(c => c.method === 'prompt.submit')?.params as { text: string }).text).toMatch(/^Debug CoreRun on iPhone 17 Pro \(Baton session s1\)/)
+  await ui.press({ key: 'add' })
+  expect(calls.find(c => c.method === 'prompt.fill')?.params).toEqual({ text: '/baton:run ', mode: 'replace' })
   await ui.unmount()
 })
 
@@ -160,7 +202,8 @@ function mac(on: On, argvs: string[][], stat = 'S') {
   })
 }
 
-test('on a Mac a run row pauses the simulator app and brings it forward', async ($, on) => {
+
+test('on a Mac pause stops the simulator app, play resumes it, front raises Simulator', async ($, on) => {
   const argvs: string[][] = []
   daemon(on, MAC_SESSIONS)
   mac(on, argvs)
@@ -173,82 +216,14 @@ test('on a Mac a run row pauses the simulator app and brings it forward', async 
   await ui.unmount()
 })
 
-test('a paused app shows Resume and continues on press', async ($, on) => {
+test('a paused app reads paused, and play continues it', async ($, on) => {
   const argvs: string[][] = []
   daemon(on, MAC_SESSIONS)
   mac(on, argvs, 'T')
   await $.session.start(START)
   const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...PANE })
   expect(await ui.find({ type: 'Text', text: /paused/ })).toBeDefined()
-  await ui.press({ key: 'pause:s1' })
+  await ui.press({ key: 'play:s1' })
   expect(argvs.find(a => a[0] === 'kill')).toEqual(['kill', '-CONT', '90'])
-  await ui.unmount()
-})
-
-test('Stop all asks for a confirm first', async ($, on) => {
-  const calls: Array<{ method: string; params: unknown }> = []
-  daemon(on, SESSIONS, calls)
-  await $.session.start(START)
-  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
-  await ui.press({ key: 'stop-all' })
-  expect(calls.find(c => c.method === 'stop')).toBeUndefined()
-  await ui.press({ key: 'stop-all' })
-  expect(calls.find(c => c.method === 'stop')?.params).toEqual({ ids: ['s1', 's2'] })
-  await ui.unmount()
-})
-
-test('New run starts the picked target, boots a simulator and shows logs', async ($, on) => {
-  const calls: Array<{ method: string; params: unknown }> = []
-  daemon(on, SESSIONS, calls)
-  await $.session.start(START)
-  const band = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
-  await band.press({ key: 'open' })
-  await band.unmount()
-  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...PANE })
-  await ui.select({ key: 'target', value: 'Landing' })
-  await ui.select({ key: 'device', value: 'UDID-1' })
-  await ui.press({ key: 'run' })
-  expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'Landing', deviceId: 'UDID-1' })
-  await ui.press({ key: 'boot-device' })
-  expect(calls.find(c => c.method === 'boot')?.params).toEqual({ id: 'B-1' })
-  await ui.press({ key: 'logs:s1' })
-  expect(await ui.find({ type: 'Text', text: /Firebase error/ })).toBeDefined()
-  await ui.unmount()
-})
-
-test('the band collapses to its header and starts a finished run again', async ($, on) => {
-  const calls: Array<{ method: string; params: unknown }> = []
-  daemon(on, [{ ...SESSIONS[0], status: 'failed' }], calls)
-  await $.session.start(START)
-  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
-  await ui.press({ key: 'again:s1' })
-  expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'CoreRun', deviceId: 'UDID-1' })
-  await ui.press({ key: 'collapse' })
-  expect(await ui.find({ key: 'again:s1' })).toBeUndefined()
-  expect(await ui.find({ key: 'new' })).toBeDefined()
-  await ui.unmount()
-})
-
-test('New run opens inline in the band', async ($, on) => {
-  const calls: Array<{ method: string; params: unknown }> = []
-  daemon(on, SESSIONS, calls)
-  await $.session.start(START)
-  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
-  expect(await ui.find({ key: 'run' })).toBeUndefined()
-  await ui.press({ key: 'new' })
-  await ui.press({ key: 'run' })
-  expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'CoreRun TST', deviceId: undefined })
-  await ui.unmount()
-})
-
-test('a run is stopped only on the second press', async ($, on) => {
-  const calls: Array<{ method: string; params: unknown }> = []
-  daemon(on, SESSIONS, calls)
-  await $.session.start(START)
-  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
-  await ui.press({ key: 'stop:s1' })
-  expect(calls.find(c => c.method === 'stop')).toBeUndefined()
-  await ui.press({ key: 'stop:s1' })
-  expect(calls.find(c => c.method === 'stop')?.params).toEqual({ session: 's1' })
   await ui.unmount()
 })
