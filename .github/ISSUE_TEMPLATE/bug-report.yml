@@ -1,0 +1,93 @@
+name: Bug report
+description: Something Baton did wrong, or failed to do
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security issues go through [private reporting](https://github.com/kanumuri9593/Baton/security/advisories/new), not here.
+        `baton doctor --json` output is often the fastest way to the cause; it leaves environment values out.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what Baton did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. baton run "Local lab" --device <id>
+        2. edit lib/main.dart
+        3. check_change returns ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Baton version
+      description: "`npm ls -g baton-run`, or the plugin version"
+      placeholder: "0.2.9"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: "`node --version`"
+      placeholder: "v24.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: How were you using Baton?
+      multiple: true
+      options:
+        - Claude Code (terminal)
+        - Claude Code (desktop app or VS Code)
+        - Claude Desktop / claude.ai
+        - Codex
+        - Cursor
+        - VS Code (Copilot)
+        - Antigravity
+        - Gemini CLI
+        - Windsurf
+        - Other MCP client
+        - baton CLI
+        - Baton app
+    validations:
+      required: true
+  - type: dropdown
+    id: app
+    attributes:
+      label: App type
+      multiple: true
+      options:
+        - Flutter / Dart
+        - Web (Vite, Next.js, Nuxt, Astro, Remix, Angular, CRA)
+        - React Native / Expo
+        - Native iOS (Xcode)
+        - Native Android (Gradle)
+        - Other process (launch.json or package.json script)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and output
+      description: "`baton logs <session> -n 80`, the tool result, or `baton doctor --json`. Remove anything private."
+      render: text

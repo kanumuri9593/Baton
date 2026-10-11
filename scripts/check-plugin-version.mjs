@@ -10,6 +10,7 @@ const pinned = [
   'plugins/baton/skills/using-baton/SKILL.md',
   'plugins/baton/skills/doctor/SKILL.md',
   'docs/clients.md',
+  ...['claude-code', 'codex', 'cursor', 'vscode', 'antigravity', 'gemini-cli', 'windsurf', 'claude-desktop'].map((c) => `docs/clients/${c}.md`),
 ];
 
 const problems = [];

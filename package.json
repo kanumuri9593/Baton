@@ -84,6 +84,7 @@
     "dist",
     "hud",
     "assets",
+    "!assets/baton-check.gif",
     "scripts/copy-hud-assets.mjs",
     "scripts/prepare.mjs",
     "scripts/render-icons.mjs",
@@ -109,6 +110,7 @@
     "examples/workflow-lab/workflow.json",
     "examples/workflow-lab/README.md",
     "examples/workflow-lab/workflow-test.json",
+    "examples/README.md",
     "examples/flutter-lab/README.md",
     "examples/flutter-lab/test/widget_test.dart"
   ]
