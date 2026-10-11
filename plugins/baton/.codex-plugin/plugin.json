@@ -1,0 +1,30 @@
+{
+  "name": "baton",
+  "version": "0.2.9",
+  "description": "Run, hot-reload, screenshot and debug Flutter, web, React Native and native iOS/Android apps from Codex, through Baton's MCP server.",
+  "author": {
+    "name": "Yeswanth Varma Kanumuri",
+    "url": "https://github.com/kanumuri9593"
+  },
+  "homepage": "https://kanumuri9593.github.io/Baton/",
+  "repository": "https://github.com/kanumuri9593/Baton",
+  "license": "MIT",
+  "keywords": ["flutter", "hot-reload", "simulator", "react-native", "mcp", "screenshot"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Baton",
+    "shortDescription": "Run, hot-reload and screenshot your apps",
+    "longDescription": "Baton runs your Flutter, web, React Native and native iOS/Android apps, hot-reloads them after each edit, and hands back logs, failed requests and a screenshot so Codex can see what changed.",
+    "developerName": "Yeswanth Varma Kanumuri",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive"],
+    "websiteURL": "https://kanumuri9593.github.io/Baton/",
+    "defaultPrompt": [
+      "Run this app on the iPhone simulator and show me a screenshot",
+      "Hot-reload my change and tell me if anything broke",
+      "Boot an iPad simulator and run the app there too"
+    ],
+    "brandColor": "#7C5CFF"
+  }
+}

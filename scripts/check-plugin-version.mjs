@@ -14,6 +14,8 @@ const pinned = [
 
 const problems = [];
 if (plugin !== version) problems.push(`plugin.json version ${plugin} != package.json ${version}`);
+const codex = JSON.parse(read('plugins/baton/.codex-plugin/plugin.json')).version;
+if (codex !== version) problems.push(`.codex-plugin/plugin.json version ${codex} != package.json ${version}`);
 for (const path of pinned) {
   for (const [, pin] of read(path).matchAll(/baton-run@([\d.]+)/g)) {
     if (pin !== version) problems.push(`${path} pins baton-run@${pin}, expected ${version}`);
