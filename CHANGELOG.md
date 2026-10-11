@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.9 — 2026-10-10
+## 0.2.9 — 2026-10-11
 
 Built for the loop a coding agent actually runs: edit, check, fix, check again.
 
@@ -13,7 +13,12 @@ Built for the loop a coding agent actually runs: edit, check, fix, check again.
   the run's errors), Play (reload, resume, or run again once it ends), Pause,
   Stop and Bring to front. The header has the same buttons for every app at
   once, plus ＋ to start a new `/baton:run`. No hover popups. `/baton` opens
-  the same view in a pane. Pause is macOS only.
+  the same view in a pane. Pause is macOS only. In the desktop app the
+  buttons draw as icons, not their names.
+- Bring to front now raises that run's own simulator window, using
+  Simulator's own show-device signal (the one Xcode sends), so with an iPhone
+  and an iPad both up it no longer always shows the same one. Bring all
+  raises every device. macOS only.
 - New `check_change` tool (and `baton check <session>`). One call applies an
   edit (hot reload for Flutter, HMR for web and React Native, restart for
   native and plain processes) and answers OK / NOT OK with only what is new
@@ -40,7 +45,11 @@ Built for the loop a coding agent actually runs: edit, check, fix, check again.
   carries an MCP Registry listing (`server.json`, `mcpName`).
 - New [docs/clients.md](docs/clients.md): copy-paste setup for Claude Code,
   Codex, Cursor, VS Code, Gemini CLI, Windsurf and Claude Desktop, plus a
-  rules snippet that teaches any agent the loop.
+  rules snippet that teaches any agent the loop, with a full page per tool
+  under [docs/clients/](docs/clients/).
+- Repository: `SECURITY.md`, `CODE_OF_CONDUCT.md`, a pull request template,
+  a structured bug report form, and [examples/README.md](examples/README.md)
+  with minimal launch and workflow configs.
 
 Also in 0.2.9 (prepared as 0.2.8, which was never published):
 
@@ -49,7 +58,8 @@ Also in 0.2.9 (prepared as 0.2.8, which was never published):
   opens a panel with each run's CPU and memory plus Reload, Restart,
   Screenshot and Stop. In the desktop app the panel shows the last screenshot.
   It reads the same daemon as the MCP tools, so runs started by Claude, the
-  CLI or the Baton app all appear. Source: `plugins/baton/hooks/register.tsx`;
+  CLI or the Baton app all appear. (Before release, both became the one-row
+  workspace with icon buttons described above.) Source: `plugins/baton/hooks/register.tsx`;
   CI runs its tests with `claude plugin test`.
 - `show_dashboard`: a live Baton card inside the chat, drawn by hosts that
   support MCP Apps (the Claude app and claude.ai). It lists every run with its
