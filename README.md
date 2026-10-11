@@ -26,6 +26,12 @@
 </p>
 
 <p align="center">
+  <a href="https://insiders.vscode.dev/redirect/mcp/install?name=baton&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22baton-run%22%5D%7D"><img alt="Install in VS Code" src="https://img.shields.io/badge/VS_Code-Install_Baton-0098FF?logo=visualstudiocode&logoColor=white"></a>
+  <a href="https://insiders.vscode.dev/redirect/mcp/install?name=baton&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22baton-run%22%5D%7D&quality=insiders"><img alt="Install in VS Code Insiders" src="https://img.shields.io/badge/VS_Code_Insiders-Install_Baton-24bfa5?logo=visualstudiocode&logoColor=white"></a>
+  <a href="https://cursor.com/en/install-mcp?name=baton&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImJhdG9uLXJ1biJdfQ%3D%3D"><img alt="Add Baton to Cursor" src="https://img.shields.io/badge/Cursor-Add_Baton-111827?logo=cursor&logoColor=white"></a>
+</p>
+
+<p align="center">
   <img src="assets/baton-check.gif" width="760" alt="An agent edits a web page, check_change reports NOT OK with the browser console error, the agent fixes the typo and check_change reports OK with a phone screenshot">
 </p>
 
@@ -56,6 +62,8 @@ Other ways in:
 | Way | Command |
 |---|---|
 | Claude Code plugin | `/plugin marketplace add kanumuri9593/Baton` then `/plugin install baton@baton` |
+| Codex plugin | `codex plugin marketplace add kanumuri9593/Baton` then `codex plugin add baton@baton` |
+| VS Code or Cursor, one click | the install buttons at the top of this page |
 | MCP server, no install | `npx -y baton-run` as the server command (pin with `baton-run@0.2.9`) |
 | Pinned GitHub install | `npm install -g github:kanumuri9593/Baton#v0.2.9` |
 | From source | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
