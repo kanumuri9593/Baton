@@ -6,9 +6,9 @@ import { after } from 'node:test';
 /** A portable copy of the original launch example, with empty local config. */
 export function fixtureProject(): string {
   const scratch = mkdtempSync(join(tmpdir(), 'baton-fixture-'));
-  const root = join(scratch, 'McLane360');
+  const root = join(scratch, 'FieldApp');
   for (const dir of ['.vscode', '.claude', 'config', 'lib']) mkdirSync(join(root, dir), { recursive: true });
-  const launch = readFileSync(new URL('../fixtures/mclane360-launch.json', import.meta.url), 'utf8');
+  const launch = readFileSync(new URL('../fixtures/fieldapp-launch.json', import.meta.url), 'utf8');
   writeFileSync(join(root, '.vscode/launch.json'), launch);
   writeFileSync(join(root, '.claude/launch.json'), JSON.stringify({ configurations: [{ name: 'docs', runtimeExecutable: 'node', runtimeArgs: ['--version'] }] }));
   writeFileSync(join(root, 'pubspec.yaml'), 'name: example\ndependencies:\n  flutter:\n    sdk: flutter\n');

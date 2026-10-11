@@ -71,10 +71,10 @@ Examples
   baton reload --all
   baton check webapp --viewport phone  # did my edit break anything?
   baton boot "iPhone 17 Pro Max" # boot it, then run on it
-  baton network mclane360 --filter 'POST|4\\d\\d'
+  baton network fieldapp --filter 'POST|4\\d\\d'
   baton add ~/code/storefront    # watch three projects in one control panel
   baton init                     # .vscode/launch.json you can then edit anywhere
-  baton wait mclane360 --until running --timeout 30000
+  baton wait fieldapp --until running --timeout 30000
   baton wait webapp --until log:"ready in"
 `;
 

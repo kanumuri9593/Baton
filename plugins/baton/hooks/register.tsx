@@ -269,7 +269,7 @@ const DEVICE_GLYPH: Record<DeviceKind, string> = { phone: '▯', tablet: '▭', 
 
 const GENERIC = /^(ios|android)( simulator| emulator)?$|^(app|web|run|main|default)$/i
 
-/** "CoreRun TST (full dart-defines)" → "CoreRun TST"; "iOS Simulator (DEV / dev flavor)" in McLane360-main → "McLane360 DEV". */
+/** "CoreRun TST (full dart-defines)" → "CoreRun TST"; "iOS Simulator (DEV / dev flavor)" in FieldApp-main → "FieldApp DEV". */
 export function shortName(run: Pick<Run, 'name' | 'project'>): string {
   const base = run.name.replace(/\s*\(.*\)\s*$/, '').trim()
   if (base && !GENERIC.test(base)) return base

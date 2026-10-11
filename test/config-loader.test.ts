@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { loadConfigs, buildFlutterArgv } from '../src/config/loader.ts';
 
-const REAL = 'test/fixtures/mclane360-launch.json';
+const REAL = 'test/fixtures/fieldapp-launch.json';
 const JSONC = 'test/fixtures/jsonc-launch.json';
 
-test('loads every configuration from the real McLane360 launch.json', () => {
+test('loads every configuration from the real FieldApp launch.json', () => {
   const configs = loadConfigs(REAL, '/proj');
   assert.equal(configs.length, 16);
   // the "//" documentation key at the top level must not become a config

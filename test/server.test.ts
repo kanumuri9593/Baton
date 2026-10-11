@@ -124,7 +124,7 @@ test('reload --all with nothing running is a no-op, not an error', async () => {
   assert.deepEqual(results, []);
 });
 
-test('targets discovers the real McLane360 project', async () => {
+test('targets discovers the real FieldApp project', async () => {
   const result: any = await daemon.handle({
     method: 'targets', params: { cwd: FIXTURE_PROJECT },
   });
@@ -207,13 +207,13 @@ test('projects lists every remembered project with what it can run', async () =>
   await daemon.handle({ method: 'useProject', params: { root: FIXTURE_PROJECT } });
   const result: any = await daemon.handle({ method: 'projects', params: {} });
 
-  const mclane = result.projects.find((p: any) => p.root === FIXTURE_PROJECT);
-  assert.ok(mclane, 'a remembered project must appear in the list');
-  assert.equal(mclane.name, 'McLane360', 'the HUD labels tabs with this');
-  assert.ok(mclane.targets.length >= 16);
+  const fieldapp = result.projects.find((p: any) => p.root === FIXTURE_PROJECT);
+  assert.ok(fieldapp, 'a remembered project must appear in the list');
+  assert.equal(fieldapp.name, 'FieldApp', 'the HUD labels tabs with this');
+  assert.ok(fieldapp.targets.length >= 16);
   // Targets carry their pre-flight state, so the picker can flag blocked ones
   // without a second round trip per project.
-  assert.ok(mclane.targets.every((t: any) => Array.isArray(t.issues)));
+  assert.ok(fieldapp.targets.every((t: any) => Array.isArray(t.issues)));
 });
 
 test('adding a directory that is not a project is refused, with the path', async () => {

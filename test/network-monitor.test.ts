@@ -67,7 +67,7 @@ async function replay() {
   const transport = new ReplayTransport();
   const client = new VmServiceClient(transport);
   const monitor = new NetworkMonitor(client, {
-    sessionId: 'mclane360/ios@48F0A0D1',
+    sessionId: 'fieldapp/ios@48F0A0D1',
     pollIntervalMs: 3_600_000, // never fires on its own; tests call pollOnce()
     retryDelayMs: 0,
   });
@@ -103,9 +103,9 @@ test('a poll normalizes microseconds to milliseconds and reports what each reque
   const [orders, login, logo] = seen;
 
   assert.equal(orders.id, `${MAIN}#1`, 'ids are isolate-scoped so two isolates cannot collide');
-  assert.equal(orders.sessionId, 'mclane360/ios@48F0A0D1');
+  assert.equal(orders.sessionId, 'fieldapp/ios@48F0A0D1');
   assert.equal(orders.method, 'GET');
-  assert.equal(orders.uri, 'https://api.mclane360.test/v2/orders?page=1');
+  assert.equal(orders.uri, 'https://api.fieldapp.test/v2/orders?page=1');
   assert.equal(orders.startTime, 1756540800000, 'microseconds since the epoch become milliseconds');
   assert.equal(orders.endTime, 1756540800187);
   assert.equal(orders.durationMs, 187);
@@ -183,7 +183,7 @@ test('a hot restart re-enables capture on the fresh isolate and forgets the dead
   assert.deepEqual(transport.unexpected, [], 'the new isolate is polled from scratch, with no stale updatedSince');
   const fresh = seen.at(-1)!;
   assert.equal(fresh.id, `${RESTARTED}#1`);
-  assert.equal(fresh.uri, 'https://api.mclane360.test/v2/config');
+  assert.equal(fresh.uri, 'https://api.fieldapp.test/v2/config');
   assert.equal(fresh.statusCode, 204);
   monitor.dispose();
 });

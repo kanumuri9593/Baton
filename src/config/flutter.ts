@@ -58,7 +58,7 @@ function probeFvmCli(): boolean {
 /**
  * Pick the Flutter binary for a project.
  *
- * Order matters: McLane360 pins 3.38.2 through FVM, and a bare `flutter` from PATH
+ * Order matters: FieldApp pins 3.38.2 through FVM, and a bare `flutter` from PATH
  * is a different SDK. Using the wrong one produces confusing failures far from the
  * cause, so the project-local SDK always wins.
  */
