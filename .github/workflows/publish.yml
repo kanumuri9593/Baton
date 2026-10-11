@@ -36,3 +36,16 @@ jobs:
 
       - name: Publish with npm trusted publishing
         run: npm publish --access public
+
+      # The MCP Registry lists the same version, read from server.json. It
+      # checks that npm carries baton-run@<version> with a matching mcpName.
+      - name: List the version on the MCP Registry
+        env:
+          MCP_PUBLISHER: v1.8.1
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+        run: |
+          curl -sSLo mcp-publisher.tar.gz "https://github.com/modelcontextprotocol/registry/releases/download/$MCP_PUBLISHER/mcp-publisher_linux_amd64.tar.gz"
+          echo "$MCP_PUBLISHER_SHA256  mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
