@@ -48,8 +48,8 @@ declare module 'claude-code' {
       catalog: Catalog | null
       form: Form
       logs: Logs | null
-      /** A Stop all press waiting for its confirm. */
-      isStopArmed: boolean
+      /** A Stop press waiting for its confirm: a run id, or 'all'. */
+      armedStop: string | null
       /** The band shows only its header line. */
       isCollapsed: boolean
       /** The inline New run row is open. */

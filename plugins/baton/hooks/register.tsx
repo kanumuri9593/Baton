@@ -21,7 +21,7 @@ const isBandHidden = atom({ plugin: 'baton', key: 'isBandHidden' } as const, fal
 const catalog = atom({ plugin: 'baton', key: 'catalog' } as const, null)
 const form = atom({ plugin: 'baton', key: 'form' } as const, {})
 const logs = atom({ plugin: 'baton', key: 'logs' } as const, null)
-const isStopArmed = atom({ plugin: 'baton', key: 'isStopArmed' } as const, false)
+const armedStop = atom({ plugin: 'baton', key: 'armedStop' } as const, null)
 const isCollapsed = atom({ plugin: 'baton', key: 'isCollapsed' } as const, false)
 const isNewOpen = atom({ plugin: 'baton', key: 'isNewOpen' } as const, false)
 
@@ -322,6 +322,51 @@ async function thumbnail($: Dollar, path: string): Promise<string | undefined> {
   }
 }
 
+type DeviceKind = 'phone' | 'tablet' | 'android' | 'web' | 'process'
+
+function deviceKind(run: Run): DeviceKind {
+  const d = `${run.device ?? ''} ${run.kind}`
+  if (/ipad|tab/i.test(d)) return 'tablet'
+  if (/android|pixel|emulator/i.test(d) || run.kind === 'android') return 'android'
+  if (run.device) return 'phone'
+  if (run.url || /web|vite|next|chrome/i.test(run.kind)) return 'web'
+  return 'process'
+}
+
+const stroke = (c: string, body: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="${c}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
+const DEVICE_SVG: Record<DeviceKind, string> = {
+  phone: stroke('#8e96a3', '<rect x="4.5" y="1.5" width="7" height="13" rx="1.8"/><path d="M7 12.4h2"/>'),
+  tablet: stroke('#8e96a3', '<rect x="2.5" y="2" width="11" height="12" rx="1.6"/><path d="M7 12h2"/>'),
+  android: stroke('#3ddc84', '<rect x="4.5" y="1.5" width="7" height="13" rx="1.8"/><path d="M7 12.4h2"/>'),
+  web: stroke('#5fa8f5', '<circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2.2 2 9.8 0 12M8 2c-2 2.2-2 9.8 0 12"/>'),
+  process: stroke('#8e96a3', '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M5 7l2 1.5L5 10M8.5 10H11"/>'),
+}
+const DEVICE_GLYPH: Record<DeviceKind, string> = { phone: '▯', tablet: '▭', android: '▯', web: '◍', process: '›_' }
+
+const GENERIC = /^(ios|android)( simulator| emulator)?$|^(app|web|run|main|default)$/i
+
+/** "CoreRun TST (full dart-defines)" → "CoreRun TST"; "iOS Simulator (DEV / dev flavor)" in McLane360-main → "McLane360 DEV". */
+export function shortName(run: Pick<Run, 'name' | 'project'>): string {
+  const base = run.name.replace(/\s*\(.*\)\s*$/, '').trim()
+  if (base && !GENERIC.test(base)) return base
+  const project = run.project.replace(/[-_](main|master|app)$/i, '')
+  const flavor = /\(([A-Z][A-Z0-9]{1,5})\b/.exec(run.name)?.[1]
+  return flavor ? `${project} ${flavor}` : project
+}
+
+/** "iPad Pro (12.9-inch) (4th generation)" → "iPad Pro 12.9″"; URLs lose their scheme. */
+export function shortDevice(run: Pick<Run, 'device' | 'url' | 'kind'>): string {
+  if (run.device) {
+    return run.device
+      .replace(/\s*\((\d+(?:\.\d+)?)-inch\)/i, ' $1″')
+      .replace(/\s*\((?:\d+(?:st|nd|rd|th) generation|[^)]*generation)\)/i, '')
+      .trim()
+  }
+  if (run.url) return run.url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  return run.kind
+}
+
 type Site = 'band' | 'pane'
 
 const LIVE = (r: Run) => r.status === 'running' || r.status === 'starting'
@@ -339,7 +384,7 @@ async function workspace($: Dollar, e: any, site: Site) {
   const Svg = e.surface === 'desktop' || e.surface === 'vscode' || e.surface === 'mobile' ? els.Svg : undefined
   const list = await read($, runs)
   const working = await read($, busy)
-  const armed = await read($, isStopArmed)
+  const armed = await read($, armedStop)
   const collapsed = site === 'band' && (await read($, isCollapsed))
   const newOpen = site === 'pane' || (await read($, isNewOpen))
   const log = await read($, logs)
@@ -355,51 +400,58 @@ async function workspace($: Dollar, e: any, site: Site) {
   const pausable = running.filter(r => r.canPause)
   const allPaused = pausable.length > 0 && pausable.every(r => r.paused)
   const pausedCount = running.filter(r => r.paused).length
+  const starting = live.length - running.length
   const failed = list.filter(r => r.status === 'failed').length
-  const summary = [
-    `${running.length - pausedCount} running`,
-    pausedCount ? `${pausedCount} paused` : '',
-    live.length - running.length ? `${live.length - running.length} starting` : '',
-    failed ? `${failed} failed` : '',
-  ].filter(Boolean).join(' · ')
+
+  // An icon control: a coloured glyph on a quiet button, its name as the
+  // accessible label and as a tooltip that shows while the pointer is on it.
+  const icon = (key: string, glyph: string, tip: string, color: string, onPress: () => unknown, opts: { on?: boolean } = {}) => (
+    <Box key={`i:${key}`} position="relative" marginLeft={1}>
+      <Button key={key} plain label={tip} onPress={onPress}>
+        <Text color={color} bold inverse={opts.on}>{glyph}</Text>
+      </Button>
+      <Box position="absolute" top={1} left={0} display="none" hover={{ display: 'flex' }}>
+        <Text inverse> {tip} </Text>
+      </Box>
+    </Box>
+  )
+  const confirmStop = async (id: string, ids: string[], done: string) => {
+    if (armed !== id) {
+      await update($, armedStop, () => id)
+      $.clock.after(4000, async () => {
+        if ((await read($, armedStop)) === id) await update($, armedStop, () => null)
+      })
+      return
+    }
+    await update($, armedStop, () => null)
+    await act($, `stop:${id}`, 'stop', ids.length === 1 && id !== 'all' ? { session: ids[0] } : { ids }, done)
+  }
+
+  const chip = (key: string, glyph: string, n: number, color: string, label: string) =>
+    n > 0 && <Text key={key} color={color}>  {glyph} {n}<Text dimColor> {label}</Text></Text>
 
   const header = (
     <Box key="head" flexDirection="row" justifyContent="space-between" flexWrap="wrap">
       <Text>
-        <Text bold color="claude">Baton</Text>
-        <Text dimColor>  {summary}</Text>
+        <Text bold color="claude">◆ Baton</Text>
+        {chip('c-run', '●', running.length - pausedCount, 'success', 'running')}
+        {chip('c-pause', '❚❚', pausedCount, 'warning', 'paused')}
+        {chip('c-start', '◐', starting, 'warning', 'starting')}
+        {chip('c-fail', '✕', failed, 'error', 'failed')}
       </Text>
       <Box flexDirection="row" flexWrap="wrap">
-        <Button key="new" variant={newOpen && site === 'band' ? 'primary' : undefined} label={site === 'band' && newOpen ? '× New run' : '+ New run'}
-          onPress={() => (site === 'band' ? openNew($, !newOpen) : loadCatalogGuarded($))} />
-        {reloadable.length > 1 && (
-          <Button key="reload-all" dimColor label={working === 'reload-all' ? 'Reloading…' : 'Reload all'}
-            onPress={() => act($, 'reload-all', 'reload', { ids: reloadable.map(r => r.id), reason: `Claude Code ${site}` }, 'Baton: reloaded')} />
-        )}
-        {pausable.length > 1 && (
-          <Button key="pause-all" dimColor label={allPaused ? 'Resume all' : 'Pause all'}
-            onPress={() => guarded($, 'pause-all', () => signal($, pausable.filter(r => r.paused === allPaused).map(r => r.id), !allPaused))} />
-        )}
-        {running.filter(r => r.canFront).length > 1 && (
-          <Button key="front-all" dimColor label="Front all" onPress={() => guarded($, 'front-all', () => front($, running))} />
-        )}
-        {live.length > 1 && (
-          <Button key="stop-all" dimColor={!armed} label={armed ? `Confirm stop ${live.length}` : 'Stop all'}
-            onPress={async () => {
-              if (!armed) {
-                await update($, isStopArmed, () => true)
-                $.clock.after(4000, () => update($, isStopArmed, () => false))
-                return
-              }
-              await update($, isStopArmed, () => false)
-              await act($, 'stop-all', 'stop', { ids: live.map(r => r.id) }, 'Baton: stopped all')
-            }} />
-        )}
-        {site === 'band' && (
-          <Button key="collapse" dimColor label={collapsed ? 'Expand' : 'Collapse'} onPress={() => update($, isCollapsed, c => !c)} />
-        )}
-        {site === 'band' && <Button key="open" dimColor label="Open Baton" onPress={() => openPanel($)} />}
-        {site === 'band' && <Button key="hide" dimColor label="Hide" onPress={() => update($, isBandHidden, () => true)} />}
+        {icon('new', newOpen && site === 'band' ? '－' : '＋', newOpen && site === 'band' ? 'Close New run' : 'New run', 'claude',
+          () => (site === 'band' ? openNew($, !newOpen) : loadCatalogGuarded($)), { on: newOpen && site === 'band' })}
+        {reloadable.length > 1 && icon('reload-all', '⚡︎', 'Reload all', 'warning',
+          () => act($, 'reload-all', 'reload', { ids: reloadable.map(r => r.id), reason: `Claude Code ${site}` }, 'Baton: reloaded'))}
+        {pausable.length > 1 && icon('pause-all', allPaused ? '▶' : '❚❚', allPaused ? 'Resume all' : 'Pause all', allPaused ? 'success' : 'warning',
+          () => guarded($, 'pause-all', () => signal($, pausable.filter(r => r.paused === allPaused).map(r => r.id), !allPaused)))}
+        {running.filter(r => r.canFront).length > 1 && icon('front-all', '⧉', 'Bring all to front', 'suggestion', () => guarded($, 'front-all', () => front($, running)))}
+        {live.length > 1 && icon('stop-all', armed === 'all' ? `■ Stop ${live.length}?` : '■', armed === 'all' ? `Press again to stop all ${live.length}` : 'Stop all', 'error',
+          () => confirmStop('all', live.map(r => r.id), 'Baton: stopped all'), { on: armed === 'all' })}
+        {site === 'band' && icon('collapse', collapsed ? '▾' : '▴', collapsed ? 'Expand' : 'Collapse', 'subtle', () => update($, isCollapsed, c => !c))}
+        {site === 'band' && icon('open', '⤢', 'Open in a side panel', 'subtle', () => openPanel($))}
+        {site === 'band' && icon('hide', '✕', 'Hide until /baton', 'subtle', () => update($, isBandHidden, () => true))}
       </Box>
     </Box>
   )
@@ -463,41 +515,55 @@ async function workspace($: Dollar, e: any, site: Site) {
 
   const rows = list.map(run => {
     const can = (c: string) => run.status === 'running' && !run.paused && run.capabilities.includes(c)
-    const stats = [run.cpuPct != null ? `${Math.round(run.cpuPct)}%` : '', memory(run.rssBytes)].filter(Boolean).join(' · ')
-    const state = run.paused ? 'paused' : run.status === 'running' ? stats : run.progress ?? run.status
-    const where = run.device ?? (run.url ? run.url.replace(/^https?:\/\//, '') : run.kind)
-    const title = run.project === run.name || run.name.startsWith(run.project) ? run.name : `${run.project} · ${run.name}`
-    const b = (key: string, label: string, onPress: () => unknown, busyLabel?: string) => (
-      <Button key={`${key}:${run.id}`} dimColor label={busyLabel && working === `${key}:${run.id}` ? busyLabel : label} onPress={onPress} />
-    )
+    const kind = deviceKind(run)
+    const state = run.paused ? 'paused' : run.status === 'running'
+      ? [run.cpuPct != null ? `${Math.round(run.cpuPct)}%` : '', memory(run.rssBytes)].filter(Boolean).join(' · ')
+      : run.progress ?? run.status
+    const dotColor = run.paused || run.status === 'starting' ? 'warning' : COLOR[run.status]
+    const full = `${run.project} · ${run.name}${run.device ? ` · ${run.device}` : ''}`
+    const ended = !LIVE(run)
     const controls = (
       <Box flexDirection="row" flexWrap="wrap">
-        {can('hotReload') && b('reload', 'Reload', () => act($, `reload:${run.id}`, 'reload', { session: run.id, reason: `Claude Code ${site}` }, `Baton: reloaded ${run.name}`), 'Reloading…')}
-        {(can('hotRestart') || can('restartProcess')) && b('restart', 'Restart', () => act($, `restart:${run.id}`, 'restart', { session: run.id, reason: `Claude Code ${site}` }, `Baton: restarted ${run.name}`), 'Restarting…')}
-        {run.status === 'running' && run.canPause && b('pause', run.paused ? '▶ Resume' : 'Pause', () => guarded($, `pause:${run.id}`, () => signal($, [run.id], !run.paused)))}
-        {can('screenshot') && b('shot', 'Screenshot', () => screenshot($, run), 'Capturing…')}
-        {b('logs', log?.runId === run.id ? 'Hide logs' : 'Logs', () => (log?.runId === run.id ? update($, logs, () => null) : loadLogs($, run.id, run.name)))}
-        {run.status === 'running' && run.canFront && b('front', 'Front', () => guarded($, `front:${run.id}`, () => front($, [run])))}
-        {LIVE(run)
-          ? b('stop', 'Stop', () => act($, `stop:${run.id}`, 'stop', { session: run.id }, `Baton: stopped ${run.name}`))
-          : (
-            <Box flexDirection="row">
-              {run.root && b('again', '▶ Run again', () => guarded($, `again:${run.id}`, async () => {
-                await rpc($, 'run', { cwd: run.root, target: run.name, deviceId: run.deviceId })
-                await rpc($, 'forget', { session: run.id }).catch(() => undefined)
-                return `Baton: starting ${run.name} again`
-              }), 'Starting…')}
-              {b('dismiss', 'Dismiss', () => act($, `dismiss:${run.id}`, 'forget', { session: run.id }, `Baton: dismissed ${run.name}`))}
-            </Box>
-          )}
+        {can('hotReload') && icon(`reload:${run.id}`, working === `reload:${run.id}` ? '…' : '⚡︎', 'Hot reload', 'warning',
+          () => act($, `reload:${run.id}`, 'reload', { session: run.id, reason: `Claude Code ${site}` }, `Baton: reloaded ${shortName(run)}`))}
+        {(can('hotRestart') || can('restartProcess')) && icon(`restart:${run.id}`, working === `restart:${run.id}` ? '…' : '↻', 'Restart', 'suggestion',
+          () => act($, `restart:${run.id}`, 'restart', { session: run.id, reason: `Claude Code ${site}` }, `Baton: restarted ${shortName(run)}`))}
+        {run.status === 'running' && run.canPause && icon(`pause:${run.id}`, run.paused ? '▶' : '❚❚', run.paused ? 'Resume' : 'Pause', run.paused ? 'success' : 'warning',
+          () => guarded($, `pause:${run.id}`, () => signal($, [run.id], !run.paused)))}
+        {can('screenshot') && icon(`shot:${run.id}`, working === `shot:${run.id}` ? '…' : '◉', 'Screenshot', 'merged', () => screenshot($, run))}
+        {icon(`logs:${run.id}`, '☰', log?.runId === run.id ? 'Hide logs' : 'Logs', 'text',
+          () => (log?.runId === run.id ? update($, logs, () => null) : loadLogs($, run.id, run.name)), { on: log?.runId === run.id })}
+        {run.status === 'running' && run.canFront && icon(`front:${run.id}`, '⧉', 'Bring to front', 'suggestion', () => guarded($, `front:${run.id}`, () => front($, [run])))}
+        {!ended && icon(`stop:${run.id}`, armed === run.id ? '■ Stop?' : '■', armed === run.id ? 'Press again to stop' : 'Stop', 'error',
+          () => confirmStop(run.id, [run.id], `Baton: stopped ${shortName(run)}`), { on: armed === run.id })}
+        {ended && run.root && icon(`again:${run.id}`, working === `again:${run.id}` ? '…' : '▶', 'Run again', 'success', () => guarded($, `again:${run.id}`, async () => {
+          await rpc($, 'run', { cwd: run.root, target: run.name, deviceId: run.deviceId })
+          await rpc($, 'forget', { session: run.id }).catch(() => undefined)
+          return `Baton: starting ${shortName(run)} again`
+        }))}
+        {ended && icon(`dismiss:${run.id}`, '✕', 'Dismiss', 'subtle', () => act($, `dismiss:${run.id}`, 'forget', { session: run.id }, `Baton: dismissed ${shortName(run)}`))}
       </Box>
     )
+    const glyph = Svg
+      ? <Svg key={`dev:${run.id}`} source={DEVICE_SVG[kind]} alt={kind} width={14} height={14} />
+      : <Text dimColor>{DEVICE_GLYPH[kind]}</Text>
     const info = (
-      <Text wrap="truncate-end">
-        <Text color={run.paused ? 'warning' : COLOR[run.status]}>{run.paused ? '❚❚' : DOT[run.status]} </Text>
-        <Text bold={LIVE(run)} dimColor={!LIVE(run)}>{title}</Text>
-        <Text dimColor>  {where}{state ? `  ${state}` : ''}</Text>
-      </Text>
+      <Box key={`info:${run.id}`} flexDirection="row" flexGrow={1} flexShrink={1} alignItems="center" position="relative">
+        <Text color={dotColor}>{run.paused ? '❚❚' : DOT[run.status]} </Text>
+        {glyph}
+        <Box width={wide ? 22 : undefined} flexShrink={1} marginLeft={1}>
+          <Text bold={!ended} dimColor={ended} wrap="truncate-end">{shortName(run)}</Text>
+        </Box>
+        <Box width={wide ? 20 : undefined} flexShrink={1} marginLeft={1}>
+          <Text dimColor wrap="truncate-end">{shortDevice(run)}</Text>
+        </Box>
+        <Box flexShrink={1} marginLeft={1}>
+          <Text color={run.paused ? 'warning' : run.status === 'failed' ? 'error' : undefined} dimColor={!run.paused && run.status !== 'failed'} wrap="truncate-end">{state}</Text>
+        </Box>
+        <Box position="absolute" top={1} left={2} display="none" hover={{ display: 'flex' }}>
+          <Text inverse> {full}{run.url ? ` · ${run.url}` : ''} </Text>
+        </Box>
+      </Box>
     )
     const openLog = log?.runId === run.id ? log : null
     const openShot = last?.runId === run.id ? last : null
@@ -505,14 +571,14 @@ async function workspace($: Dollar, e: any, site: Site) {
       <Box key={`run:${run.id}`} flexDirection="column">
         {wide ? (
           <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-            <Box flexShrink={1} flexGrow={1}>{info}</Box>
+            {info}
             {controls}
           </Box>
         ) : (
           <Box flexDirection="column">{info}{controls}</Box>
         )}
         {openLog && (
-          <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
+          <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1} marginLeft={2}>
             {openLog.lines.length === 0
               ? <Text dimColor>No output yet.</Text>
               : openLog.lines.slice(site === 'band' ? -8 : -40).map((l, i) => (
@@ -521,11 +587,11 @@ async function workspace($: Dollar, e: any, site: Site) {
           </Box>
         )}
         {openShot && (
-          <Box flexDirection="row" alignItems="flex-start">
+          <Box flexDirection="row" alignItems="flex-start" marginLeft={2}>
             {Svg && openShot.svg && <Svg key={`img:${run.id}`} source={openShot.svg} alt={`Screenshot of ${run.name}`} width={site === 'band' ? 120 : 260} />}
-            <Box flexDirection="column">
+            <Box flexDirection="column" marginLeft={1}>
               <Text dimColor wrap="truncate-middle">{openShot.path}</Text>
-              <Button key={`shotclose:${run.id}`} dimColor label="Close" onPress={() => update($, shot, () => null)} />
+              {icon(`shotclose:${run.id}`, '✕', 'Close screenshot', 'subtle', () => update($, shot, () => null))}
             </Box>
           </Box>
         )}

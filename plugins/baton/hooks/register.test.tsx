@@ -2,7 +2,7 @@ import type { On } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
 import type { Run } from '../types'
-import { label, toRun } from './register.tsx'
+import { label, shortDevice, shortName, toRun } from './register.tsx'
 
 
 // Stands in for the Baton daemon: the handshake file and POST /rpc.
@@ -60,6 +60,14 @@ const mclane: Run = {
 }
 
 describe('helpers', () => {
+  test('names and devices are shortened for one clean line', () => {
+    expect(shortName({ name: 'CoreRun TST (full dart-defines)', project: 'CoreRun' })).toBe('CoreRun TST')
+    expect(shortName({ name: 'iOS Simulator (DEV / dev flavor)', project: 'McLane360-main' })).toBe('McLane360 DEV')
+    expect(shortName({ name: 'app', project: 'mclane360' })).toBe('mclane360')
+    expect(shortDevice({ device: 'iPad Pro (12.9-inch) (4th generation)', kind: 'ios' })).toBe('iPad Pro 12.9″')
+    expect(shortDevice({ url: 'http://localhost:5173/', kind: 'web' })).toBe('localhost:5173')
+  })
+
   test('a run takes its project from the root and its device by id', async () => {
     const run = toRun(
       { id: 'a', name: 'CoreRun', kind: 'ios', status: 'running', root: '/Users/v/CoreRun/', target: 'UDID-1', capabilities: [] },
@@ -230,5 +238,17 @@ test('New run opens inline in the band', async ($, on) => {
   await ui.press({ key: 'new' })
   await ui.press({ key: 'run' })
   expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'CoreRun TST', deviceId: undefined })
+  await ui.unmount()
+})
+
+test('a run is stopped only on the second press', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, SESSIONS, calls)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'stop:s1' })
+  expect(calls.find(c => c.method === 'stop')).toBeUndefined()
+  await ui.press({ key: 'stop:s1' })
+  expect(calls.find(c => c.method === 'stop')?.params).toEqual({ session: 's1' })
   await ui.unmount()
 })
