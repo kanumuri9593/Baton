@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { editJson, editToml, launch, setup, type Launch } from '../src/cli/setup.ts';
@@ -11,7 +11,8 @@ test('launch points at this install, or at npx for a copy in the npx cache', () 
   const local = launch('/opt/baton', '0.2.9', { PATH: '/usr/bin' });
   assert.equal(local.command, process.execPath);
   const linked = launch('/opt/baton', '0.2.9', { PATH: dirname(process.execPath) });
-  assert.equal(linked.command, join(dirname(process.execPath), 'node'));
+  assert.equal(dirname(linked.command), dirname(process.execPath));
+  assert.equal(realpathSync(linked.command), realpathSync(process.execPath));
   assert.deepEqual(local.args, ['/opt/baton/bin/baton-mcp.js']);
   assert.deepEqual(local.env, { PATH: '/usr/bin' });
   const npx = launch('/home/me/.npm/_npx/ab12/node_modules/baton-run', '0.2.9', { PATH: '/usr/bin' });
