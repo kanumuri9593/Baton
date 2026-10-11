@@ -18,6 +18,11 @@ const UDID = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
 
 type Proc = { pid: number; ppid: number; stat: string; command: string };
 
+/** Simulator's "show this device" signal, as a JXA one-liner. */
+export const showDeviceScript = (udid: string): string =>
+  `ObjC.import("Foundation"); delay(0.8); $.NSDistributedNotificationCenter.defaultCenter` +
+  `.postNotificationNameObjectUserInfoDeliverImmediately("com.apple.iphonesimulator.startSession", $(), $({ deviceUDID: ${JSON.stringify(udid)} }), true)`;
+
 export class Controls {
   #exec: Exec;
   #platform: NodeJS.Platform;
@@ -94,10 +99,20 @@ export class Controls {
     this.#exec('kill', [`-${signal}`, ...app.map((p) => String(p.pid))]);
   }
 
-  /** Bring the simulator, or the browser on the run's URL, to the front. */
+  /**
+   * Bring the run's own simulator window, or the browser on its URL, to the
+   * front. Activating Simulator alone raises whichever of its windows is
+   * nearest, so with an iPhone and an iPad both up the same one always won;
+   * Simulator's "show this device" signal (the one Xcode sends) orders that
+   * device's window front. JXA, so it needs no Accessibility permission.
+   */
   front(s: SessionSnapshot): void {
     if (!this.canFront(s)) throw new Error(`${s.name} has no window Baton can bring forward`);
-    if (this.isSimulator(s)) this.#exec('open', ['-a', 'Simulator']);
-    else this.#exec('open', [s.url!]);
+    if (!this.isSimulator(s)) {
+      this.#exec('open', [s.url!]);
+      return;
+    }
+    this.#exec('open', ['-a', 'Simulator']);
+    this.#exec('osascript', ['-l', 'JavaScript', '-e', showDeviceScript(s.target!)]);
   }
 }

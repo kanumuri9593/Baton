@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Logs, Run } from '../types'
-import { appProcesses, canFront, canPause, frontCommand, isSimulator, parsePs, pausedIds } from './controls.ts'
+import { appProcesses, canFront, canPause, frontCommands, isSimulator, parsePs, pausedIds } from './controls.ts'
 
 // Baton's live state above the prompt. The mod reads the same daemon the MCP
 // tools drive (handshake in ~/.baton/daemon.json, POST /rpc), so a run Claude
@@ -219,10 +219,12 @@ async function front($: Dollar, runs: Run[]): Promise<string> {
   for (const r of pick) {
     const s = snapshots.find(x => x.id === r.id)
     if (!s) continue
-    const argv = frontCommand(s)
-    if (seen.has(argv.join(' '))) continue
-    seen.add(argv.join(' '))
-    await $.process.run(argv)
+    // Every device's window comes up; Simulator is opened once.
+    for (const argv of frontCommands(s)) {
+      if (seen.has(argv.join(' '))) continue
+      seen.add(argv.join(' '))
+      await $.process.run(argv)
+    }
   }
   return pick.length === 1 ? `Baton: ${pick[0]!.name} is in front` : 'Baton: brought the apps forward'
 }

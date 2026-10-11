@@ -57,7 +57,10 @@ test('bring to front opens Simulator or the run URL; Android and other OSes get 
   const { exec, calls } = fake({});
   const c = new Controls(exec, 'darwin');
   c.front(sim);
-  assert.deepEqual(calls.at(-1), ['open', '-a', 'Simulator']);
+  // Simulator first, then its "show this device" signal for this run's own device.
+  assert.deepEqual(calls.at(-2), ['open', '-a', 'Simulator']);
+  assert.deepEqual(calls.at(-1)!.slice(0, 4), ['osascript', '-l', 'JavaScript', '-e']);
+  assert.match(calls.at(-1)![4]!, new RegExp(`startSession.*deviceUDID: "${UDID}"`));
   c.front(web);
   assert.deepEqual(calls.at(-1), ['open', 'http://127.0.0.1:5173']);
   assert.equal(c.canPause(android), false);

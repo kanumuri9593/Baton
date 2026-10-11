@@ -799,9 +799,12 @@ server.registerTool(
           break;
         }
         case 'front_all': {
-          const sims = live.filter((s) => controls.isSimulator(s) && controls.canFront(s));
-          if (sims[0]) controls.front(sims[0]);
-          for (const s of live.filter((r) => !controls.isSimulator(r) && controls.canFront(r))) controls.front(s);
+          const devices = new Set<string>();
+          for (const s of live.filter((r) => controls.canFront(r))) {
+            const key = controls.isSimulator(s) ? s.target! : s.id;
+            if (!devices.has(key)) controls.front(s);
+            devices.add(key);
+          }
           break;
         }
         case 'stop_all': {

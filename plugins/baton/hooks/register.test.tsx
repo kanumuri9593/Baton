@@ -220,6 +220,25 @@ test('on a Mac pause stops the simulator app, play resumes it, front raises Simu
   await ui.unmount()
 })
 
+test('front raises that run\'s own simulator window, and front-all raises every one', async ($, on) => {
+  const IPAD = 'B1A1BE95-E9D6-4134-B214-AA82BA076A8B'
+  const argvs: string[][] = []
+  daemon(on, [...MAC_SESSIONS, { ...MAC_SESSIONS[0]!, id: 's2', name: 'McLane', root: '/Users/v/McLane', target: IPAD, pid: 51 }])
+  mac(on, argvs)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  const shown = () => argvs.filter(a => a[0] === 'osascript').map(a => /deviceUDID: "([^"]+)"/.exec(a.at(-1)!)?.[1])
+  await ui.press({ key: 'front:s2' })
+  expect(shown()).toEqual([IPAD])
+  await ui.press({ key: 'front:s1' })
+  expect(shown()).toEqual([IPAD, SIM])
+  argvs.length = 0
+  await ui.press({ key: 'front-all' })
+  expect(argvs.filter(a => a[0] === 'open')).toEqual([['open', '-a', 'Simulator']])
+  expect(shown()).toEqual([SIM, IPAD])
+  await ui.unmount()
+})
+
 test('a paused app reads paused, and play continues it', async ($, on) => {
   const argvs: string[][] = []
   daemon(on, MAC_SESSIONS)

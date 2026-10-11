@@ -50,5 +50,19 @@ export function pausedIds(runs: ControlRun[], procs: Proc[], mac: boolean): stri
     .map(r => r.id)
 }
 
-/** The command that brings a run's window forward. */
-export const frontCommand = (r: ControlRun): string[] => (isSimulator(r) ? ['open', '-a', 'Simulator'] : ['open', r.url!])
+/**
+ * Simulator's own "show this device" signal, the one Xcode sends: it orders
+ * that device's window front, on whatever desktop it lives. Activating
+ * Simulator alone raises whichever of its windows is nearest, so with an
+ * iPhone and an iPad both up, the same one always won. JXA, so it needs no
+ * compiler and no Accessibility permission.
+ */
+export const showDeviceScript = (udid: string) =>
+  `ObjC.import("Foundation"); delay(0.8); $.NSDistributedNotificationCenter.defaultCenter` +
+  `.postNotificationNameObjectUserInfoDeliverImmediately("com.apple.iphonesimulator.startSession", $(), $({ deviceUDID: ${JSON.stringify(udid)} }), true)`
+
+/** The commands that bring a run's window forward, in order. */
+export const frontCommands = (r: ControlRun): string[][] =>
+  isSimulator(r)
+    ? [['open', '-a', 'Simulator'], ['osascript', '-l', 'JavaScript', '-e', showDeviceScript(r.target!)]]
+    : [['open', r.url!]]
