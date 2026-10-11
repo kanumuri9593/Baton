@@ -280,9 +280,10 @@ export type RpcMethods = {
     params: { session?: string; all?: boolean };
     result: { forgotten: boolean; removed: string[] };
   };
-  /** Capture the screen of a running session. iOS simulators and Android devices only. */
+  /** Capture the screen of a running session: an iOS simulator, an Android device, or a web page. */
   screenshot: {
-    params: { session: string; out?: string; viewport?: string };
+    /** `scale`: web pages only, 1 (default) or 2 device pixels per CSS pixel. */
+    params: { session: string; out?: string; viewport?: string; scale?: number };
     result: ScreenshotResult;
   };
   check: {

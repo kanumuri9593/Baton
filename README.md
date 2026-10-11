@@ -110,6 +110,10 @@ lib/main.dart:419:19: Error: Expected ';' after this.
 Screenshots cover iOS simulators, Android devices and web apps. For web, Baton opens the
 session URL in a throwaway headless Chrome, Edge or Brave (or `BATON_CHROME`) at `viewport`
 `phone` (a real 390×844 mobile layout), `tablet`, `desktop` or `WIDTHxHEIGHT`.
+Web captures are 1× by default, so a phone image is 390×844 (about 430 image tokens for a
+model); pass `scale: 2` (`--scale 2`) when fine detail matters. `check_change` with
+`screenshot: false` returns text only but still loads a web page, so its console errors count.
+Simulator and device screenshots are returned at the device's own resolution.
 
 Baton launches apps and reports evidence. It does not tap the UI or judge screenshots: a
 capture means an image was written, not that the screen is right. Pair it with Playwright MCP,

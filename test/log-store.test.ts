@@ -111,7 +111,7 @@ test('read() accepts a full runId, a unique prefix, or a sessionId (latest run)'
 
 // --- tail + filter semantics, matching the live `logs` RPC ------------------
 
-test('tail + filter: tail is applied first, then the filter, like the live logs RPC', async () => {
+test('tail + filter: the filter searches the whole run, then tail keeps the last matches', async () => {
   const dir = tmpDir();
   const h = header();
   const path = join(dir, `${h.runId}.jsonl`);
@@ -122,10 +122,21 @@ test('tail + filter: tail is applied first, then the filter, like the live logs 
   await writer.close(0);
 
   const history = new LogHistory(dir);
-  // tail:2 keeps the last two lines (drop-2, keep-3); filtering for "keep" then
-  // drops drop-2, leaving only keep-3 -- proving tail ran before the filter.
-  const lines = history.read(h.runId, { tail: 2, filter: 'keep' });
-  assert.deepEqual(lines.map((l) => l.text), ['keep-3']);
+  // With tail applied first, tail:2 would see only drop-2 and keep-3 and miss
+  // keep-1. The filter runs over everything, then tail keeps the last matches.
+  assert.deepEqual(history.read(h.runId, { tail: 2, filter: 'keep' }).map((l) => l.text), ['keep-1', 'keep-3']);
+  assert.deepEqual(history.read(h.runId, { tail: 1, filter: 'keep' }).map((l) => l.text), ['keep-3']);
+});
+
+test('a filter finds an error older than the default 200-line tail', async () => {
+  const dir = tmpDir();
+  const h = header();
+  const writer = new RunLogWriter(join(dir, `${h.runId}.jsonl`), h);
+  writer.append({ at: 0, text: 'TypeError: early failure', error: true });
+  for (let i = 1; i < 500; i++) writer.append({ at: i, text: `request ${i} ok`, error: false });
+  await writer.close(0);
+  const lines = new LogHistory(dir).read(h.runId, { filter: 'typeerror' });
+  assert.deepEqual(lines.map((l) => l.text), ['TypeError: early failure']);
 });
 
 test('default tail is 200 lines', async () => {

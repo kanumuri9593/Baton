@@ -51,7 +51,7 @@ Without a global install:
 
 Typical loop: `inspect_project` → `boot_device` if no simulator is up → `run_target` or `run_workflow` → `wait_for` → edit → `check_change` → fix what it reports → `check_change` again.
 
-`check_change` applies the edit (hot reload for Flutter, HMR for web and React Native, restart for the rest) and returns only what is new since the call: the reload result, error lines, failed requests and a screenshot, with an OK / NOT OK verdict. `screenshot` and `check_change` capture web sessions too, through a headless Chrome-family browser, at `viewport` `phone`, `tablet`, `desktop` or `WIDTHxHEIGHT`.
+`check_change` applies the edit (hot reload for Flutter, HMR for web and React Native, restart for the rest) and returns only what is new since the call: the reload result, error lines, failed requests and a screenshot, with an OK / NOT OK verdict. `screenshot` and `check_change` capture web sessions too, through a headless Chrome-family browser, at `viewport` `phone`, `tablet`, `desktop` or `WIDTHxHEIGHT`. Web captures are 1× by default (a phone image is 390×844); pass `scale: 2` when detail matters. `check_change` with `screenshot: false` still loads a web page to collect its console errors, and returns text only.
 
 `baton setup` adds Baton to every installed client (Claude Code, Codex, Cursor, VS Code, Antigravity, Gemini CLI, Windsurf). Per-client snippets: [docs/clients.md](docs/clients.md).
 

@@ -222,17 +222,17 @@ export class LogHistory {
    * Read one run's lines.
    *
    * `runId` may be a full runId, an unambiguous prefix of one, or a sessionId
-   * (in which case its most recent run is used). Tail is applied before the
-   * filter, matching the live `logs` RPC exactly.
+   * (in which case its most recent run is used). The filter searches the whole
+   * run and `tail` then keeps the last matches, like the live `logs` RPC.
    */
   read(runId: string, opts: { tail?: number; filter?: string } = {}): LogLine[] {
     const path = this.#resolvePath(runId);
     if (!path) return [];
     const lines = this.#parseLines(path);
-    const tailed = lines.slice(-(opts.tail ?? DEFAULT_TAIL));
-    if (!opts.filter) return tailed;
+    const tail = opts.tail ?? DEFAULT_TAIL;
+    if (!opts.filter) return lines.slice(-tail);
     const re = new RegExp(opts.filter, 'i');
-    return tailed.filter((l) => re.test(l.text));
+    return lines.filter((l) => re.test(l.text)).slice(-tail);
   }
 
   /** Keep only the newest `maxRuns` runs, and no more than `maxTotalBytes` total. */

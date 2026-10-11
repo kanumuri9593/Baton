@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { diagnoseSchema } from '../daemon/diagnose.ts';
+import { diagnoseSchema, formatDiagnose } from '../daemon/diagnose.ts';
 import { workflowSchema } from '../daemon/workflow.ts';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -62,10 +62,13 @@ async function guarded<T>(fn: () => Promise<T>) {
 
 server.tool(
   'diagnose',
-  'Search bounded log and network evidence across projects. Defaults to errors only and 20 findings. Pass a trace ID and errorsOnly=false to follow a request across Node services. Use exact session IDs to limit scope.',
+  'Search bounded log and network evidence across projects. Defaults to errors only and 20 findings. ' +
+    'Findings are grouped by session; repeats of the same error are counted once (×N), and a stack is ' +
+    'collapsed to its first app frames. Pass a trace ID and errorsOnly=false to follow a request across ' +
+    'Node services. Use exact session IDs to limit scope.',
   diagnoseSchema.shape,
   READ_ONLY,
-  async (params) => guarded(async () => (await daemon()).call('diagnose', params)),
+  async (params) => guarded(async () => formatDiagnose(await (await daemon()).call('diagnose', params))),
 );
 
 server.tool(
@@ -172,12 +175,13 @@ server.tool(
 
 server.tool(
   'read_logs',
-  'Read recent output from a session, newest last. Use filter to grep for an error. ' +
+  'Read recent output from a session, newest last. Use filter to grep for an error: it searches ' +
+    'all retained output and returns the last `tail` matching lines. ' +
     'Works for a currently running session id, and for a past run (its own session id, or the ' +
     'runId from list_run_history) even after it has stopped or the daemon has restarted.',
   {
     session: z.string().describe('A live session id, or a past run\'s session id / runId.'),
-    tail: z.number().optional().describe('How many lines (default 200).'),
+    tail: z.number().optional().describe('How many lines (default 200); with a filter, how many matching lines.'),
     filter: z.string().optional().describe('Case-insensitive regular expression.'),
   },
   READ_ONLY,
@@ -360,6 +364,9 @@ server.tool(
 const VIEWPORT = z.string().optional().describe(
   'Web sessions only: phone (390x844), tablet (820x1180), desktop (1280x800, the default) or WIDTHxHEIGHT.',
 );
+const SCALE = z.union([z.literal(1), z.literal(2)]).optional().describe(
+  'Web sessions only: device pixels per CSS pixel. 1 (default) keeps the image small; 2 for fine detail, at about 4x the image tokens.',
+);
 
 /** The PNG itself, so the model can look at it, plus where it was saved. */
 function imageResult(path: string, caption: string) {
@@ -376,17 +383,18 @@ server.tool(
   'Capture the screen of a running session so the visual result of a change can be checked. ' +
     'iOS simulators and Android devices capture the device screen. Web sessions (Vite, Next.js, ' +
     'Flutter web...) load their URL in a headless Chrome, Edge or Brave at the viewport given, and ' +
-    'also report the page\'s console errors and failed requests. ' +
+    'also report the page\'s console errors and failed requests; they capture at 1x unless scale=2. ' +
     'A capture proves an image was written, not that the UI is right: look at it.',
   {
     session: z.string(),
     out: z.string().optional().describe('Where to save the PNG. Defaults to a path under the daemon\'s state directory.'),
     viewport: VIEWPORT,
+    scale: SCALE,
   },
   READ_ONLY,
-  async ({ session, out, viewport }) => {
+  async ({ session, out, viewport, scale }) => {
     try {
-      const shot = await (await daemon()).call('screenshot', { session, out, viewport });
+      const shot = await (await daemon()).call('screenshot', { session, out, viewport, scale });
       const lines = [`screenshot of ${session}`];
       if (shot.consoleErrors?.length) lines.push('browser console errors:', ...shot.consoleErrors.map((e) => `  ${e}`));
       if (shot.failedRequests?.length) lines.push('failed requests:', ...shot.failedRequests.map((e) => `  ${e}`));
@@ -409,13 +417,16 @@ server.tool(
     session: z.string(),
     action: z.enum(['auto', 'reload', 'restart', 'none']).optional().describe('Default auto.'),
     settleMs: z.number().optional().describe('Wait after the action before collecting evidence (default 1500).'),
-    screenshot: z.boolean().optional().describe('Default true.'),
+    screenshot: z.boolean().optional().describe(
+      'Default true. false returns text only; a web page is still loaded headlessly so its console errors count.',
+    ),
     viewport: VIEWPORT,
+    scale: SCALE,
   },
   ACTS,
-  async ({ session, action, settleMs, screenshot, viewport }) => {
+  async ({ session, action, settleMs, screenshot, viewport, scale }) => {
     try {
-      const r = await (await daemon()).call('check', { session, action, settleMs, screenshot, viewport });
+      const r = await (await daemon()).call('check', { session, action, settleMs, screenshot, viewport, scale });
       const lines = [
         `${r.ok ? 'OK' : 'NOT OK'}  ${r.session}  action=${r.action}  status=${r.status}  ${r.elapsedMs}ms`,
       ];
@@ -428,6 +439,7 @@ server.tool(
         lines.push(`failed requests (${r.failedRequests.length}):`, ...r.failedRequests.map((e) => `  ${e}`));
       }
       if (r.screenshotError) lines.push(`screenshot: ${r.screenshotError}`);
+      if (r.pageError) lines.push(`page not loaded: ${r.pageError}`);
       if (r.screenshotPath) return imageResult(r.screenshotPath, lines.join('\n'));
       return { content: [{ type: 'text' as const, text: lines.join('\n') }], isError: !r.ok || undefined };
     } catch (err) {

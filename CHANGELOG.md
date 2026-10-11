@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- `check_change` with `screenshot: false` on a web session now still loads the
+  page headlessly and reports its console errors and failed requests. Before,
+  it answered OK while the page was crashing. Only the image is skipped.
+- Web screenshots from `screenshot` and `check_change` are now 1× by default
+  at the same viewport, so a phone capture is 390×844 instead of 780×1688
+  (about 430 image tokens instead of about 1,700). Pass `scale: 2` (CLI
+  `--scale 2`) for fine detail. Simulator and device screenshots are unchanged.
+- `read_logs` (and `baton logs`) with a filter now searches all of the
+  session's retained output and returns the last `tail` matching lines.
+  Before, it only searched the last 200 lines, so earlier errors were missed.
+- `diagnose` is shorter: findings are grouped by session (the session and
+  project path are printed once), repeats of the same error are counted once
+  (×N, with first and last time), and each stack shows its first app frames
+  then "+N more frames". The HUD's Diagnose panel reads the new shape.
+- `baton check` takes `--no-screenshot`.
+
 ## 0.2.9 — 2026-10-11
 
 Built for the loop a coding agent actually runs: edit, check, fix, check again.
