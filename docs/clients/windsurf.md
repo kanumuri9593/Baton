@@ -21,7 +21,7 @@ the Dock still finds Node, Flutter and Xcode. `baton setup windsurf --remove` re
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
@@ -35,7 +35,7 @@ the Dock still finds Node, Flutter and Xcode. `baton setup windsurf --remove` re
 ## Troubleshooting
 
 - **Server fails to start**: Baton needs Node.js 24+. Run
-  `npx -y --package=baton-run@0.2.9 baton doctor` in a terminal to see the cause.
+  `npx -y --package=baton-run@0.2.10 baton doctor` in a terminal to see the cause.
 - **"npx: command not found" or SDKs not found**: add
   `"env": { "PATH": "<output of echo $PATH>" }` to the entry, or use `baton setup windsurf`.
 - **`setup` skipped Windsurf with "is not plain JSON"**: the file has comments. Add the entry

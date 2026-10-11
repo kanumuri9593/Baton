@@ -38,14 +38,14 @@ On Claude Code 2.1.275 or later this also works in one step:
 /plugin install baton --marketplace kanumuri9593/Baton
 ```
 
-The plugin starts the server with `npx -y --package=baton-run@0.2.9 baton-mcp`, so it needs
+The plugin starts the server with `npx -y --package=baton-run@0.2.10 baton-mcp`, so it needs
 Node.js 24+ but no global install. The first call downloads the package, which can take about
 a minute.
 
 Server only, without the skill, commands or band:
 
 ```bash
-claude mcp add baton -- npx -y baton-run@0.2.9
+claude mcp add baton -- npx -y baton-run@0.2.10
 ```
 
 ## The band
@@ -87,7 +87,7 @@ which draws a live card in the chat with every run, a New run button, and per-ru
 ## Troubleshooting
 
 - **`baton` server failed in `/mcp`**: check `node --version` is 24 or newer. Then run
-  `npx -y --package=baton-run@0.2.9 baton doctor` in a shell to see the error directly.
+  `npx -y --package=baton-run@0.2.10 baton doctor` in a shell to see the error directly.
 - **No band**: the band only appears while there is at least one run. Start one with
   `/baton:run`, or open `/baton`. If you hid it with ✕, `/baton` brings it back.
 - **Buttons show words instead of icons in the desktop app**: update the `baton`

@@ -1,6 +1,6 @@
 {
   "name": "baton",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Run, hot-reload, screenshot and debug Flutter, web, React Native and native iOS/Android apps from Codex, through Baton's MCP server.",
   "author": {
     "name": "Yeswanth Varma Kanumuri",

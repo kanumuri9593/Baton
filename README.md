@@ -43,7 +43,7 @@ in the Baton app, and in the band above Claude Code's prompt, and you can press 
 buttons. Baton reads the `.vscode/launch.json`, `package.json`, `pubspec.yaml`, Xcode and Gradle
 projects you already have.
 
-**0.2.9 is a public developer preview.** [Open an issue](https://github.com/kanumuri9593/Baton/issues)
+**0.2.10 is a public developer preview.** [Open an issue](https://github.com/kanumuri9593/Baton/issues)
 with what broke or what you wanted.
 
 ## Quick start
@@ -64,8 +64,8 @@ Other ways in:
 | Claude Code plugin | `/plugin marketplace add kanumuri9593/Baton` then `/plugin install baton@baton` |
 | Codex plugin | `codex plugin marketplace add kanumuri9593/Baton` then `codex plugin add baton@baton` |
 | VS Code or Cursor, one click | the install buttons at the top of this page |
-| MCP server, no install | `npx -y baton-run` as the server command (pin with `baton-run@0.2.9`) |
-| Pinned GitHub install | `npm install -g github:kanumuri9593/Baton#v0.2.9` |
+| MCP server, no install | `npx -y baton-run` as the server command (pin with `baton-run@0.2.10`) |
+| Pinned GitHub install | `npm install -g github:kanumuri9593/Baton#v0.2.10` |
 | From source | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
 
 `baton setup` edits only the `baton` entry in each tool's config, keeps a `.baton-backup` of
@@ -77,7 +77,7 @@ Any MCP client that takes an `mcpServers` block:
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
@@ -356,7 +356,7 @@ and React Native adapters cover run, restart, logs and URL detection.
   browser binary.
 - **Something else**: `baton doctor`, or `/baton:doctor` in Claude Code.
 
-Unpinned `github:kanumuri9593/Baton` follows `main`. Prefer `#v0.2.9` or `npm install -g baton-run`.
+Unpinned `github:kanumuri9593/Baton` follows `main`. Prefer `#v0.2.10` or `npm install -g baton-run`.
 
 ## Contributing
 

@@ -33,7 +33,7 @@ codex plugin add baton@baton
 ```toml
 [mcp_servers.baton]
 command = "npx"
-args = ["-y", "baton-run@0.2.9"]
+args = ["-y", "baton-run@0.2.10"]
 tool_timeout_sec = 900
 ```
 
@@ -58,6 +58,6 @@ to your `AGENTS.md`.
 - **`baton` is missing from `/mcp`**: check the `[mcp_servers.baton]` table is in
   `~/.codex/config.toml` and that the file is valid TOML. Restart Codex after editing it.
 - **The server fails to start**: Baton needs Node.js 24+. Run
-  `npx -y --package=baton-run@0.2.9 baton doctor` in a shell to see the error.
+  `npx -y --package=baton-run@0.2.10 baton doctor` in a shell to see the error.
 - **Tool calls time out during a native build**: make sure `tool_timeout_sec = 900` is set.
 - **Codex runs `flutter run` in a shell instead**: install the plugin, or tell it to use Baton.

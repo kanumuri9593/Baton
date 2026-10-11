@@ -59,5 +59,5 @@ Don't repeat the card's contents in text.
 - Web screenshots need Chrome, Chromium, Edge or Brave on the machine (or `BATON_CHROME`
   pointing at one). Baton does not tap or type: pair it with a browser or device tool
   (Playwright MCP, Chrome DevTools MCP, mobile-mcp) when the flow needs input.
-- CLI fallback for anything else: `npx -y --package=baton-run@0.2.9 baton <command>`
+- CLI fallback for anything else: `npx -y --package=baton-run@0.2.10 baton <command>`
   (`doctor --json`, `list`, `run`, `ps`, `logs`, `reload --all`, `devices --all`).

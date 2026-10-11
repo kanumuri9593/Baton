@@ -8,13 +8,13 @@
     "source": "github"
   },
   "websiteUrl": "https://kanumuri9593.github.io/Baton/",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "baton-run",
-      "version": "0.2.9",
+      "version": "0.2.10",
       "runtimeHint": "npx",
       "transport": { "type": "stdio" }
     }
