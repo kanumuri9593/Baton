@@ -30,7 +30,7 @@ Requires **Node.js 24+**. The first tool call downloads `baton-run` from npm wit
 | `using-baton` skill | Teaches Claude the run → wait → edit → `check_change` loop, used automatically |
 | `/baton:run [target]` | Run a target, wait until it is ready, report URL/device/errors |
 | `/baton:doctor` | Check Node, the MCP server and the project setup, with fixes |
-| Baton workspace | Sits above the prompt while anything runs: one compact row per app with its simulator or URL, status, CPU and memory, and its own Reload, Restart, Pause/Resume, Screenshot, Logs, Front and Stop (or Run again and Dismiss once it ends). A header carries + New run (project, target, device, boot a simulator inline) and Reload/Pause/Front/Stop all. Logs and screenshots open under their row; a long list scrolls; Collapse shrinks it to one line |
+| Baton workspace | Sits above the prompt while anything runs: one compact row per app with its simulator or URL, status, CPU and memory, and colour-coded status, a device icon, a short name, and its own icon buttons (⚡︎ reload, ↻ restart, ❚❚ pause, ◉ screenshot, ☰ logs, ⧉ front, ■ stop with a confirm; ▶ run again and ✕ dismiss once it ends), each with a hover tooltip. A header carries + New run (project, target, device, boot a simulator inline) and Reload/Pause/Front/Stop all. Logs and screenshots open under their row; a long list scrolls; Collapse shrinks it to one line |
 | `/baton` panel | The same workspace in a side pane, with longer logs and larger screenshots |
 
 The band and panel read the same Baton daemon as the tools, so a run started by Claude, the
