@@ -13,6 +13,9 @@ export type Run = {
   cpuPct?: number
   rssBytes?: number
   capabilities: string[]
+  /** Project root and device id, so a finished run can run again. */
+  root?: string
+  deviceId?: string
   /** Its app processes are stopped (SIGSTOP); Resume continues them. */
   paused: boolean
   canPause: boolean
@@ -47,6 +50,10 @@ declare module 'claude-code' {
       logs: Logs | null
       /** A Stop all press waiting for its confirm. */
       isStopArmed: boolean
+      /** The band shows only its header line. */
+      isCollapsed: boolean
+      /** The inline New run row is open. */
+      isNewOpen: boolean
     }
   }
 }

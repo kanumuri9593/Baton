@@ -121,7 +121,13 @@ export const captureWithDevTools: WebCaptureFn = async (browser, url, viewport, 
       child.once('exit', resolve);
       setTimeout(resolve, 2_000).unref();
     });
-    rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
+    // On Windows Chrome's helper processes can hold the profile a moment after
+    // the browser exits; a leftover temp folder must not fail the capture.
+    try {
+      rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    } catch {
+      // The OS temp cleaner takes it later.
+    }
   }
 };
 

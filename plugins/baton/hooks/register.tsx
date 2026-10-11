@@ -22,6 +22,8 @@ const catalog = atom({ plugin: 'baton', key: 'catalog' } as const, null)
 const form = atom({ plugin: 'baton', key: 'form' } as const, {})
 const logs = atom({ plugin: 'baton', key: 'logs' } as const, null)
 const isStopArmed = atom({ plugin: 'baton', key: 'isStopArmed' } as const, false)
+const isCollapsed = atom({ plugin: 'baton', key: 'isCollapsed' } as const, false)
+const isNewOpen = atom({ plugin: 'baton', key: 'isNewOpen' } as const, false)
 
 type Handshake = { port: number; token: string }
 type Snapshot = {
@@ -68,6 +70,8 @@ export function toRun(s: Snapshot, devices: Map<string, string>, paused: string[
     status: s.status,
     project,
     device,
+    root: s.root,
+    deviceId: s.target,
     url: s.url,
     progress: s.progress,
     cpuPct: s.cpuPct,
@@ -318,9 +322,242 @@ async function thumbnail($: Dollar, path: string): Promise<string | undefined> {
   }
 }
 
+type Site = 'band' | 'pane'
+
+const LIVE = (r: Run) => r.status === 'running' || r.status === 'starting'
+
+/**
+ * Baton's one workspace, drawn in the band above the prompt and in the /baton
+ * pane alike: a header with the all-apps actions, a row per run with its own
+ * controls, an inline New run row, and a run's logs or screenshot opened under
+ * its row. A tree taller than the band scrolls in it.
+ */
+async function workspace($: Dollar, e: any, site: Site) {
+  const { Box, Text, Button } = $.ui.resolve(e)
+  const els = $.ui.resolve(e) as { Select?: any; Svg?: any }
+  const Select = els.Select
+  const Svg = e.surface === 'desktop' || e.surface === 'vscode' || e.surface === 'mobile' ? els.Svg : undefined
+  const list = await read($, runs)
+  const working = await read($, busy)
+  const armed = await read($, isStopArmed)
+  const collapsed = site === 'band' && (await read($, isCollapsed))
+  const newOpen = site === 'pane' || (await read($, isNewOpen))
+  const log = await read($, logs)
+  const last = await read($, shot)
+  const cat = await read($, catalog)
+  const picks = await read($, form)
+  const width: number = e.props.bodyColumns ?? 100
+  const wide = width >= 90
+
+  const running = list.filter(r => r.status === 'running')
+  const live = list.filter(LIVE)
+  const reloadable = running.filter(r => r.capabilities.includes('hotReload') && !r.paused)
+  const pausable = running.filter(r => r.canPause)
+  const allPaused = pausable.length > 0 && pausable.every(r => r.paused)
+  const pausedCount = running.filter(r => r.paused).length
+  const failed = list.filter(r => r.status === 'failed').length
+  const summary = [
+    `${running.length - pausedCount} running`,
+    pausedCount ? `${pausedCount} paused` : '',
+    live.length - running.length ? `${live.length - running.length} starting` : '',
+    failed ? `${failed} failed` : '',
+  ].filter(Boolean).join(' · ')
+
+  const header = (
+    <Box key="head" flexDirection="row" justifyContent="space-between" flexWrap="wrap">
+      <Text>
+        <Text bold color="claude">Baton</Text>
+        <Text dimColor>  {summary}</Text>
+      </Text>
+      <Box flexDirection="row" flexWrap="wrap">
+        <Button key="new" variant={newOpen && site === 'band' ? 'primary' : undefined} label={site === 'band' && newOpen ? '× New run' : '+ New run'}
+          onPress={() => (site === 'band' ? openNew($, !newOpen) : loadCatalogGuarded($))} />
+        {reloadable.length > 1 && (
+          <Button key="reload-all" dimColor label={working === 'reload-all' ? 'Reloading…' : 'Reload all'}
+            onPress={() => act($, 'reload-all', 'reload', { ids: reloadable.map(r => r.id), reason: `Claude Code ${site}` }, 'Baton: reloaded')} />
+        )}
+        {pausable.length > 1 && (
+          <Button key="pause-all" dimColor label={allPaused ? 'Resume all' : 'Pause all'}
+            onPress={() => guarded($, 'pause-all', () => signal($, pausable.filter(r => r.paused === allPaused).map(r => r.id), !allPaused))} />
+        )}
+        {running.filter(r => r.canFront).length > 1 && (
+          <Button key="front-all" dimColor label="Front all" onPress={() => guarded($, 'front-all', () => front($, running))} />
+        )}
+        {live.length > 1 && (
+          <Button key="stop-all" dimColor={!armed} label={armed ? `Confirm stop ${live.length}` : 'Stop all'}
+            onPress={async () => {
+              if (!armed) {
+                await update($, isStopArmed, () => true)
+                $.clock.after(4000, () => update($, isStopArmed, () => false))
+                return
+              }
+              await update($, isStopArmed, () => false)
+              await act($, 'stop-all', 'stop', { ids: live.map(r => r.id) }, 'Baton: stopped all')
+            }} />
+        )}
+        {site === 'band' && (
+          <Button key="collapse" dimColor label={collapsed ? 'Expand' : 'Collapse'} onPress={() => update($, isCollapsed, c => !c)} />
+        )}
+        {site === 'band' && <Button key="open" dimColor label="Open Baton" onPress={() => openPanel($)} />}
+        {site === 'band' && <Button key="hide" dimColor label="Hide" onPress={() => update($, isBandHidden, () => true)} />}
+      </Box>
+    </Box>
+  )
+  if (collapsed) return <Box flexDirection="column">{header}</Box>
+
+  // New run, inline: project, target, device, Run; and boot a simulator.
+  const project = cat?.projects.find(p => p.root === picks.root) ?? cat?.projects[0]
+  const target = project?.targets.find(t => t.name === picks.target) ?? project?.targets[0]
+  const runnable = cat?.devices.filter(d => d.running) ?? []
+  const device = runnable.find(d => d.id === picks.device)
+  const bootable = cat?.devices.filter(d => !d.running && d.platform !== 'other') ?? []
+  const toBoot = bootable.find(d => d.id === picks.boot) ?? bootable[0]
+  const pick = (patch: Form) => update($, form, f => ({ ...f, ...patch }))
+  const newRow = newOpen && (
+    <Box key="newrun" flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
+      {!cat && <Text dimColor>{working === 'catalog' ? 'Finding projects and simulators…' : 'Loading projects…'}</Text>}
+      {cat && cat.projects.length === 0 && <Text dimColor>No projects yet. Ask Claude to run one and it shows here.</Text>}
+      {cat && project && target && (
+        <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={2}>
+          {Select ? (
+            <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+              <Select key="project" label="Project" value={project.root}
+                options={cat.projects.map(p => ({ value: p.root, label: p.name }))}
+                onSelect={(v: string) => pick({ root: v, target: undefined })} />
+              <Select key="target" label="Target" value={target.name}
+                options={project.targets.map(t => ({ value: t.name, label: `${t.name} · ${t.kind}` }))}
+                onSelect={(v: string) => pick({ target: v })} />
+              <Select key="device" label="On" value={device?.id ?? ''}
+                options={[{ value: '', label: 'Default' }, ...runnable.map(d => ({ value: d.id, label: d.name }))]}
+                onSelect={(v: string) => pick({ device: v || undefined })} />
+            </Box>
+          ) : (
+            <Text dimColor>{project.name} · {target.name}{device ? ` · ${device.name}` : ''}  </Text>
+          )}
+          <Button key="run" variant="primary" label={working === 'run' ? 'Starting…' : '▶ Run'}
+            onPress={() => guarded($, 'run', async () => {
+              await rpc($, 'run', { cwd: project.root, target: target.name, deviceId: device?.id })
+              if (site === 'band') await update($, isNewOpen, () => false)
+              return `Baton: starting ${target.name}${device ? ` on ${device.name}` : ''}`
+            })} />
+        </Box>
+      )}
+      {cat && toBoot && (
+        <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={2}>
+          {Select ? (
+            <Select key="boot" label="Boot" value={toBoot.id}
+              options={bootable.map(d => ({ value: d.id, label: d.name }))}
+              onSelect={(v: string) => pick({ boot: v })} />
+          ) : <Text dimColor>Boot {toBoot.name}  </Text>}
+          <Button key="boot-device" dimColor label={working === 'boot' ? 'Booting…' : 'Boot'}
+            onPress={() => guarded($, 'boot', async () => {
+              await rpc($, 'boot', { id: toBoot.id })
+              await loadCatalog($)
+              return `Baton: ${toBoot.name} is booting`
+            })} />
+          <Button key="refresh" dimColor label={working === 'catalog' ? 'Refreshing…' : 'Refresh'} onPress={() => loadCatalogGuarded($)} />
+        </Box>
+      )}
+    </Box>
+  )
+
+  const rows = list.map(run => {
+    const can = (c: string) => run.status === 'running' && !run.paused && run.capabilities.includes(c)
+    const stats = [run.cpuPct != null ? `${Math.round(run.cpuPct)}%` : '', memory(run.rssBytes)].filter(Boolean).join(' · ')
+    const state = run.paused ? 'paused' : run.status === 'running' ? stats : run.progress ?? run.status
+    const where = run.device ?? (run.url ? run.url.replace(/^https?:\/\//, '') : run.kind)
+    const title = run.project === run.name || run.name.startsWith(run.project) ? run.name : `${run.project} · ${run.name}`
+    const b = (key: string, label: string, onPress: () => unknown, busyLabel?: string) => (
+      <Button key={`${key}:${run.id}`} dimColor label={busyLabel && working === `${key}:${run.id}` ? busyLabel : label} onPress={onPress} />
+    )
+    const controls = (
+      <Box flexDirection="row" flexWrap="wrap">
+        {can('hotReload') && b('reload', 'Reload', () => act($, `reload:${run.id}`, 'reload', { session: run.id, reason: `Claude Code ${site}` }, `Baton: reloaded ${run.name}`), 'Reloading…')}
+        {(can('hotRestart') || can('restartProcess')) && b('restart', 'Restart', () => act($, `restart:${run.id}`, 'restart', { session: run.id, reason: `Claude Code ${site}` }, `Baton: restarted ${run.name}`), 'Restarting…')}
+        {run.status === 'running' && run.canPause && b('pause', run.paused ? '▶ Resume' : 'Pause', () => guarded($, `pause:${run.id}`, () => signal($, [run.id], !run.paused)))}
+        {can('screenshot') && b('shot', 'Screenshot', () => screenshot($, run), 'Capturing…')}
+        {b('logs', log?.runId === run.id ? 'Hide logs' : 'Logs', () => (log?.runId === run.id ? update($, logs, () => null) : loadLogs($, run.id, run.name)))}
+        {run.status === 'running' && run.canFront && b('front', 'Front', () => guarded($, `front:${run.id}`, () => front($, [run])))}
+        {LIVE(run)
+          ? b('stop', 'Stop', () => act($, `stop:${run.id}`, 'stop', { session: run.id }, `Baton: stopped ${run.name}`))
+          : (
+            <Box flexDirection="row">
+              {run.root && b('again', '▶ Run again', () => guarded($, `again:${run.id}`, async () => {
+                await rpc($, 'run', { cwd: run.root, target: run.name, deviceId: run.deviceId })
+                await rpc($, 'forget', { session: run.id }).catch(() => undefined)
+                return `Baton: starting ${run.name} again`
+              }), 'Starting…')}
+              {b('dismiss', 'Dismiss', () => act($, `dismiss:${run.id}`, 'forget', { session: run.id }, `Baton: dismissed ${run.name}`))}
+            </Box>
+          )}
+      </Box>
+    )
+    const info = (
+      <Text wrap="truncate-end">
+        <Text color={run.paused ? 'warning' : COLOR[run.status]}>{run.paused ? '❚❚' : DOT[run.status]} </Text>
+        <Text bold={LIVE(run)} dimColor={!LIVE(run)}>{title}</Text>
+        <Text dimColor>  {where}{state ? `  ${state}` : ''}</Text>
+      </Text>
+    )
+    const openLog = log?.runId === run.id ? log : null
+    const openShot = last?.runId === run.id ? last : null
+    return (
+      <Box key={`run:${run.id}`} flexDirection="column">
+        {wide ? (
+          <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+            <Box flexShrink={1} flexGrow={1}>{info}</Box>
+            {controls}
+          </Box>
+        ) : (
+          <Box flexDirection="column">{info}{controls}</Box>
+        )}
+        {openLog && (
+          <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
+            {openLog.lines.length === 0
+              ? <Text dimColor>No output yet.</Text>
+              : openLog.lines.slice(site === 'band' ? -8 : -40).map((l, i) => (
+                <Text key={`l${i}`} color={l.error ? 'error' : undefined} dimColor={!l.error} wrap="truncate-end">{l.text}</Text>
+              ))}
+          </Box>
+        )}
+        {openShot && (
+          <Box flexDirection="row" alignItems="flex-start">
+            {Svg && openShot.svg && <Svg key={`img:${run.id}`} source={openShot.svg} alt={`Screenshot of ${run.name}`} width={site === 'band' ? 120 : 260} />}
+            <Box flexDirection="column">
+              <Text dimColor wrap="truncate-middle">{openShot.path}</Text>
+              <Button key={`shotclose:${run.id}`} dimColor label="Close" onPress={() => update($, shot, () => null)} />
+            </Box>
+          </Box>
+        )}
+      </Box>
+    )
+  })
+
+  return (
+    <Box flexDirection="column">
+      {header}
+      {newRow}
+      {rows}
+      {list.length === 0 && <Text dimColor>No runs yet. Pick a project above and press Run, or ask Claude to run an app.</Text>}
+    </Box>
+  )
+}
+
+async function openNew($: Dollar, open: boolean) {
+  await update($, isNewOpen, () => open)
+  if (open && !(await read($, catalog))) await loadCatalogGuarded($)
+}
+
+async function loadCatalogGuarded($: Dollar) {
+  await guarded($, 'catalog', async () => {
+    await loadCatalog($)
+    return undefined
+  })
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'baton', description: 'Open the Baton panel: live runs, simulators and screenshots' })
+    await $.command.register({ name: 'baton', description: 'Open the Baton workspace: every run with its controls, new runs and simulators' })
     await poll($)
     $.clock.every(POLL_MS, () => poll($))
     return next(e)
@@ -328,91 +565,18 @@ export const register: Register = on => {
 
   on('command.run', { command: 'baton' }, async $ => {
     await openPanel($)
-    return { text: 'Baton panel opened.' }
+    return { text: 'Baton opened.' }
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const list = await read($, runs)
-    const live = list.filter(r => r.status === 'running' || r.status === 'starting' || r.status === 'failed')
-    if (e.props.hasSurvey || live.length === 0 || (await read($, isBandHidden))) return next(e)
-
-    const { Box, Button, Text } = $.ui.resolve(e)
-    const working = await read($, busy)
-    const armed = await read($, isStopArmed)
-    const running = live.filter(r => r.status === 'running')
-    const reloadable = running.filter(r => r.capabilities.includes('hotReload'))
-    const pausable = running.filter(r => r.canPause)
-    const allPaused = pausable.length > 0 && pausable.every(r => r.paused)
-    const stoppable = live.filter(r => r.status !== 'failed')
-    const shown = live.slice(0, 4)
-
-    return (
-      <Box flexDirection="column">
-        <Box flexWrap="wrap">
-          <Text bold color="claude">Baton </Text>
-          {shown.map(run => (
-            <Text key={run.id}>
-              <Text color={run.paused ? 'warning' : COLOR[run.status]}>{run.paused ? '❚❚' : DOT[run.status]} </Text>
-              {label(run)}
-              <Text dimColor>{run.paused ? ' paused  ' : run.status === 'running' ? '  ' : ` ${run.progress ?? run.status}  `}</Text>
-            </Text>
-          ))}
-          {live.length > shown.length && <Text dimColor>+{live.length - shown.length} more  </Text>}
-        </Box>
-        <Box flexWrap="wrap">
-          {reloadable.length > 0 && (
-            <Button
-              key="reload-all"
-              label={working === 'reload-all' ? 'Reloading…' : `Reload ${reloadable.length === 1 ? '' : 'all '}`.trim()}
-              onPress={() => act($, 'reload-all', 'reload', { ids: reloadable.map(r => r.id), reason: 'Claude Code band' }, 'Baton: reloaded')}
-            />
-          )}
-          {pausable.length > 0 && (
-            <Button
-              key="pause-all"
-              label={allPaused ? (pausable.length === 1 ? 'Resume' : 'Resume all') : pausable.length === 1 ? 'Pause' : 'Pause all'}
-              onPress={() => guarded($, 'pause-all', () => signal($, pausable.filter(r => r.paused === allPaused).map(r => r.id), !allPaused))}
-            />
-          )}
-          {running.some(r => r.canFront) && (
-            <Button key="front-all" label="Bring to front" onPress={() => guarded($, 'front-all', () => front($, running))} />
-          )}
-          {stoppable.length > 0 && (
-            <Button
-              key="stop-all"
-              label={armed ? `Confirm stop ${stoppable.length === 1 ? '' : 'all'}`.trim() : stoppable.length === 1 ? 'Stop' : 'Stop all'}
-              onPress={async () => {
-                if (!armed) {
-                  await update($, isStopArmed, () => true)
-                  $.clock.after(4000, () => update($, isStopArmed, () => false))
-                  return
-                }
-                await update($, isStopArmed, () => false)
-                await act($, 'stop-all', 'stop', { ids: stoppable.map(r => r.id) }, 'Baton: stopped')
-              }}
-            />
-          )}
-          <Button key="open" label="Open Baton" onPress={() => openPanel($)} />
-          <Button key="hide" label="Hide" onPress={() => update($, isBandHidden, () => true)} />
-        </Box>
-      </Box>
-    )
+    if (e.props.hasSurvey || !(await read($, isOnline)) || list.length === 0 || (await read($, isBandHidden))) return next(e)
+    return workspace($, e, 'band')
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
-    const Select = e.surface === 'mobile' ? undefined : ($.ui.resolve(e) as { Select?: any }).Select
-    const list = await read($, runs)
-    const online = await read($, isOnline)
-    const working = await read($, busy)
-    const last = await read($, shot)
-    const cat = await read($, catalog)
-    const picks = await read($, form)
-    const log = await read($, logs)
-    const lastRun = last ? list.find(r => r.id === last.runId) : undefined
-    const Svg = e.surface === 'desktop' ? ($.ui.resolve(e) as { Svg?: any }).Svg : undefined
-
-    if (!online) {
+    const { Box, Text } = $.ui.resolve(e)
+    if (!(await read($, isOnline))) {
       return (
         <Box flexDirection="column">
           <Text dimColor>Baton isn't running yet.</Text>
@@ -420,130 +584,6 @@ export const register: Register = on => {
         </Box>
       )
     }
-
-    // New run: project, target, device. The picks fall back to the first choice.
-    const project = cat?.projects.find(p => p.root === picks.root) ?? cat?.projects[0]
-    const target = project?.targets.find(t => t.name === picks.target) ?? project?.targets[0]
-    const runnable = cat?.devices.filter(d => d.running) ?? []
-    const device = runnable.find(d => d.id === picks.device)
-    const bootable = cat?.devices.filter(d => !d.running && d.platform !== 'other') ?? []
-    const toBoot = bootable.find(d => d.id === picks.boot) ?? bootable[0]
-    const pick = (patch: Form) => update($, form, f => ({ ...f, ...patch }))
-
-    const newRun = (
-      <Box key="new" flexDirection="column">
-        <Text bold>New run</Text>
-        {!cat && <Text dimColor>{working === 'catalog' ? 'Finding projects and simulators…' : 'Press Refresh to load projects and simulators.'}</Text>}
-        {cat && cat.projects.length === 0 && <Text dimColor>No projects yet. Ask Claude to run one and it is remembered here.</Text>}
-        {cat && project && target && Select && (
-          <Box flexDirection="column">
-            <Select key="project" label="Project " value={project.root}
-              options={cat.projects.map(p => ({ value: p.root, label: p.name }))}
-              onSelect={(v: string) => pick({ root: v, target: undefined })} />
-            <Select key="target" label="Target " value={target.name}
-              options={project.targets.map(t => ({ value: t.name, label: `${t.name} (${t.kind})` }))}
-              onSelect={(v: string) => pick({ target: v })} />
-            <Select key="device" label="Device " value={device?.id ?? ''}
-              options={[{ value: '', label: 'Default / none' }, ...runnable.map(d => ({ value: d.id, label: d.name }))]}
-              onSelect={(v: string) => pick({ device: v || undefined })} />
-          </Box>
-        )}
-        {cat && project && target && !Select && <Text dimColor>{project.name} · {target.name}{device ? ` · ${device.name}` : ''}</Text>}
-        <Box flexWrap="wrap">
-          {cat && project && target && (
-            <Button key="run" label={working === 'run' ? 'Starting…' : 'Run'}
-              onPress={() => guarded($, 'run', async () => {
-                await rpc($, 'run', { cwd: project.root, target: target.name, deviceId: device?.id })
-                return `Baton: starting ${target.name}`
-              })} />
-          )}
-          {cat && toBoot && Select && (
-            <Select key="boot" label="Boot " value={toBoot.id}
-              options={bootable.map(d => ({ value: d.id, label: d.name }))}
-              onSelect={(v: string) => pick({ boot: v })} />
-          )}
-          {cat && toBoot && (
-            <Button key="boot-device" label={working === 'boot' ? 'Booting…' : `Boot ${Select ? '' : toBoot.name}`.trim()}
-              onPress={() => guarded($, 'boot', async () => {
-                await rpc($, 'boot', { id: toBoot.id })
-                await loadCatalog($)
-                return `Baton: ${toBoot.name} is booting`
-              })} />
-          )}
-          <Button key="refresh" label={working === 'catalog' ? 'Refreshing…' : 'Refresh'}
-            onPress={() => guarded($, 'catalog', async () => { await loadCatalog($); return undefined })} />
-        </Box>
-      </Box>
-    )
-
-    return (
-      <Box flexDirection="column">
-        {newRun}
-        {list.length === 0 && <Text dimColor>No runs yet. Start one above, or ask Claude to run an app.</Text>}
-        {list.map(run => {
-          const can = (c: string) => run.status === 'running' && run.capabilities.includes(c)
-          const stats = [run.cpuPct != null ? `${Math.round(run.cpuPct)}% CPU` : '', memory(run.rssBytes)].filter(Boolean).join(' · ')
-          const live = run.status === 'running' || run.status === 'starting'
-          return (
-            <Box key={run.id} flexDirection="column">
-              <Text>
-                <Text color={run.paused ? 'warning' : COLOR[run.status]}>{run.paused ? '❚❚' : DOT[run.status]} </Text>
-                <Text bold>{run.name}</Text>
-                <Text dimColor>  {run.project} · {run.kind}{run.device ? ` · ${run.device}` : ''}</Text>
-              </Text>
-              <Text dimColor>
-                {'  '}
-                {run.paused ? 'paused' : run.status === 'running' ? stats || 'running' : run.progress ?? run.status}
-                {run.url ? `  ${run.url}` : ''}
-              </Text>
-              <Box flexWrap="wrap">
-                {can('hotReload') && !run.paused && (
-                  <Button key={`reload:${run.id}`} label={working === `reload:${run.id}` ? 'Reloading…' : 'Reload'}
-                    onPress={() => act($, `reload:${run.id}`, 'reload', { session: run.id, reason: 'Claude Code panel' }, `Baton: reloaded ${run.name}`)} />
-                )}
-                {(can('hotRestart') || can('restartProcess')) && !run.paused && (
-                  <Button key={`restart:${run.id}`} label={working === `restart:${run.id}` ? 'Restarting…' : 'Restart'}
-                    onPress={() => act($, `restart:${run.id}`, 'restart', { session: run.id, reason: 'Claude Code panel' }, `Baton: restarted ${run.name}`)} />
-                )}
-                {run.status === 'running' && run.canPause && (
-                  <Button key={`pause:${run.id}`} label={run.paused ? 'Resume' : 'Pause'}
-                    onPress={() => guarded($, `pause:${run.id}`, () => signal($, [run.id], !run.paused))} />
-                )}
-                {run.status === 'running' && run.canFront && (
-                  <Button key={`front:${run.id}`} label="Bring to front" onPress={() => guarded($, `front:${run.id}`, () => front($, [run]))} />
-                )}
-                {can('screenshot') && !run.paused && (
-                  <Button key={`shot:${run.id}`} label={working === `shot:${run.id}` ? 'Capturing…' : 'Screenshot'}
-                    onPress={() => screenshot($, run)} />
-                )}
-                <Button key={`logs:${run.id}`} label={log?.runId === run.id ? 'Hide logs' : 'Logs'}
-                  onPress={() => (log?.runId === run.id ? update($, logs, () => null) : loadLogs($, run.id, run.name))} />
-                {live ? (
-                  <Button key={`stop:${run.id}`} label="Stop"
-                    onPress={() => act($, `stop:${run.id}`, 'stop', { session: run.id }, `Baton: stopped ${run.name}`)} />
-                ) : (
-                  <Button key={`dismiss:${run.id}`} label="Dismiss"
-                    onPress={() => act($, `dismiss:${run.id}`, 'forget', { session: run.id }, `Baton: dismissed ${run.name}`)} />
-                )}
-              </Box>
-            </Box>
-          )
-        })}
-        {log && (
-          <Box key="logs" flexDirection="column">
-            <Text dimColor>Logs · {log.name} (live)</Text>
-            {log.lines.length === 0 ? <Text dimColor>No output yet.</Text> : log.lines.slice(-40).map((l, i) => (
-              <Text key={`l${i}`} color={l.error ? 'error' : undefined} wrap="truncate-end">{l.text}</Text>
-            ))}
-          </Box>
-        )}
-        {last && (
-          <Box flexDirection="column">
-            <Text dimColor>Last screenshot{lastRun ? ` · ${lastRun.name}` : ''}: {last.path}</Text>
-            {Svg && last.svg && <Svg key="shot" source={last.svg} alt={`Screenshot of ${lastRun?.name ?? 'the app'}`} width={260} />}
-          </Box>
-        )}
-      </Box>
-    )
+    return workspace($, e, 'pane')
   })
 }
