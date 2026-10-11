@@ -9,7 +9,7 @@
 // find the SDKs this shell can.
 
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,7 +55,20 @@ export function launch(packageRoot = defaultRoot(), version = packageVersion(pac
   if (/[\\/]_npx[\\/]/.test(packageRoot)) {
     return { command: which('npx', env) ?? 'npx', args: ['-y', `baton-run@${version}`], env: { PATH: path } };
   }
-  return { command: process.execPath, args: [join(packageRoot, 'bin', 'baton-mcp.js')], env: { PATH: path } };
+  return { command: stableNode(env), args: [join(packageRoot, 'bin', 'baton-mcp.js')], env: { PATH: path } };
+}
+
+/**
+ * The `node` on PATH when it is this same binary: Homebrew's execPath sits in a
+ * versioned Cellar folder that the next `brew upgrade` deletes, while
+ * /opt/homebrew/bin/node follows the upgrade.
+ */
+function stableNode(env: NodeJS.ProcessEnv): string {
+  const onPath = which('node', env);
+  try {
+    if (onPath && realpathSync(onPath) === realpathSync(process.execPath)) return onPath;
+  } catch { /* fall through */ }
+  return process.execPath;
 }
 
 /** The `baton` entry each shape stores. */
