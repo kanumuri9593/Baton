@@ -30,8 +30,8 @@ Requires **Node.js 24+**. The first tool call downloads `baton-run` from npm wit
 | `using-baton` skill | Teaches Claude the run → wait → edit → `check_change` loop, used automatically |
 | `/baton:run [target]` | Run a target, wait until it is ready, report URL/device/errors |
 | `/baton:doctor` | Check Node, the MCP server and the project setup, with fixes |
-| Baton band | Sits above the prompt while anything runs: each app, its simulator or URL, its status, and Reload all |
-| `/baton` panel | Every run with CPU and memory, plus Reload, Restart, Screenshot and Stop. The desktop app also shows the last screenshot |
+| Baton band | Sits above the prompt while anything runs: each app, its simulator or URL, its status, plus Reload all, Pause all / Resume all, Bring to front and Stop all (asks to confirm) |
+| `/baton` panel | New run (pick a project, target and device, or boot a simulator), then every run with CPU and memory and Reload, Restart, Pause/Resume, Bring to front, Screenshot, live Logs and Stop or Dismiss. The desktop app also shows the last screenshot |
 
 The band and panel read the same Baton daemon as the tools, so a run started by Claude, the
 `baton` CLI or the Baton app shows up in every Claude Code session on the machine. Hide the

@@ -13,7 +13,23 @@ export type Run = {
   cpuPct?: number
   rssBytes?: number
   capabilities: string[]
+  /** Its app processes are stopped (SIGSTOP); Resume continues them. */
+  paused: boolean
+  canPause: boolean
+  canFront: boolean
 }
+
+/** What New run offers: projects with their targets, and devices to run on or boot. */
+export type Catalog = {
+  projects: Array<{ root: string; name: string; targets: Array<{ name: string; kind: string }> }>
+  devices: Array<{ id: string; name: string; platform: 'ios' | 'android' | 'other'; running: boolean }>
+}
+
+/** New run's picks. */
+export type Form = { root?: string; target?: string; device?: string; boot?: string }
+
+/** The log pane open in the panel. */
+export type Logs = { runId: string; name: string; lines: Array<{ text: string; error: boolean }> }
 
 /** The last screenshot taken from the panel. */
 export type Shot = { runId: string; path: string; at: number; svg?: string }
@@ -26,6 +42,11 @@ declare module 'claude-code' {
       busy: string | null
       shot: Shot | null
       isBandHidden: boolean
+      catalog: Catalog | null
+      form: Form
+      logs: Logs | null
+      /** A Stop all press waiting for its confirm. */
+      isStopArmed: boolean
     }
   }
 }
