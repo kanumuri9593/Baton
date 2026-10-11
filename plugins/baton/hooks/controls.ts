@@ -58,7 +58,7 @@ export function pausedIds(runs: ControlRun[], procs: Proc[], mac: boolean): stri
  * compiler and no Accessibility permission.
  */
 export const showDeviceScript = (udid: string) =>
-  `ObjC.import("Foundation"); delay(0.2); $.NSDistributedNotificationCenter.defaultCenter` +
+  `ObjC.import("Foundation"); delay(0.8); $.NSDistributedNotificationCenter.defaultCenter` +
   `.postNotificationNameObjectUserInfoDeliverImmediately("com.apple.iphonesimulator.startSession", $(), $({ deviceUDID: ${JSON.stringify(udid)} }), true)`
 
 /** The commands that bring a run's window forward, in order. */

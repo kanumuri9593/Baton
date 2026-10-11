@@ -20,7 +20,7 @@ type Proc = { pid: number; ppid: number; stat: string; command: string };
 
 /** Simulator's "show this device" signal, as a JXA one-liner. */
 export const showDeviceScript = (udid: string): string =>
-  `ObjC.import("Foundation"); delay(0.2); $.NSDistributedNotificationCenter.defaultCenter` +
+  `ObjC.import("Foundation"); delay(0.8); $.NSDistributedNotificationCenter.defaultCenter` +
   `.postNotificationNameObjectUserInfoDeliverImmediately("com.apple.iphonesimulator.startSession", $(), $({ deviceUDID: ${JSON.stringify(udid)} }), true)`;
 
 export class Controls {
