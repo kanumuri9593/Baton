@@ -418,16 +418,16 @@ async function workspace($: Dollar, e: any, site: Site) {
       {!cat && <Text dimColor>{working === 'catalog' ? 'Finding projects and simulators…' : 'Loading projects…'}</Text>}
       {cat && cat.projects.length === 0 && <Text dimColor>No projects yet. Ask Claude to run one and it shows here.</Text>}
       {cat && project && target && (
-        <Box flexDirection="row" flexWrap="wrap" alignItems="center">
+        <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={2}>
           {Select ? (
-            <Box flexDirection="row" flexWrap="wrap">
-              <Select key="project" label="Project " value={project.root}
+            <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+              <Select key="project" label="Project" value={project.root}
                 options={cat.projects.map(p => ({ value: p.root, label: p.name }))}
                 onSelect={(v: string) => pick({ root: v, target: undefined })} />
-              <Select key="target" label="Target " value={target.name}
+              <Select key="target" label="Target" value={target.name}
                 options={project.targets.map(t => ({ value: t.name, label: `${t.name} · ${t.kind}` }))}
                 onSelect={(v: string) => pick({ target: v })} />
-              <Select key="device" label="On " value={device?.id ?? ''}
+              <Select key="device" label="On" value={device?.id ?? ''}
                 options={[{ value: '', label: 'Default' }, ...runnable.map(d => ({ value: d.id, label: d.name }))]}
                 onSelect={(v: string) => pick({ device: v || undefined })} />
             </Box>
@@ -443,9 +443,9 @@ async function workspace($: Dollar, e: any, site: Site) {
         </Box>
       )}
       {cat && toBoot && (
-        <Box flexDirection="row" flexWrap="wrap" alignItems="center">
+        <Box flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={2}>
           {Select ? (
-            <Select key="boot" label="Boot " value={toBoot.id}
+            <Select key="boot" label="Boot" value={toBoot.id}
               options={bootable.map(d => ({ value: d.id, label: d.name }))}
               onSelect={(v: string) => pick({ boot: v })} />
           ) : <Text dimColor>Boot {toBoot.name}  </Text>}
