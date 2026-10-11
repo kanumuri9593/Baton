@@ -13,7 +13,7 @@ test('launch points at this install, or at npx for a copy in the npx cache', () 
   const linked = launch('/opt/baton', '0.2.9', { PATH: dirname(process.execPath) });
   assert.equal(dirname(linked.command), dirname(process.execPath));
   assert.equal(realpathSync(linked.command), realpathSync(process.execPath));
-  assert.deepEqual(local.args, ['/opt/baton/bin/baton-mcp.js']);
+  assert.deepEqual(local.args, [join('/opt/baton', 'bin', 'baton-mcp.js')]);
   assert.deepEqual(local.env, { PATH: '/usr/bin' });
   const npx = launch('/home/me/.npm/_npx/ab12/node_modules/baton-run', '0.2.9', { PATH: '/usr/bin' });
   assert.deepEqual(npx.args, ['-y', 'baton-run@0.2.9']);
