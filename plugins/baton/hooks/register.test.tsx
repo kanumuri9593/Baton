@@ -112,6 +112,10 @@ test('every run gets the same six buttons, and the header acts on all', async ($
       for (const b of ALL) expect(await ui.find({ key: b })).toBeDefined()
       expect(await ui.find({ type: 'Text', text: /iPhone 17 Pro/ })).toBeDefined()
       expect(await ui.find({ type: 'Text', text: /200 MB/ })).toBeDefined()
+      // Icons, not words: a desktop draws a Button's label in place of its glyph.
+      expect((await ui.find({ key: 'play:s1' }))?.text).toBe('▶\uFE0E')
+      expect((await ui.find({ key: 'stop-all' }))?.text).toBe('⏹\uFE0E')
+      for (const b of await ui.findAll({ type: 'Button' })) expect((b as { props?: { label?: string } }).props?.label ?? '').not.toMatch(/[A-Za-z]/)
       await ui.unmount()
     }
   }
