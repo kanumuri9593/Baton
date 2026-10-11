@@ -21,6 +21,7 @@
   <a href="https://kanumuri9593.github.io/Baton/">Website</a> ·
   <a href="docs/clients.md">Set up your agent</a> ·
   <a href="AGENTS.md">Agent notes</a> ·
+  <a href="docs/pdf/">PDF guides</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
@@ -131,6 +132,9 @@ hints, so clients that honour them can skip the prompt for the 16 read-only tool
 Agents without MCP can shell out to the same CLI. Every command exits non-zero on failure, and
 `baton check <session> --json` gives the same verdict as `check_change`. Full agent notes:
 [AGENTS.md](AGENTS.md). Crawler summary: [llms.txt](llms.txt).
+
+Printable guides to share: [quick start](docs/pdf/baton-quick-start.pdf),
+[agent setup guide](docs/pdf/baton-agent-setup-guide.pdf) and [FAQ](docs/pdf/baton-faq.pdf).
 
 ## In Claude Code: the Baton band
 
