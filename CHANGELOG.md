@@ -4,13 +4,16 @@
 
 Built for the loop a coding agent actually runs: edit, check, fix, check again.
 
-- The Baton band in Claude Code (terminal and desktop app) is now one
-  compact workspace: a row per app with its own Reload, Restart,
-  Pause/Resume, Screenshot, Logs, Front and Stop (Run again and Dismiss once
-  it ends), a header with + New run inline (project, target, device, boot a
-  simulator) and the all-apps actions, logs and screenshots opened under
-  their row, scrolling for long lists, and Collapse to one line. `/baton`
-  opens the same workspace in a pane. Pause is macOS only.
+- `baton setup` adds Baton to every coding agent installed on the machine
+  (Claude Code, Codex, Cursor, VS Code, Antigravity, Gemini CLI, Windsurf),
+  by absolute path and with the shell's PATH, so Dock-launched apps work too.
+  The repo is now also a Codex plugin marketplace.
+- The Baton band in Claude Code (terminal and desktop app) is one row per
+  app with one-click media buttons: Logs, Debug (asks Claude to find and fix
+  the run's errors), Play (reload, resume, or run again once it ends), Pause,
+  Stop and Bring to front. The header has the same buttons for every app at
+  once, plus ＋ to start a new `/baton:run`. No hover popups. `/baton` opens
+  the same view in a pane. Pause is macOS only.
 - New `check_change` tool (and `baton check <session>`). One call applies an
   edit (hot reload for Flutter, HMR for web and React Native, restart for
   native and plain processes) and answers OK / NOT OK with only what is new

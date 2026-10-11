@@ -124,7 +124,7 @@ Without a global install:
 }
 ```
 
-**Copy-paste setup for Codex, Cursor, VS Code, Gemini CLI, Windsurf and Claude Desktop:** [docs/clients.md](docs/clients.md). The short version is `npx -y baton-run@0.2.9` as the server command.
+**Every tool at once:** `baton setup` adds Baton to Claude Code, Codex, Cursor, VS Code, Antigravity, Gemini CLI and Windsurf, whichever are installed. Per-tool snippets: [docs/clients.md](docs/clients.md). The short version is `npx -y baton-run@0.2.9` as the server command.
 
 **29 tools:** `inspect_project`, `list_targets`, `list_sessions`, `list_checkouts`, `list_devices`, `boot_device`, `run_target`, `run_workflow`, `check_change`, `hot_reload`, `hot_restart`, `stop_session`, `forget_session`, `wait_for`, `read_logs`, `session_summary`, `screenshot`, `set_debug_flag`, `diagnose`, `list_network_requests`, `get_network_request`, `clear_network_requests`, `read_launch_config`, `write_launch_config`, `run_proof`, `list_proofs`, `list_run_history`, and `show_dashboard` (a live Baton card in chat hosts that draw MCP Apps, such as the Claude app; its buttons use `dashboard_action`). Each one carries MCP hints (read-only, or destructive), so clients that honour them can skip the prompt for the 16 tools that only look.
 

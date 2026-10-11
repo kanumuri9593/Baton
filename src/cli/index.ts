@@ -7,6 +7,7 @@ import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { openPanel, panelSupported, hasSwift } from '../hud/panel.ts';
 import { regenerationLoss } from '../config/writer.ts';
+import { setup, type Outcome } from './setup.ts';
 import type { RpcMethods } from '../core/api.ts';
 import {
   parseAppearanceList, parseAxisList, parseTextScaleList, formatCellLabel, type ProofCheckName,
@@ -57,6 +58,10 @@ Usage
   baton app [--browser|--tab]    open the Baton control panel
   baton hud [--browser|--tab]    compatibility alias for baton app
   baton daemon start|stop|status
+  baton setup [client…] [--remove] [--dry-run]
+                                 add Baton to every coding agent installed here:
+                                 claude, codex, cursor, vscode, antigravity,
+                                 gemini, windsurf
 
 Examples
   baton run "iOS Simulator (DEV / dev flavor)"
@@ -188,6 +193,14 @@ async function main() {
 
   if (!command || command === 'help' || flags.help) {
     process.stdout.write(HELP);
+    return;
+  }
+
+  // Wiring Baton into other tools needs no daemon.
+  if (command === 'setup') {
+    printSetup(setup({
+      only: positional, remove: flags.remove === true, dryRun: flags['dry-run'] === true,
+    }), flags.remove === true, flags['dry-run'] === true);
     return;
   }
 
@@ -769,6 +782,27 @@ async function main() {
     }
   } finally {
     if (!flags.follow) client.close();
+  }
+}
+
+/** One line per client: what `baton setup` did there. */
+function printSetup(outcomes: Outcome[], remove: boolean, dryRun = false): void {
+  const mark: Record<Outcome['state'], string> = {
+    added: green('+'), updated: green('↻'), already: green('✓'), removed: yellow('−'),
+    absent: dim('·'), skipped: yellow('!'), failed: red('✗'),
+  };
+  const word: Record<Outcome['state'], string> = {
+    added: 'added', updated: 'updated', already: 'already set up', removed: 'removed',
+    absent: remove ? 'not set up' : 'not installed', skipped: 'skipped', failed: 'failed',
+  };
+  if (dryRun) Object.assign(word, { added: 'would add', updated: 'would update', removed: 'would remove' });
+  for (const o of outcomes) {
+    const where = o.client.shape === 'claude-plugin' ? '' : dim(' ' + o.client.file);
+    console.log(`${mark[o.state]} ${o.client.name.padEnd(20)} ${word[o.state]}${o.note ? dim(' · ' + o.note) : ''}${o.state === 'absent' ? '' : where}`);
+  }
+  if (outcomes.some((o) => o.state === 'failed')) process.exitCode = 1;
+  if (!remove && !dryRun && outcomes.some((o) => o.state === 'added' || o.state === 'updated')) {
+    console.log(dim('\n  Restart those apps (or start a new chat) to load Baton.'));
   }
 }
 

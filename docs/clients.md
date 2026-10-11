@@ -7,6 +7,23 @@ in under a second. Requires **Node.js 24+** on the machine that runs your apps.
 Prefer a global install? `npm install -g baton-run`, then use `baton-mcp` as the command
 with no arguments.
 
+## One command for every tool
+
+```bash
+npm install -g baton-run
+baton setup
+```
+
+`baton setup` finds the coding agents installed on this machine and adds Baton to each one:
+Claude Code (the plugin), Codex, Cursor, VS Code, Antigravity, Gemini CLI and Windsurf. It
+edits only the `baton` entry, keeps a `.baton-backup` of every file it changes, and is safe to
+run again. Name tools to limit it (`baton setup cursor codex`), preview with `--dry-run`, and
+undo with `--remove`. It writes the absolute path of this install and your shell's `PATH`,
+so apps started from the Dock still find Node, Flutter and Xcode.
+
+Restart the app (or open a new chat) afterwards. The sections below are the same entries,
+for setting a tool up by hand.
+
 Long steps (a first iOS build, `run_proof` across devices) can take several minutes. Where a
 client has a per-tool timeout, the snippets below raise it to 15 minutes.
 
@@ -26,9 +43,17 @@ Server only:
 claude mcp add baton -- npx -y baton-run@0.2.9
 ```
 
-## Codex CLI
+## Codex
 
-`~/.codex/config.toml`:
+The Codex plugin adds Baton's skills (how to run, reload and check an app) next to the server:
+
+```bash
+codex plugin marketplace add kanumuri9593/Baton
+codex plugin add baton@baton
+```
+
+Codex keeps MCP tools out of the prompt until it looks for them, so the skill is what makes
+"run my app" reach Baton. Server only, in `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.baton]
@@ -49,9 +74,11 @@ tool_timeout_sec = 900
 }
 ```
 
-## VS Code (GitHub Copilot agent mode)
+## VS Code
 
-`.vscode/mcp.json`:
+Claude Code in VS Code uses the same plugin as the terminal: install it there and `/baton`
+opens the control panel beside the chat. For GitHub Copilot agent mode, add the server to
+`.vscode/mcp.json` (or your user `mcp.json`):
 
 ```json
 {
@@ -69,6 +96,18 @@ tool_timeout_sec = 900
 {
   "mcpServers": {
     "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"], "timeout": 900000 }
+  }
+}
+```
+
+## Antigravity
+
+`~/.gemini/antigravity/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
   }
 }
 ```
