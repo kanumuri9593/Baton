@@ -15,9 +15,12 @@ export type WebEvidence = {
   failedRequests: string[];
 };
 
-/** Writes a PNG of `url` at `viewport` to `path`, and reports what went wrong on the page. Injectable for tests. */
+/**
+ * Writes a PNG of `url` at `viewport` to `path`, and reports what went wrong on
+ * the page. With no `path` it only loads the page and reports. Injectable for tests.
+ */
 export type WebCaptureFn = (
-  browser: string, url: string, viewport: WebViewport, path: string,
+  browser: string, url: string, viewport: WebViewport, path: string | undefined,
 ) => Promise<WebEvidence | void>;
 
 const MAX_EVIDENCE = 20;
@@ -108,8 +111,10 @@ export const captureWithDevTools: WebCaptureFn = async (browser, url, viewport, 
       if (nav.errorText) throw new Error(`could not open ${url}: ${nav.errorText}`);
       await loaded.catch(() => undefined); // a page that never fires load is still worth a look
       await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
-      const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });
-      writeFileSync(path, Buffer.from(shot.data, 'base64'));
+      if (path) {
+        const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });
+        writeFileSync(path, Buffer.from(shot.data, 'base64'));
+      }
       return evidence;
     } finally {
       cdp.close();

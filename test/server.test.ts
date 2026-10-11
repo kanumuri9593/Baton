@@ -420,6 +420,33 @@ test('logHistory shows a real run, logRead returns its lines, and logs falls bac
   assert.ok(lines.some((l: any) => l.text.includes('hello from run')));
 });
 
+test('logs with a filter searches all retained output, then keeps the last matching lines', async () => {
+  const scratch = mkdtempSync(join(tmpdir(), 'baton-logfilter-'));
+  const target: any = {
+    name: 'early-errors',
+    kind: 'process',
+    source: 'auto',
+    cwd: scratch,
+    command: process.execPath,
+    args: ['-e', "console.log('Error: first'); console.log('Error: second'); for (let i = 0; i < 400; i++) console.log('ok ' + i);"],
+  };
+  const session = await daemon.registry.run(target);
+  await waitForExit(session);
+  let lines: any[] = [];
+  for (let i = 0; i < 100; i++) {
+    lines = await daemon.handle({ method: 'logs', params: { session: session.id, filter: '^ok ' } }) as any[];
+    if (lines.length >= 200 && lines.at(-1).text === 'ok 399') break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  const errors: any = await daemon.handle({ method: 'logs', params: { session: session.id, filter: 'error' } });
+  assert.deepEqual(errors.map((l: any) => l.text), ['Error: first', 'Error: second'], 'errors before the last 200 lines are found');
+  const last: any = await daemon.handle({ method: 'logs', params: { session: session.id, filter: 'error', tail: 1 } });
+  assert.deepEqual(last.map((l: any) => l.text), ['Error: second'], 'tail keeps the last matches');
+  const plain: any = await daemon.handle({ method: 'logs', params: { session: session.id, tail: 5 } });
+  assert.equal(plain.length, 5, 'without a filter, tail is still the last N lines');
+  await daemon.handle({ method: 'forget', params: { session: session.id } });
+});
+
 test('forget with all=true clears every stopped session', async () => {
   const scratch = mkdtempSync(join(tmpdir(), 'baton-forget-'));
   const mk = (name: string) => ({

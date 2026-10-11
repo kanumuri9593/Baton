@@ -114,6 +114,12 @@ export type ScreenshotResult = { path: string } & Partial<WebEvidence>;
 export type ScreenshotOptions = {
   /** Web captures only: `phone`, `tablet`, `desktop` or `WIDTHxHEIGHT`. */
   viewport?: string;
+  /**
+   * Web captures only: device pixels per CSS pixel. Default 1, which keeps the
+   * image (and what it costs a model to look at) small; 2 for fine detail. The
+   * CSS viewport, and so the layout, is the same either way.
+   */
+  scale?: number;
   /** Browser binary for web captures. Defaults to `findBrowser()`. */
   browser?: string;
   /** How a web capture is taken. Defaults to the DevTools protocol; tests swap it. */
@@ -171,8 +177,7 @@ export async function screenshotSession(
 ): Promise<ScreenshotResult> {
   const target = snapshot.target;
   const platform = target ? resolvePlatform(target, platformHint) : undefined;
-  // A React Native URL is the Metro bundler, not the app, so it is no use to capture.
-  if (!platform && snapshot.url && snapshot.kind !== 'react-native') {
+  if (isWebPage(snapshot, platformHint)) {
     return screenshotUrl(snapshot, outPath, options);
   }
   if (!target) throw new Error(UNSUPPORTED);
@@ -212,13 +217,8 @@ async function screenshotUrl(
   options: ScreenshotOptions,
 ): Promise<ScreenshotResult> {
   const url = snapshot.url!;
-  const viewport = webViewport(options.viewport);
-  const browser = options.browser ?? findBrowser();
-  if (!browser) {
-    throw new Error(
-      'web screenshots need Chrome, Chromium, Edge or Brave installed (or BATON_CHROME set to a browser binary)',
-    );
-  }
+  const viewport = webViewport(options.viewport, options.scale);
+  const browser = requireBrowser(options);
   const path = outPath ?? defaultOutPath(snapshot.id);
   mkdirSync(dirname(path), { recursive: true });
   let evidence: WebEvidence | void;
@@ -231,9 +231,59 @@ async function screenshotUrl(
   return { path, ...(evidence ?? {}) };
 }
 
-/** Anything narrower than 1024px (phone, tablet) is a mobile viewport at 2x; desktop is 1x. */
-export function webViewport(viewport?: string): WebViewport {
+/**
+ * Whether a session is captured by loading its URL in a headless browser
+ * rather than from a device screen. A React Native URL is the Metro bundler,
+ * not the app, so it is no use to load.
+ */
+export function isWebPage(snapshot: SessionSnapshot, platformHint?: string): boolean {
+  const platform = snapshot.target ? resolvePlatform(snapshot.target, platformHint) : undefined;
+  return !platform && !!snapshot.url && snapshot.kind !== 'react-native';
+}
+
+/**
+ * Load a web session's page headlessly and report what it logged, without
+ * keeping an image. This is how a text-only check still sees a page that
+ * throws on load. Undefined when the session is not a web page.
+ */
+export async function loadWebPage(
+  snapshot: SessionSnapshot,
+  platformHint?: string,
+  options: ScreenshotOptions = {},
+): Promise<WebEvidence | undefined> {
+  if (!isWebPage(snapshot, platformHint)) return undefined;
+  const url = snapshot.url!;
+  const browser = requireBrowser(options);
+  try {
+    const evidence = await (options.capture ?? captureWithDevTools)(browser, url, webViewport(options.viewport, 1), undefined);
+    return evidence ?? { consoleErrors: [], failedRequests: [] };
+  } catch (err) {
+    throw new Error(`headless browser load of ${url} failed: ${(err as Error).message}`);
+  }
+}
+
+function requireBrowser(options: ScreenshotOptions): string {
+  const browser = options.browser ?? findBrowser();
+  if (!browser) {
+    throw new Error(
+      'web screenshots need Chrome, Chromium, Edge or Brave installed (or BATON_CHROME set to a browser binary)',
+    );
+  }
+  return browser;
+}
+
+/** `scale` as asked, as long as it is 1 or 2; anything else is 1. */
+export function captureScale(scale?: number): 1 | 2 {
+  return scale === 2 ? 2 : 1;
+}
+
+/**
+ * Anything narrower than 1024px (phone, tablet) is a mobile viewport. Every
+ * viewport captures at 1 device pixel per CSS pixel unless `scale` is 2: a 2x
+ * phone image costs a model about four times as many image tokens.
+ */
+export function webViewport(viewport?: string, scale?: number): WebViewport {
   const { width, height } = parseViewport(viewport);
   const mobile = width < 1024 && (viewport ?? '').toLowerCase() !== 'desktop';
-  return { width, height, mobile, scale: mobile ? 2 : 1 };
+  return { width, height, mobile, scale: captureScale(scale) };
 }

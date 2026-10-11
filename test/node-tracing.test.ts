@@ -43,7 +43,7 @@ test('OpenTelemetry correlates fetch and HTTP across two sessions without captur
   assert.ok(b.some(r=>r.traceId===a[0].traceId),'trace context propagated across projects');
   assert.ok(!JSON.stringify([...a,...b]).includes('private-query'));
   const findings:any=await daemon.handle({method:'diagnose',params:{query:a[0].traceId,errorsOnly:false}});
-  assert.equal(new Set(findings.findings.map((f:any)=>f.session)).size,2);
+  assert.equal(findings.sessions.filter((s:any)=>s.findings.length).length,2);
   const detail:any=await daemon.handle({method:'networkDetail',params:{session:api.id,id:a[0].id}});
   assert.deepEqual(detail.requestHeaders,{});
 });

@@ -70,6 +70,39 @@ test('a failed reload is not ok and carries the compile error', async () => {
   assert.equal(r.screenshotPath, undefined);
 });
 
+test('a web check without a screenshot still loads the page and fails on its console errors', async () => {
+  const { host, calls } = fakeHost({
+    loadPage: async (_s, opts) => {
+      calls.push(`load ${opts.viewport}`);
+      return { consoleErrors: ['ReferenceError: bannr is not defined'], failedRequests: ['GET 404 http://x/app.css'] };
+    },
+  });
+  const r = await checkChange(fakeSession('web-dev', ['url']), { session: 'x', screenshot: false, viewport: 'phone', settleMs: 0 }, host);
+  assert.deepEqual(calls, ['load phone']);
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.newErrors, ['[browser] ReferenceError: bannr is not defined']);
+  assert.deepEqual(r.failedRequests, ['[browser] GET 404 http://x/app.css']);
+  assert.equal(r.screenshotPath, undefined);
+});
+
+test('a text-only check that cannot load the page says so without failing the check', async () => {
+  const { host } = fakeHost({ loadPage: async () => { throw new Error('no browser'); } });
+  const r = await checkChange(fakeSession('web-dev', ['url']), { session: 'x', screenshot: false, settleMs: 0 }, host);
+  assert.equal(r.ok, true);
+  assert.equal(r.pageError, 'no browser');
+});
+
+test('a screenshot check passes the capture scale through, and does not load the page twice', async () => {
+  const seen: unknown[] = [];
+  const { host, calls } = fakeHost({
+    screenshot: async (_s, opts) => { seen.push(opts.scale); return { path: '/tmp/shot.png' }; },
+    loadPage: async () => { calls.push('load'); return {}; },
+  });
+  await checkChange(fakeSession('web-dev', ['url']), { session: 'x', scale: 2, settleMs: 0 }, host);
+  assert.deepEqual(seen, [2]);
+  assert.ok(!calls.includes('load'));
+});
+
 test('a restart waits for the session to be ready again', async () => {
   const { host, calls } = fakeHost();
   await checkChange(fakeSession('process', ['restartProcess']), { session: 'x', settleMs: 0 }, host);

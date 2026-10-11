@@ -36,9 +36,11 @@ Usage
       --clear                    forget what has been captured
   baton devices [--all]          connected devices; --all adds bootable ones
   baton boot <device>            start a simulator or emulator
-  baton screenshot <session> [-o path] [--viewport phone|tablet|desktop|WxH]
-                                 capture the screen (iOS sim, Android, or a web URL)
-  baton check <session> [--action auto|reload|restart|none] [--viewport phone]
+  baton screenshot <session> [-o path] [--viewport phone|tablet|desktop|WxH] [--scale 2]
+                                 capture the screen (iOS sim, Android, or a web URL);
+                                 web captures are 1x unless --scale 2
+  baton check <session> [--action auto|reload|restart|none] [--viewport phone] [--scale 2]
+                                 [--no-screenshot]
                                  apply an edit, then report new errors, failed
                                  requests and a screenshot in one step
   baton wait <session> [--until running|stopped|url|log:<regex>] [--timeout ms]
@@ -154,6 +156,13 @@ function runStatus(run: { live: boolean; exitCode?: number | null }): string {
   return `exit ${run.exitCode}`;
 }
 
+/** `--scale 1|2` for web captures; anything else is refused rather than guessed. */
+function scaleFlag(value: unknown): 1 | 2 | undefined {
+  if (value === undefined) return undefined;
+  if (value === '1' || value === '2') return Number(value) as 1 | 2;
+  throw new Error('--scale must be 1 or 2');
+}
+
 function parseArgs(argv: string[]) {
   const flags: Record<string, string | boolean> = {};
   const positional: string[] = [];
@@ -180,6 +189,7 @@ function parseArgs(argv: string[]) {
     else if (arg === '--settle') flags.settle = argv[++i];
     else if (arg === '--keep') flags.keep = true;
     else if (arg === '--viewport') flags.viewport = argv[++i];
+    else if (arg === '--scale') flags.scale = argv[++i];
     else if (arg === '--action') flags.action = argv[++i];
     else if (arg.startsWith('-')) flags[arg.replace(/^-+/, '')] = true;
     else positional.push(arg);
@@ -508,6 +518,7 @@ async function main() {
           session,
           out: typeof flags.out === 'string' ? flags.out : undefined,
           viewport: typeof flags.viewport === 'string' ? flags.viewport : undefined,
+          scale: scaleFlag(flags.scale),
         });
         console.log(`${green('✓')} ${result.path}`);
         break;
@@ -524,6 +535,8 @@ async function main() {
           session,
           action: action as 'auto' | 'reload' | 'restart' | 'none' | undefined,
           viewport: typeof flags.viewport === 'string' ? flags.viewport : undefined,
+          scale: scaleFlag(flags.scale),
+          screenshot: flags['no-screenshot'] ? false : undefined,
           out: typeof flags.out === 'string' ? flags.out : undefined,
         });
         if (flags.json) {
@@ -538,6 +551,7 @@ async function main() {
           for (const e of r.failedRequests) console.log(`  ${c('31', 'request')} ${e}`);
           if (r.screenshotPath) console.log(`  ${dim('screenshot')} ${r.screenshotPath}`);
           if (r.screenshotError) console.log(`  ${dim('screenshot')} ${r.screenshotError}`);
+          if (r.pageError) console.log(`  ${dim('page not loaded')} ${r.pageError}`);
         }
         if (!r.ok) process.exitCode = 1;
         break;

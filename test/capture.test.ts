@@ -144,11 +144,49 @@ test('a web session is captured from its URL by the browser, at a phone viewport
   const result = await screenshotSession(webSnapshot('http://localhost:5173/'), outPath, exec, undefined, {
     browser: '/fake/chrome',
     viewport: 'phone',
-    capture: async (browser, url, viewport, path) => { seen.push(browser, url, viewport); writeFileSync(path, 'png'); },
+    capture: async (browser, url, viewport, path) => { seen.push(browser, url, viewport); writeFileSync(path!, 'png'); },
   });
 
   assert.equal(result.path, outPath);
-  assert.deepEqual(seen, ['/fake/chrome', 'http://localhost:5173/', { width: 390, height: 844, mobile: true, scale: 2 }]);
+  assert.deepEqual(seen, ['/fake/chrome', 'http://localhost:5173/', { width: 390, height: 844, mobile: true, scale: 1 }]);
+});
+
+test('web captures are 1x by default and 2x only when asked, at the same CSS viewport', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'baton-cap-'));
+  const { writeFileSync } = await import('node:fs');
+  const seen: unknown[] = [];
+  const capture = async (_b: string, _u: string, viewport: unknown, path: string | undefined) => {
+    seen.push(viewport); writeFileSync(path!, 'png');
+  };
+  for (const scale of [undefined, 2, 3]) {
+    await screenshotSession(webSnapshot('http://localhost:5173/'), join(dir, `s${scale}.png`), undefined, undefined, {
+      browser: '/fake/chrome', viewport: 'phone', scale, capture,
+    });
+  }
+  assert.deepEqual(seen, [
+    { width: 390, height: 844, mobile: true, scale: 1 },
+    { width: 390, height: 844, mobile: true, scale: 2 },
+    { width: 390, height: 844, mobile: true, scale: 1 },
+  ]);
+});
+
+test('loading a web page without an image reports its errors and writes nothing', async () => {
+  const { loadWebPage } = await import('../src/daemon/capture.ts');
+  let gotPath: string | undefined = 'unset';
+  const evidence = await loadWebPage(webSnapshot('http://localhost:5173/'), undefined, {
+    browser: '/fake/chrome', viewport: 'phone',
+    capture: async (_b, _u, _v, path) => {
+      gotPath = path;
+      return { consoleErrors: ['ReferenceError: bannr is not defined'], failedRequests: [] };
+    },
+  });
+  assert.equal(gotPath, undefined);
+  assert.deepEqual(evidence?.consoleErrors, ['ReferenceError: bannr is not defined']);
+  // Not a web page: nothing to load, and no browser is started.
+  const device = { ...webSnapshot('http://localhost:8081', 'react-native') };
+  assert.equal(await loadWebPage(device, undefined, {
+    browser: '/fake/chrome', capture: async () => { throw new Error('must not load'); },
+  }), undefined);
 });
 
 test('a web capture that writes no file, or throws, is a failure naming the URL', async () => {
@@ -181,7 +219,7 @@ test('a Flutter web device id is not mistaken for an Android serial', async () =
   let captured = '';
   const snap = { ...webSnapshot('http://localhost:55555', 'flutter'), target: 'chrome' };
   await screenshotSession(snap, outPath, undefined, undefined, {
-    browser: '/fake/chrome', capture: async (_b, url, _v, path) => { captured = url; writeFileSync(path, 'png'); },
+    browser: '/fake/chrome', capture: async (_b, url, _v, path) => { captured = url; writeFileSync(path!, 'png'); },
   });
   assert.equal(captured, 'http://localhost:55555');
 });
@@ -196,6 +234,8 @@ test('viewports: names, WIDTHxHEIGHT, and a clear error for anything else', asyn
   assert.deepEqual(webViewport('desktop'), { width: 1280, height: 800, mobile: false, scale: 1 });
   assert.deepEqual(webViewport('1440x900'), { width: 1440, height: 900, mobile: false, scale: 1 });
   assert.equal(webViewport('tablet').mobile, true);
+  assert.equal(webViewport('tablet').scale, 1);
+  assert.equal(webViewport('desktop', 2).scale, 2);
 });
 
 test('findBrowser honours BATON_CHROME and otherwise searches PATH', async () => {

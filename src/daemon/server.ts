@@ -24,7 +24,7 @@ import { LogHistory, safe } from '../core/log-store.ts';
 import { LogSink } from './log-sink.ts';
 import { NetworkStore } from '../core/network-store.ts';
 import { NetworkService, type CreateVmClient } from './network.ts';
-import { screenshotSession } from './capture.ts';
+import { loadWebPage, screenshotSession } from './capture.ts';
 import { checkChange } from './check.ts';
 import { waitForSession, type WaitableSession } from './waiter.ts';
 import {
@@ -590,11 +590,13 @@ export class LaunchDaemon {
           }
           throw err;
         }
-        const lines = session.recentLogs(params.tail ?? 200);
-        const filtered = params.filter
-          ? lines.filter((l) => new RegExp(params.filter!, 'i').test(l.text))
-          : lines;
-        return filtered satisfies RpcMethods['logs']['result'];
+        // A filter searches everything the session still holds, then keeps
+        // the last `tail` matches: an error from before the last 200 lines is
+        // exactly what a filter is for.
+        const tail = params.tail ?? 200;
+        if (!params.filter) return session.recentLogs(tail) satisfies RpcMethods['logs']['result'];
+        const re = new RegExp(params.filter, 'i');
+        return session.recentLogs().filter((l) => re.test(l.text)).slice(-tail) satisfies RpcMethods['logs']['result'];
       }
 
       case 'logHistory': {
@@ -700,7 +702,7 @@ export class LaunchDaemon {
           throw new Error(`${session.kind} sessions have no screenshot capability and no URL yet`);
         }
         return screenshotSession(
-          snapshot, params.out, undefined, this.#devicePlatform(snapshot), { viewport: params.viewport },
+          snapshot, params.out, undefined, this.#devicePlatform(snapshot), { viewport: params.viewport, scale: params.scale },
         ) satisfies Promise<RpcMethods['screenshot']['result']>;
       }
 
@@ -725,8 +727,12 @@ export class LaunchDaemon {
           screenshot: async (s, opts) => {
             const snapshot = s.snapshot();
             return screenshotSession(
-              snapshot, opts.out, undefined, this.#devicePlatform(snapshot), { viewport: opts.viewport },
+              snapshot, opts.out, undefined, this.#devicePlatform(snapshot), { viewport: opts.viewport, scale: opts.scale },
             );
+          },
+          loadPage: async (s, opts) => {
+            const snapshot = s.snapshot();
+            return loadWebPage(snapshot, this.#devicePlatform(snapshot), { viewport: opts.viewport });
           },
           sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
           now: () => Date.now(),

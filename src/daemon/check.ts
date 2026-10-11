@@ -8,10 +8,16 @@ export type CheckParams = {
   action?: CheckAction;
   /** Milliseconds to let the app settle after the action, before collecting evidence. Default 1500. */
   settleMs?: number;
-  /** Take a screenshot. Default true. */
+  /**
+   * Take a screenshot. Default true. With false, a web page is still loaded
+   * headlessly so its console errors and failed requests count; only the image
+   * is skipped.
+   */
   screenshot?: boolean;
   /** Web captures only: `phone`, `tablet`, `desktop` or `WIDTHxHEIGHT`. */
   viewport?: string;
+  /** Web captures only: 1 (default) or 2 device pixels per CSS pixel. */
+  scale?: number;
   out?: string;
 };
 
@@ -28,6 +34,8 @@ export type CheckResult = {
   failedRequests: string[];
   screenshotPath?: string;
   screenshotError?: string;
+  /** Why a text-only check could not load a web page, when it could not. */
+  pageError?: string;
   elapsedMs: number;
 };
 
@@ -37,9 +45,16 @@ export type CheckHost = {
   waitReady(session: Session, timeoutMs: number): Promise<void>;
   network(session: Session, since: number): NetworkRequestSnapshot[];
   /** The PNG path, plus what a web page reported while it loaded. */
-  screenshot(session: Session, opts: { out?: string; viewport?: string }): Promise<{
+  screenshot(session: Session, opts: { out?: string; viewport?: string; scale?: number }): Promise<{
     path: string; consoleErrors?: string[]; failedRequests?: string[];
   }>;
+  /**
+   * Load a web session's page without keeping an image, and report what it
+   * logged. Undefined for sessions that are not web pages.
+   */
+  loadPage?(session: Session, opts: { viewport?: string }): Promise<{
+    consoleErrors?: string[]; failedRequests?: string[];
+  } | undefined>;
   sleep(ms: number): Promise<void>;
   now(): number;
 };
@@ -110,14 +125,23 @@ export async function checkChange(session: Session, params: CheckParams, host: C
   // module, an uncaught exception, a 404 for an asset.
   let screenshotPath: string | undefined;
   let screenshotError: string | undefined;
+  let pageError: string | undefined;
   let browser: { consoleErrors?: string[]; failedRequests?: string[] } = {};
   if (params.screenshot !== false && status === 'running') {
     try {
-      const shot = await host.screenshot(session, { out: params.out, viewport: params.viewport });
+      const shot = await host.screenshot(session, { out: params.out, viewport: params.viewport, scale: params.scale });
       screenshotPath = shot.path;
       browser = shot;
     } catch (err) {
       screenshotError = (err as Error).message;
+    }
+  } else if (status === 'running' && host.loadPage) {
+    // No image wanted, but a web page that throws on load is still a broken
+    // edit: the dev server and its log look healthy while the page is blank.
+    try {
+      browser = (await host.loadPage(session, { viewport: params.viewport })) ?? {};
+    } catch (err) {
+      pageError = (err as Error).message;
     }
   }
 
@@ -141,6 +165,7 @@ export async function checkChange(session: Session, params: CheckParams, host: C
     failedRequests,
     screenshotPath,
     screenshotError,
+    pageError,
     elapsedMs: host.now() - started,
   };
 }
