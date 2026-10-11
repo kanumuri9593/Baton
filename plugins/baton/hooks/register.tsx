@@ -119,7 +119,7 @@ async function handshakePath($: Dollar): Promise<string> {
   return `${home}/.baton/daemon.json`
 }
 
-async function rpc<T>($: Dollar, method: string, params: Record<string, unknown> = {}): Promise<T> {
+async function rpc($: Dollar, method: string, params: Record<string, unknown> = {}): Promise<unknown> {
   if (!handshake) {
     handshake = JSON.parse(await $.fs.read(await handshakePath($))) as Handshake
   }
@@ -128,17 +128,17 @@ async function rpc<T>($: Dollar, method: string, params: Record<string, unknown>
     headers: { 'content-type': 'application/json', authorization: `Bearer ${handshake.token}` },
     body: JSON.stringify({ method, params }),
   })
-  const body = JSON.parse(res.text || '{}') as { result?: T; error?: string }
+  const body = JSON.parse(res.text || '{}') as { result?: unknown; error?: string }
   if (!res.ok || body.error) {
     if (res.status === 401) handshake = null
     throw new Error(body.error ?? `HTTP ${res.status}`)
   }
-  return body.result as T
+  return body.result
 }
 
 async function poll($: Dollar) {
   try {
-    const list = await rpc<Snapshot[]>($, 'sessions')
+    const list = (await rpc($, 'sessions')) as Snapshot[]
     const now = Date.now()
     if (now - lastDevicePoll > DEVICE_POLL_MS && list.some(s => s.target)) {
       lastDevicePoll = now
@@ -146,7 +146,7 @@ async function poll($: Dollar) {
       const next = new Map(devices)
       for (const cwd of roots) {
         try {
-          for (const d of await rpc<Device[]>($, 'devices', { cwd })) next.set(d.id, d.name)
+          for (const d of (await rpc($, 'devices', { cwd })) as Device[]) next.set(d.id, d.name)
         } catch {
           // A project without device tooling just shows its URL or kind.
         }
@@ -171,7 +171,7 @@ async function poll($: Dollar) {
 async function act($: Dollar, key: string, method: string, params: Record<string, unknown>, done: string) {
   await update($, busy, () => key)
   try {
-    const result = await rpc<Array<{ code?: number; message?: string }>>($, method, params)
+    const result = (await rpc($, method, params)) as Array<{ code?: number; message?: string }>
     const failed = Array.isArray(result) ? result.filter(r => r.code != null && r.code !== 0) : []
     $.ui.toast(failed.length ? `Baton: ${failed[0]?.message ?? 'failed'}` : done)
   } catch (err) {
@@ -231,7 +231,7 @@ async function front($: Dollar, runs: Run[]): Promise<string> {
 
 async function loadLogs($: Dollar, runId: string, name: string) {
   try {
-    const lines = await rpc<Array<{ text: string; error: boolean }>>($, 'logs', { session: runId, tail: 40 })
+    const lines = (await rpc($, 'logs', { session: runId, tail: 40 })) as Array<{ text: string; error: boolean }>
     const next: Logs = { runId, name, lines: lines.map(l => ({ text: l.text, error: !!l.error })) }
     if (!same(next, await read($, logs))) await update($, logs, () => next)
   } catch (err) {
