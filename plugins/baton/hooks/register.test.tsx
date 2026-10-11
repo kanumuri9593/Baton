@@ -24,6 +24,7 @@ function daemon(on: On, sessions: unknown[] | null, calls: Array<{ method: strin
   })
   on('command.register', async ($, e) => ({ value: { command: e.name } }))
   on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.toast', async () => ({ value: undefined }))
   on('session.start', async ($, e) => ({ cwd: e.cwd }))
   on('ui.render', async ($, e) => {
     const { Box } = $.ui.resolve(e)
@@ -86,10 +87,13 @@ test('the band lists live runs from the daemon and hides on request', async ($, 
   await $.session.start(START)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'baton', surface, ...BAND })
-    expect(await ui.find({ type: 'Text', text: /CoreRun · iPhone 17 Pro/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /mclane360\/app · iPad Air/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /iPhone 17 Pro/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /mclane360 · app/ })).toBeDefined()
     expect(await ui.find({ key: 'open' })).toBeDefined()
-    // Only a running session that hot-reloads gets the button; mclane360 is still building.
+    // Each run has its own row of controls; mclane360 is still building, so only Stop and Logs.
+    expect(await ui.find({ key: 'restart:s1' })).toBeDefined()
+    expect(await ui.find({ key: 'stop:s2' })).toBeDefined()
+    expect(await ui.find({ key: 'reload:s2' })).toBeUndefined()
     expect(await ui.find({ key: 'reload-all' })).toBeUndefined()
     await ui.unmount()
   }
@@ -128,7 +132,7 @@ test('pressing Restart restarts that one run', async ($, on) => {
   await $.session.start(START)
   const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...PANE })
   await ui.press({ key: 'restart:s1' })
-  expect(calls.find(c => c.method === 'restart')?.params).toEqual({ session: 's1', reason: 'Claude Code panel' })
+  expect(calls.find(c => c.method === 'restart')?.params).toEqual({ session: 's1', reason: 'Claude Code pane' })
   await ui.unmount()
 })
 
@@ -148,15 +152,15 @@ function mac(on: On, argvs: string[][], stat = 'S') {
   })
 }
 
-test('on a Mac the band pauses the simulator app and brings it forward', async ($, on) => {
+test('on a Mac a run row pauses the simulator app and brings it forward', async ($, on) => {
   const argvs: string[][] = []
   daemon(on, MAC_SESSIONS)
   mac(on, argvs)
   await $.session.start(START)
   const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
-  await ui.press({ key: 'pause-all' })
+  await ui.press({ key: 'pause:s1' })
   expect(argvs.find(a => a[0] === 'kill')).toEqual(['kill', '-STOP', '90'])
-  await ui.press({ key: 'front-all' })
+  await ui.press({ key: 'front:s1' })
   expect(argvs.find(a => a[0] === 'open')).toEqual(['open', '-a', 'Simulator'])
   await ui.unmount()
 })
@@ -201,5 +205,30 @@ test('New run starts the picked target, boots a simulator and shows logs', async
   expect(calls.find(c => c.method === 'boot')?.params).toEqual({ id: 'B-1' })
   await ui.press({ key: 'logs:s1' })
   expect(await ui.find({ type: 'Text', text: /Firebase error/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the band collapses to its header and starts a finished run again', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, [{ ...SESSIONS[0], status: 'failed' }], calls)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'again:s1' })
+  expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'CoreRun', deviceId: 'UDID-1' })
+  await ui.press({ key: 'collapse' })
+  expect(await ui.find({ key: 'again:s1' })).toBeUndefined()
+  expect(await ui.find({ key: 'new' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('New run opens inline in the band', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, SESSIONS, calls)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  expect(await ui.find({ key: 'run' })).toBeUndefined()
+  await ui.press({ key: 'new' })
+  await ui.press({ key: 'run' })
+  expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'CoreRun TST', deviceId: undefined })
   await ui.unmount()
 })

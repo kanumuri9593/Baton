@@ -4,11 +4,13 @@
 
 Built for the loop a coding agent actually runs: edit, check, fix, check again.
 
-- The Baton band and `/baton` panel in Claude Code (terminal and desktop
-  app) get the card's full controls. The band adds Pause all / Resume all,
-  Bring to front and Stop all (with a confirm); the panel adds New run
-  (project, target and device pickers), Boot a simulator, per-app Pause /
-  Resume, Bring to front, live Logs and Dismiss. Pause is macOS only.
+- The Baton band in Claude Code (terminal and desktop app) is now one
+  compact workspace: a row per app with its own Reload, Restart,
+  Pause/Resume, Screenshot, Logs, Front and Stop (Run again and Dismiss once
+  it ends), a header with + New run inline (project, target, device, boot a
+  simulator) and the all-apps actions, logs and screenshots opened under
+  their row, scrolling for long lists, and Collapse to one line. `/baton`
+  opens the same workspace in a pane. Pause is macOS only.
 - New `check_change` tool (and `baton check <session>`). One call applies an
   edit (hot reload for Flutter, HMR for web and React Native, restart for
   native and plain processes) and answers OK / NOT OK with only what is new
