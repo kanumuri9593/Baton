@@ -14,10 +14,16 @@ function daemon(on: On, sessions: unknown[] | null, calls: Array<{ method: strin
     if (sessions === null) return { value: { status: 502, ok: false, headers: {}, text: '' } }
     const { method, params } = JSON.parse(e.init?.body ?? '{}') as { method: string; params: unknown }
     calls.push({ method, params })
-    const result = method === 'sessions' ? sessions : method === 'devices' ? [{ id: 'UDID-1', name: 'iPhone 17 Pro' }] : []
+    const result = method === 'sessions' ? sessions
+      : method === 'devices' ? [{ id: 'UDID-1', name: 'iPhone 17 Pro', platformType: 'ios' }]
+      : method === 'projects' ? { projects: [{ root: '/Users/v/CoreRun', name: 'CoreRun', targets: [{ name: 'CoreRun TST', kind: 'flutter' }, { name: 'Landing', kind: 'web' }] }] }
+      : method === 'bootables' ? [{ id: 'B-1', name: 'iPad Air', platformType: 'ios', running: false }]
+      : method === 'logs' ? [{ text: 'Firebase error', error: true }, { text: 'ready', error: false }]
+      : []
     return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify({ result }) } }
   })
   on('command.register', async ($, e) => ({ value: { command: e.name } }))
+  on('ui.open', async () => ({ value: { isPlaced: true } }))
   on('session.start', async ($, e) => ({ cwd: e.cwd }))
   on('ui.render', async ($, e) => {
     const { Box } = $.ui.resolve(e)
@@ -44,10 +50,12 @@ const PANE = {
 const coreRun: Run = {
   id: 's1', name: 'CoreRun', kind: 'ios', status: 'running', project: 'CoreRun',
   device: 'iPhone 17 Pro', capabilities: ['hotRestart', 'stop', 'screenshot'], cpuPct: 12, rssBytes: 200 * 1_048_576,
+  paused: false, canPause: false, canFront: false,
 }
 const mclane: Run = {
   id: 's2', name: 'app', kind: 'flutter', status: 'starting', project: 'mclane360', progress: 'Building…',
   device: 'iPad Air', capabilities: ['hotReload', 'hotRestart', 'stop', 'screenshot'],
+  paused: false, canPause: false, canFront: false,
 }
 
 describe('helpers', () => {
@@ -121,5 +129,77 @@ test('pressing Restart restarts that one run', async ($, on) => {
   const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...PANE })
   await ui.press({ key: 'restart:s1' })
   expect(calls.find(c => c.method === 'restart')?.params).toEqual({ session: 's1', reason: 'Claude Code panel' })
+  await ui.unmount()
+})
+
+const SIM = '11111111-2222-3333-4444-555555555555'
+const MAC_SESSIONS = [
+  { id: 's1', name: 'CoreRun', kind: 'flutter', status: 'running', root: '/Users/v/CoreRun', target: SIM, pid: 50, capabilities: ['hotReload', 'stop'] },
+]
+
+// A Mac: `uname` says Darwin, `ps` shows the app inside that simulator, `kill` and `open` are recorded.
+function mac(on: On, argvs: string[][], stat = 'S') {
+  on('process.run', async ($, e) => {
+    argvs.push([...e.argv])
+    const stdout = e.argv[0] === 'uname' ? 'Darwin\n'
+      : e.argv[0] === 'ps' ? `  50     1 S    flutter run\n  90     1 ${stat}    /Users/v/Library/Developer/CoreSimulator/Devices/${SIM}/data/Containers/Bundle/Application/X/Runner.app/Runner\n`
+      : ''
+    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+}
+
+test('on a Mac the band pauses the simulator app and brings it forward', async ($, on) => {
+  const argvs: string[][] = []
+  daemon(on, MAC_SESSIONS)
+  mac(on, argvs)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'pause-all' })
+  expect(argvs.find(a => a[0] === 'kill')).toEqual(['kill', '-STOP', '90'])
+  await ui.press({ key: 'front-all' })
+  expect(argvs.find(a => a[0] === 'open')).toEqual(['open', '-a', 'Simulator'])
+  await ui.unmount()
+})
+
+test('a paused app shows Resume and continues on press', async ($, on) => {
+  const argvs: string[][] = []
+  daemon(on, MAC_SESSIONS)
+  mac(on, argvs, 'T')
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...PANE })
+  expect(await ui.find({ type: 'Text', text: /paused/ })).toBeDefined()
+  await ui.press({ key: 'pause:s1' })
+  expect(argvs.find(a => a[0] === 'kill')).toEqual(['kill', '-CONT', '90'])
+  await ui.unmount()
+})
+
+test('Stop all asks for a confirm first', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, SESSIONS, calls)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await ui.press({ key: 'stop-all' })
+  expect(calls.find(c => c.method === 'stop')).toBeUndefined()
+  await ui.press({ key: 'stop-all' })
+  expect(calls.find(c => c.method === 'stop')?.params).toEqual({ ids: ['s1', 's2'] })
+  await ui.unmount()
+})
+
+test('New run starts the picked target, boots a simulator and shows logs', async ($, on) => {
+  const calls: Array<{ method: string; params: unknown }> = []
+  daemon(on, SESSIONS, calls)
+  await $.session.start(START)
+  const band = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })
+  await band.press({ key: 'open' })
+  await band.unmount()
+  const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...PANE })
+  await ui.select({ key: 'target', value: 'Landing' })
+  await ui.select({ key: 'device', value: 'UDID-1' })
+  await ui.press({ key: 'run' })
+  expect(calls.find(c => c.method === 'run')?.params).toEqual({ cwd: '/Users/v/CoreRun', target: 'Landing', deviceId: 'UDID-1' })
+  await ui.press({ key: 'boot-device' })
+  expect(calls.find(c => c.method === 'boot')?.params).toEqual({ id: 'B-1' })
+  await ui.press({ key: 'logs:s1' })
+  expect(await ui.find({ type: 'Text', text: /Firebase error/ })).toBeDefined()
   await ui.unmount()
 })
