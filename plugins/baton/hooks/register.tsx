@@ -319,8 +319,9 @@ async function play($: Dollar, run: Run, site: Site): Promise<string | undefined
   const name = shortName(run)
   switch (playAction(run)) {
     case 'again':
-      await rpc($, 'run', { cwd: run.root, target: run.name, deviceId: run.deviceId })
+      // The finished session holds its id until it is forgotten; the new run reuses it.
       await rpc($, 'forget', { session: run.id }).catch(() => undefined)
+      await rpc($, 'run', { cwd: run.root, target: run.name, deviceId: run.deviceId })
       return `Baton: starting ${name}`
     case 'resume':
       return signal($, [run.id], false)
