@@ -372,11 +372,12 @@ async function workspace($: Dollar, e: any, site: Site) {
   const frontable = running.filter(r => r.canFront)
   const failed = list.filter(r => r.status === 'failed').length
 
-  // One button: a coloured glyph, its name for screen readers. Dim and inert
-  // when it does not apply, so the row keeps its shape.
-  const btn = (key: string, glyph: string, name: string, color: string, enabled: boolean, onPress: () => unknown) => (
+  // One button: a coloured glyph. No `label`: the desktop app draws a Button's
+  // label in place of its children, which turned every icon back into a word.
+  // Dim and inert when it does not apply, so the row keeps its shape.
+  const btn = (key: string, glyph: string, _name: string, color: string, enabled: boolean, onPress: () => unknown) => (
     <Box key={`b:${key}`} marginLeft={1}>
-      <Button key={key} plain label={name} onPress={enabled ? onPress : () => undefined}>
+      <Button key={key} plain onPress={enabled ? onPress : () => undefined}>
         <Text color={enabled ? color : undefined} dimColor={!enabled} bold={enabled}>{working === key ? '…' : glyph}</Text>
       </Button>
     </Box>
