@@ -3,7 +3,7 @@
 // knows those files, edits only the `baton` entry, and leaves the rest alone.
 //
 // The entry points at this install by absolute path (node + bin/baton-mcp.js),
-// not at `npx`: GUI apps such as VS Code, Cursor and Claude Desktop start with a
+// not at `npx`: GUI apps such as VS Code, Cursor and Antigravity start with a
 // short PATH that often has no npx, flutter or xcrun. The shell's PATH is
 // written next to it for the same reason, so the daemon the client starts can
 // find the SDKs this shell can.
@@ -31,6 +31,8 @@ const TIMEOUT_SEC = 900;
 
 /** Every client Baton knows how to configure, for this OS and home directory. */
 export function clients(home = homedir(), platform = process.platform, env = process.env): Client[] {
+  // Claude Desktop's chat is left out on purpose: the running app rewrites
+  // claude_desktop_config.json and drops servers added behind its back.
   const appSupport =
     platform === 'darwin' ? join(home, 'Library', 'Application Support')
       : platform === 'win32' ? (env.APPDATA ?? join(home, 'AppData', 'Roaming'))
@@ -44,7 +46,6 @@ export function clients(home = homedir(), platform = process.platform, env = pro
     { id: 'antigravity', name: 'Antigravity', file: join(home, '.gemini', 'antigravity', 'mcp_config.json'), marker: join(home, '.gemini', 'antigravity'), shape: 'mcpServers' },
     { id: 'gemini', name: 'Gemini CLI', file: join(home, '.gemini', 'settings.json'), marker: which('gemini', env) ?? join(home, '.gemini', 'settings.json'), shape: 'mcpServers' },
     { id: 'windsurf', name: 'Windsurf', file: join(home, '.codeium', 'windsurf', 'mcp_config.json'), marker: join(home, '.codeium', 'windsurf'), shape: 'mcpServers' },
-    { id: 'claude-desktop', name: 'Claude Desktop chat', file: join(appSupport, 'Claude', 'claude_desktop_config.json'), marker: join(appSupport, 'Claude'), shape: 'mcpServers' },
   ];
 }
 

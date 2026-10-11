@@ -61,7 +61,7 @@ Usage
   baton setup [client…] [--remove] [--dry-run]
                                  add Baton to every coding agent installed here:
                                  claude, codex, cursor, vscode, antigravity,
-                                 gemini, windsurf, claude-desktop
+                                 gemini, windsurf
 
 Examples
   baton run "iOS Simulator (DEV / dev flavor)"

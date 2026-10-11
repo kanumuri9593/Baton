@@ -53,7 +53,7 @@ Typical loop: `inspect_project` → `boot_device` if no simulator is up → `run
 
 `check_change` applies the edit (hot reload for Flutter, HMR for web and React Native, restart for the rest) and returns only what is new since the call: the reload result, error lines, failed requests and a screenshot, with an OK / NOT OK verdict. `screenshot` and `check_change` capture web sessions too, through a headless Chrome-family browser, at `viewport` `phone`, `tablet`, `desktop` or `WIDTHxHEIGHT`.
 
-Setup snippets for Codex, Cursor, VS Code, Gemini CLI and Windsurf: [docs/clients.md](docs/clients.md).
+`baton setup` adds Baton to every installed client (Claude Code, Codex, Cursor, VS Code, Antigravity, Gemini CLI, Windsurf). Per-client snippets: [docs/clients.md](docs/clients.md).
 
 Opening an Xcode or Gradle folder (or `.xcodeproj`, `project.pbxproj`, `settings.gradle(.kts)`, `gradlew`, `AndroidManifest.xml`) is a native `ios`/`android` target: Baton builds, installs and launches on the selected simulator or device, then follows logs. Restart rebuilds and relaunches. It is not Flutter hot reload. Nested `ios/` and `android/` under a Flutter or React Native root are recognised when that folder is the project; the framework root still runs the framework.
 

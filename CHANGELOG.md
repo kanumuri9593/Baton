@@ -4,6 +4,10 @@
 
 Built for the loop a coding agent actually runs: edit, check, fix, check again.
 
+- `baton setup` adds Baton to every coding agent installed on the machine
+  (Claude Code, Codex, Cursor, VS Code, Antigravity, Gemini CLI, Windsurf),
+  by absolute path and with the shell's PATH, so Dock-launched apps work too.
+  The repo is now also a Codex plugin marketplace.
 - The Baton band in Claude Code (terminal and desktop app) is now one
   compact workspace: a row per app with its own Reload, Restart,
   Pause/Resume, Screenshot, Logs, Front and Stop (Run again and Dismiss once
