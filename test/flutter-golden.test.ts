@@ -11,7 +11,7 @@ const CONFIG: LaunchConfig = {
 
 /**
  * Replay the transcript recorded from a real `flutter run --machine` against the
- * McLane360 app on a booted iPhone 17 Pro. This is the regression guard for the
+ * FieldApp app on a booted iPhone 17 Pro. This is the regression guard for the
  * whole premise: if Flutter changes the wire format, this test fails.
  */
 test('replays a real recorded session end to end', () => {

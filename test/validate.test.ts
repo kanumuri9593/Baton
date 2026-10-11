@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { loadConfigs } from '../src/config/loader.ts';
 import { validate, isRunnable } from '../src/config/validate.ts';
 
-const REAL = 'test/fixtures/mclane360-launch.json';
+const REAL = 'test/fixtures/fieldapp-launch.json';
 const PROJECT = FIXTURE_PROJECT;
 
 test('a config whose dart-define files all exist is runnable', () => {

@@ -191,7 +191,7 @@
         "--web-port=8888",
         "--web-hostname=localhost",
         "--web-browser-flag=--disable-web-security",
-        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--user-data-dir=/tmp/fieldapp-chrome-cors",
         "--web-browser-flag=--disable-site-isolation-trials"
       ]
     },
@@ -213,7 +213,7 @@
         "--web-port=8888",
         "--web-hostname=localhost",
         "--web-browser-flag=--disable-web-security",
-        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--user-data-dir=/tmp/fieldapp-chrome-cors",
         "--web-browser-flag=--disable-site-isolation-trials"
       ]
     },
@@ -236,7 +236,7 @@
         "--web-port=8888",
         "--web-hostname=localhost",
         "--web-browser-flag=--disable-web-security",
-        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--user-data-dir=/tmp/fieldapp-chrome-cors",
         "--web-browser-flag=--disable-site-isolation-trials"
       ]
     },
@@ -261,7 +261,7 @@
         "--web-port=8888",
         "--web-hostname=localhost",
         "--web-browser-flag=--disable-web-security",
-        "--web-browser-flag=--user-data-dir=/tmp/mclane360-chrome-cors",
+        "--web-browser-flag=--user-data-dir=/tmp/fieldapp-chrome-cors",
         "--web-browser-flag=--disable-site-isolation-trials"
       ]
     }

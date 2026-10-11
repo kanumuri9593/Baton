@@ -42,7 +42,7 @@ function daemon(on: On, sessions: unknown[] | null, calls: Array<{ method: strin
 
 const SESSIONS = [
   { id: 's1', name: 'CoreRun', kind: 'ios', status: 'running', root: '/Users/v/CoreRun', target: 'UDID-1', capabilities: ['hotRestart', 'stop', 'screenshot'], cpuPct: 12, rssBytes: 200 * 1_048_576 },
-  { id: 's2', name: 'app', kind: 'flutter', status: 'starting', root: '/Users/v/mclane360', target: 'iPad Air', progress: 'Building…', capabilities: ['hotReload', 'hotRestart', 'stop', 'screenshot'] },
+  { id: 's2', name: 'app', kind: 'flutter', status: 'starting', root: '/Users/v/fieldapp', target: 'iPad Air', progress: 'Building…', capabilities: ['hotReload', 'hotRestart', 'stop', 'screenshot'] },
 ]
 const START = { cwd: '/', surface: 'terminal', isInteractive: true } as const
 
@@ -61,8 +61,8 @@ const coreRun: Run = {
   device: 'iPhone 17 Pro', capabilities: ['hotRestart', 'stop', 'screenshot'], cpuPct: 12, rssBytes: 200 * 1_048_576,
   paused: false, canPause: false, canFront: false,
 }
-const mclane: Run = {
-  id: 's2', name: 'app', kind: 'flutter', status: 'starting', project: 'mclane360', progress: 'Building…',
+const fieldapp: Run = {
+  id: 's2', name: 'app', kind: 'flutter', status: 'starting', project: 'fieldapp', progress: 'Building…',
   device: 'iPad Air', capabilities: ['hotReload', 'hotRestart', 'stop', 'screenshot'],
   paused: false, canPause: false, canFront: false,
 }
@@ -70,8 +70,8 @@ const mclane: Run = {
 describe('helpers', () => {
   test('names and devices are shortened for one clean line', () => {
     expect(shortName({ name: 'CoreRun TST (full dart-defines)', project: 'CoreRun' })).toBe('CoreRun TST')
-    expect(shortName({ name: 'iOS Simulator (DEV / dev flavor)', project: 'McLane360-main' })).toBe('McLane360 DEV')
-    expect(shortName({ name: 'app', project: 'mclane360' })).toBe('mclane360')
+    expect(shortName({ name: 'iOS Simulator (DEV / dev flavor)', project: 'FieldApp-main' })).toBe('FieldApp DEV')
+    expect(shortName({ name: 'app', project: 'fieldapp' })).toBe('fieldapp')
     expect(shortDevice({ device: 'iPad Pro (12.9-inch) (4th generation)', kind: 'ios' })).toBe('iPad Pro 12.9″')
     expect(shortDevice({ url: 'http://localhost:5173/', kind: 'web' })).toBe('localhost:5173')
   })
@@ -84,7 +84,7 @@ describe('helpers', () => {
     expect(run.project).toBe('CoreRun')
     expect(run.device).toBe('iPhone 17 Pro')
     expect(label(run)).toBe('CoreRun · iPhone 17 Pro')
-    expect(label({ ...mclane, status: 'running' })).toBe('mclane360/app · iPad Air')
+    expect(label({ ...fieldapp, status: 'running' })).toBe('fieldapp/app · iPad Air')
   })
 })
 
@@ -223,7 +223,7 @@ test('on a Mac pause stops the simulator app, play resumes it, front raises Simu
 test('front raises that run\'s own simulator window, and front-all raises every one', async ($, on) => {
   const IPAD = 'B1A1BE95-E9D6-4134-B214-AA82BA076A8B'
   const argvs: string[][] = []
-  daemon(on, [...MAC_SESSIONS, { ...MAC_SESSIONS[0]!, id: 's2', name: 'McLane', root: '/Users/v/McLane', target: IPAD, pid: 51 }])
+  daemon(on, [...MAC_SESSIONS, { ...MAC_SESSIONS[0]!, id: 's2', name: 'FieldApp', root: '/Users/v/FieldApp', target: IPAD, pid: 51 }])
   mac(on, argvs)
   await $.session.start(START)
   const ui = await $.ui.mount({ plugin: 'baton', surface: 'desktop', ...BAND })

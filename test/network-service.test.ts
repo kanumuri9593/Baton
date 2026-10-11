@@ -16,7 +16,7 @@ import type { LaunchConfig } from '../src/config/loader.ts';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** The `app.debugPort` line the real McLane360 run produced, reused verbatim. */
+/** The `app.debugPort` line the real FieldApp run produced, reused verbatim. */
 const LIFECYCLE = readFileSync(join(import.meta.dirname, 'fixtures', 'flutter-run-lifecycle.txt'), 'utf8')
   .split('\n');
 const line = (event: string) => LIFECYCLE.find((l) => l.includes(`"event":"${event}"`))!;
@@ -94,7 +94,7 @@ class FakeVm implements VmTransport {
   /** Make the app look like it just did an HTTP call. */
   record(id: string, over: Record<string, unknown> = {}, isolateId = ISOLATE): void {
     this.requests.push({
-      id, isolateId, method: 'GET', uri: `https://api.mclane360.test/v2/thing/${id}`,
+      id, isolateId, method: 'GET', uri: `https://api.fieldapp.test/v2/thing/${id}`,
       startTime: 1_756_540_800_000_000, endTime: 1_756_540_800_120_000,
       events: [],
       request: { headers: { accept: ['application/json'] }, contentLength: -1, cookies: [] },
@@ -111,7 +111,7 @@ const key = (request: { isolateId: string; id: string }) => `${request.isolateId
 const CONFIG: LaunchConfig = {
   name: 'iOS Simulator (DEV / dev flavor)',
   kind: 'flutter',
-  cwd: '/proj/mclane360',
+  cwd: '/proj/fieldapp',
   program: 'lib/main.dart',
   toolArgs: [],
   args: [],
@@ -186,7 +186,7 @@ async function until(
 
 /**
  * Drive a Flutter session through the real registry, using the recorded lifecycle
- * lines -- `flutter run --machine` output captured from an actual McLane360 run.
+ * lines -- `flutter run --machine` output captured from an actual FieldApp run.
  *
  * The registry's flutter branch would need a real device to pick, so the session
  * is adopted directly, which is what `run()` does once a device is chosen.
@@ -237,7 +237,7 @@ test('captured requests reach the network RPC, filtered and tailed', async () =>
   const vm = await captured(session);
 
   vm.record('1');
-  vm.record('2', { method: 'POST', uri: 'https://api.mclane360.test/v2/login' });
+  vm.record('2', { method: 'POST', uri: 'https://api.fieldapp.test/v2/login' });
   await until(
     async () => ((await daemon.handle({ method: 'network', params: { session: session.id } })) as any[]).length >= 2,
     'two captured requests',
@@ -310,13 +310,13 @@ test('every captured request is pushed over the socket as it happens', async () 
   });
   await new Promise((resolve) => socket.on('open', resolve));
 
-  vm.record('42', { uri: 'https://api.mclane360.test/v2/pushed' });
+  vm.record('42', { uri: 'https://api.fieldapp.test/v2/pushed' });
   await until(() => events.length > 0, 'a pushed network event');
 
   const pushed = events.find((e) => e.request.id === `${ISOLATE}#42`);
   assert.ok(pushed, 'the HUD learns about a request without polling');
   assert.equal(pushed.sessionId, session.id);
-  assert.equal(pushed.request.uri, 'https://api.mclane360.test/v2/pushed');
+  assert.equal(pushed.request.uri, 'https://api.fieldapp.test/v2/pushed');
   socket.close();
 });
 

@@ -56,7 +56,7 @@ test('picks the package manager from the lockfile that is present', () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-test('discovers all 16 real McLane360 launch configs as flutter targets', () => {
+test('discovers all 16 real FieldApp launch configs as flutter targets', () => {
   const targets = detectTargets(FIXTURE_PROJECT);
   const flutter = targets.filter((t) => t.kind === 'flutter' && t.source === 'launch.json');
   assert.equal(flutter.length, 16);
