@@ -30,7 +30,7 @@ body:
     attributes:
       label: Baton version
       description: "`npm ls -g baton-run`, or the plugin version"
-      placeholder: "0.2.9"
+      placeholder: "0.2.10"
     validations:
       required: true
   - type: dropdown

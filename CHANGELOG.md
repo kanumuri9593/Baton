@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.10 — 2026-10-11
+
+Leaner answers for agents: the same evidence in 60–90% fewer tokens.
 
 - `check_change` with `screenshot: false` on a web session now still loads the
   page headlessly and reports its console errors and failed requests. Before,
@@ -17,6 +19,7 @@
   (×N, with first and last time), and each stack shows its first app frames
   then "+N more frames". The HUD's Diagnose panel reads the new shape.
 - `baton check` takes `--no-screenshot`.
+- CLI help, tests and fixtures use a neutral sample app name.
 
 ## 0.2.9 — 2026-10-11
 

@@ -20,7 +20,7 @@ because Cursor started from the Dock often has no `npx`, `flutter` or `xcrun` on
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
@@ -37,7 +37,7 @@ the entry, or use `baton setup cursor`, which does that for you.
 ## Troubleshooting
 
 - **`baton` shows an error in settings**: Baton needs Node.js 24+. Run
-  `npx -y --package=baton-run@0.2.9 baton doctor` in a terminal to see the cause.
+  `npx -y --package=baton-run@0.2.10 baton doctor` in a terminal to see the cause.
 - **`setup` skipped Cursor with "is not plain JSON"**: `mcp.json` has comments or trailing
   commas. Add the entry by hand.
 - **Runs fail with "flutter: command not found"**: the server inherited Cursor's short `PATH`.

@@ -24,7 +24,7 @@ by hand, with the app closed.
    ```json
    {
      "mcpServers": {
-       "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+       "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
      }
    }
    ```
@@ -58,6 +58,6 @@ Use `which node` and `npm root -g` to find the real paths on your machine.
 - **Baton disappeared after editing**: the app was running and rewrote the file. Quit it, add
   the entry again, then start it.
 - **Server error on start**: Baton needs Node.js 24+. Run
-  `npx -y --package=baton-run@0.2.9 baton doctor` in a terminal to see the cause. Claude
+  `npx -y --package=baton-run@0.2.10 baton doctor` in a terminal to see the cause. Claude
   Desktop's MCP logs are in its developer settings.
 - **"spawn npx ENOENT"**: use the absolute-path form above.

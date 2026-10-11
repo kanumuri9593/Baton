@@ -6,9 +6,9 @@ Baton replaces the IDE Run & Debug toolbar with a loopback daemon. People use `b
 
 ## Install
 
-- GitHub: `npm install -g github:kanumuri9593/Baton#v0.2.9`
+- GitHub: `npm install -g github:kanumuri9593/Baton#v0.2.10`
 - npm: `npm install -g baton-run`
-- MCP: `npx -y baton-run@0.2.9` (or `baton-mcp` after a global install). Per-client setup: https://github.com/kanumuri9593/Baton/blob/main/docs/clients.md
+- MCP: `npx -y baton-run@0.2.10` (or `baton-mcp` after a global install). Per-client setup: https://github.com/kanumuri9593/Baton/blob/main/docs/clients.md
 - After every edit, agents call `check_change`: one call applies the change and returns new errors (including the browser console for web apps), failed requests and a screenshot, with an OK / NOT OK verdict.
 - Claude Code plugin: `/plugin marketplace add kanumuri9593/Baton` then `/plugin install baton@baton`
 - Control panel: `baton app` (`baton hud` is a compatibility alias)

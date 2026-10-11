@@ -22,7 +22,7 @@ this install by absolute path, carries your shell's `PATH`, and sets `"timeout":
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"], "timeout": 900000 }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"], "timeout": 900000 }
   }
 }
 ```
@@ -37,7 +37,7 @@ Merge the `baton` entry into an existing `mcpServers` object rather than replaci
 ## Troubleshooting
 
 - **`baton` disconnected in `/mcp`**: Baton needs Node.js 24+. Run
-  `npx -y --package=baton-run@0.2.9 baton doctor` to see the cause.
+  `npx -y --package=baton-run@0.2.10 baton doctor` to see the cause.
 - **`setup` skipped Gemini with "is not plain JSON"**: `settings.json` has comments. Add the
   entry by hand.
 - **Tool calls time out during a first iOS or Android build**: keep `"timeout": 900000`.

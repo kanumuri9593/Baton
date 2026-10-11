@@ -1,7 +1,7 @@
 # Connect Baton to your agent
 
 Baton is one MCP server, `baton-run` on npm. Every client below starts it the same way:
-`npx -y baton-run@0.2.9`. The first call downloads it (about a minute); after that it starts
+`npx -y baton-run@0.2.10`. The first call downloads it (about a minute); after that it starts
 in under a second. Requires **Node.js 24+** on the machine that runs your apps.
 
 Prefer a global install? `npm install -g baton-run`, then use `baton-mcp` as the command
@@ -58,7 +58,7 @@ live band above the prompt in the terminal and the desktop app, and the "show Ba
 Server only:
 
 ```bash
-claude mcp add baton -- npx -y baton-run@0.2.9
+claude mcp add baton -- npx -y baton-run@0.2.10
 ```
 
 ## Codex
@@ -78,7 +78,7 @@ Codex keeps MCP tools out of the prompt until it looks for them, so the skill is
 ```toml
 [mcp_servers.baton]
 command = "npx"
-args = ["-y", "baton-run@0.2.9"]
+args = ["-y", "baton-run@0.2.10"]
 tool_timeout_sec = 900
 ```
 
@@ -91,7 +91,7 @@ Full guide: [clients/cursor.md](clients/cursor.md).
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
@@ -107,7 +107,7 @@ opens the control panel beside the chat. For GitHub Copilot agent mode, add the 
 ```json
 {
   "servers": {
-    "baton": { "type": "stdio", "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "type": "stdio", "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
@@ -121,7 +121,7 @@ Full guide: [clients/gemini-cli.md](clients/gemini-cli.md).
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"], "timeout": 900000 }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"], "timeout": 900000 }
   }
 }
 ```
@@ -135,7 +135,7 @@ Full guide: [clients/antigravity.md](clients/antigravity.md).
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
@@ -149,7 +149,7 @@ Full guide: [clients/windsurf.md](clients/windsurf.md).
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
@@ -163,12 +163,12 @@ Any client that takes an `mcpServers` block:
 ```json
 {
   "mcpServers": {
-    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.9"] }
+    "baton": { "command": "npx", "args": ["-y", "baton-run@0.2.10"] }
   }
 }
 ```
 
-Agents without MCP can use the CLI: `npx -y --package=baton-run@0.2.9 baton <command>`. Every
+Agents without MCP can use the CLI: `npx -y --package=baton-run@0.2.10 baton <command>`. Every
 command exits non-zero on failure, and `baton check <session> --json` gives the same verdict
 as the `check_change` tool.
 
