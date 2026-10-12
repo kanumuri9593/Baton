@@ -1,0 +1,1 @@
+browser_take_screenshot {}

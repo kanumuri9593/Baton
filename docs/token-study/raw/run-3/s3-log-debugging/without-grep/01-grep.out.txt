@@ -1,0 +1,62 @@
+233:2026-10-11T16:50:11.869Z error unhandled exception in GET /api/orders/13
+234:TypeError: Cannot read properties of undefined (reading 'net')
+235-    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+236-    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+237-    at Server.emit (node:events:514:28)
+238-    at parserOnIncoming (node:_http_server:1293:12)
+239-    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+240-2026-10-11T16:50:11.870Z info  GET /api/orders/13 500 1.2ms
+--
+305:2026-10-11T16:50:11.905Z error unhandled exception in GET /api/orders/13
+306:TypeError: Cannot read properties of undefined (reading 'net')
+307-    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+308-    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+309-    at Server.emit (node:events:514:28)
+310-    at parserOnIncoming (node:_http_server:1293:12)
+311-    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+312-2026-10-11T16:50:11.906Z info  GET /api/orders/13 500 0.4ms
+--
+440:2026-10-11T16:50:11.987Z error unhandled exception in GET /api/orders/13
+441:TypeError: Cannot read properties of undefined (reading 'net')
+442-    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+443-    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+444-    at Server.emit (node:events:514:28)
+445-    at parserOnIncoming (node:_http_server:1293:12)
+446-    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+447-2026-10-11T16:50:11.987Z info  GET /api/orders/13 500 0.4ms
+--
+462:2026-10-11T16:50:12.001Z error unhandled exception in GET /api/orders/13
+463:TypeError: Cannot read properties of undefined (reading 'net')
+464-    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+465-    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+466-    at Server.emit (node:events:514:28)
+467-    at parserOnIncoming (node:_http_server:1293:12)
+468-    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+469-2026-10-11T16:50:12.001Z info  GET /api/orders/13 500 1.0ms
+--
+508:2026-10-11T16:50:12.027Z error unhandled exception in GET /api/orders/13
+509:TypeError: Cannot read properties of undefined (reading 'net')
+510-    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+511-    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+512-    at Server.emit (node:events:514:28)
+513-    at parserOnIncoming (node:_http_server:1293:12)
+514-    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+515-2026-10-11T16:50:12.028Z info  GET /api/orders/13 500 0.5ms
+--
+760:2026-10-11T16:50:12.168Z error unhandled exception in GET /api/orders/13
+761:TypeError: Cannot read properties of undefined (reading 'net')
+762-    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+763-    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+764-    at Server.emit (node:events:514:28)
+765-    at parserOnIncoming (node:_http_server:1293:12)
+766-    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+767-2026-10-11T16:50:12.168Z info  GET /api/orders/13 500 0.7ms
+--
+1057:2026-10-11T16:50:12.332Z error unhandled exception in GET /api/orders/13
+1058:TypeError: Cannot read properties of undefined (reading 'net')
+1059-    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+1060-    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+1061-    at Server.emit (node:events:514:28)
+1062-    at parserOnIncoming (node:_http_server:1293:12)
+1063-    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+1064-2026-10-11T16:50:12.332Z info  GET /api/orders/13 500 0.5ms

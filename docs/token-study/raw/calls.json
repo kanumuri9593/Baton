@@ -1,0 +1,1499 @@
+[
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-mcp",
+    "step": "01-check_change",
+    "via": "mcp",
+    "call": "run-1/s1-happy-edit/with-baton-mcp/01-check_change.call.txt",
+    "out": "run-1/s1-happy-edit/with-baton-mcp/01-check_change.out.txt",
+    "images": [
+      "run-1/s1-happy-edit/with-baton-mcp/01-check_change.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "01-check_change",
+    "via": "mcp",
+    "call": "run-1/s1-happy-edit/with-baton-mcp-noshot/01-check_change.call.txt",
+    "out": "run-1/s1-happy-edit/with-baton-mcp-noshot/01-check_change.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-cli",
+    "step": "01-baton-check",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-1/s1-happy-edit/with-baton-cli/01-baton-check.call.txt",
+    "out": "run-1/s1-happy-edit/with-baton-cli/01-baton-check.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-script",
+    "step": "01-check-script",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-1/s1-happy-edit/without-script/01-check-script.call.txt",
+    "out": "run-1/s1-happy-edit/without-script/01-check-script.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-script",
+    "step": "02-read-screenshot",
+    "via": "read",
+    "call": "run-1/s1-happy-edit/without-script/02-read-screenshot.call.txt",
+    "out": "run-1/s1-happy-edit/without-script/02-read-screenshot.out.txt",
+    "images": [
+      "run-1/s1-happy-edit/without-script/02-read-screenshot.img-1.png"
+    ]
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "01-navigate",
+    "via": "mcp",
+    "call": "run-1/s1-happy-edit/without-playwright-mcp/01-navigate.call.txt",
+    "out": "run-1/s1-happy-edit/without-playwright-mcp/01-navigate.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "02-read-snapshot",
+    "via": "read",
+    "call": "run-1/s1-happy-edit/without-playwright-mcp/02-read-snapshot.call.txt",
+    "out": "run-1/s1-happy-edit/without-playwright-mcp/02-read-snapshot.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "03-console",
+    "via": "mcp",
+    "call": "run-1/s1-happy-edit/without-playwright-mcp/03-console.call.txt",
+    "out": "run-1/s1-happy-edit/without-playwright-mcp/03-console.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "04-screenshot",
+    "via": "mcp",
+    "call": "run-1/s1-happy-edit/without-playwright-mcp/04-screenshot.call.txt",
+    "out": "run-1/s1-happy-edit/without-playwright-mcp/04-screenshot.out.txt",
+    "images": [
+      "run-1/s1-happy-edit/without-playwright-mcp/04-screenshot.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "01-dev-server-output",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-1/s1-happy-edit/without-typical-shell/01-dev-server-output.call.txt",
+    "out": "run-1/s1-happy-edit/without-typical-shell/01-dev-server-output.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "02-curl-page",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-1/s1-happy-edit/without-typical-shell/02-curl-page.call.txt",
+    "out": "run-1/s1-happy-edit/without-typical-shell/02-curl-page.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "03-check-script",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-1/s1-happy-edit/without-typical-shell/03-check-script.call.txt",
+    "out": "run-1/s1-happy-edit/without-typical-shell/03-check-script.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "04-read-screenshot",
+    "via": "read",
+    "call": "run-1/s1-happy-edit/without-typical-shell/04-read-screenshot.call.txt",
+    "out": "run-1/s1-happy-edit/without-typical-shell/04-read-screenshot.out.txt",
+    "images": [
+      "run-1/s1-happy-edit/without-typical-shell/04-read-screenshot.img-1.png"
+    ]
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp",
+    "step": "01-check_change-broken",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/with-baton-mcp/01-check_change-broken.call.txt",
+    "out": "run-1/s2-broken-edit/with-baton-mcp/01-check_change-broken.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/with-baton-mcp/01-check_change-broken.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp",
+    "step": "02-check_change-fixed",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/with-baton-mcp/02-check_change-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/with-baton-mcp/02-check_change-fixed.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/with-baton-mcp/02-check_change-fixed.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "01-check_change-broken",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/with-baton-mcp-noshot/01-check_change-broken.call.txt",
+    "out": "run-1/s2-broken-edit/with-baton-mcp-noshot/01-check_change-broken.out.txt",
+    "images": [],
+    "isError": true
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "02-check_change-fixed",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/with-baton-mcp-noshot/02-check_change-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/with-baton-mcp-noshot/02-check_change-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-cli",
+    "step": "01-baton-check-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-1/s2-broken-edit/with-baton-cli/01-baton-check-broken.call.txt",
+    "out": "run-1/s2-broken-edit/with-baton-cli/01-baton-check-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-cli",
+    "step": "02-baton-check-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-1/s2-broken-edit/with-baton-cli/02-baton-check-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/with-baton-cli/02-baton-check-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "01-check-script-broken",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-1/s2-broken-edit/without-script/01-check-script-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-script/01-check-script-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "02-read-screenshot-broken",
+    "via": "read",
+    "call": "run-1/s2-broken-edit/without-script/02-read-screenshot-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-script/02-read-screenshot-broken.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/without-script/02-read-screenshot-broken.img-1.png"
+    ]
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "03-check-script-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-1/s2-broken-edit/without-script/03-check-script-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-script/03-check-script-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "04-read-screenshot-fixed",
+    "via": "read",
+    "call": "run-1/s2-broken-edit/without-script/04-read-screenshot-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-script/04-read-screenshot-fixed.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/without-script/04-read-screenshot-fixed.img-1.png"
+    ]
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "01-navigate-broken",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/01-navigate-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/01-navigate-broken.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "02-read-snapshot-broken",
+    "via": "read",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/02-read-snapshot-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/02-read-snapshot-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "03-console-broken",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/03-console-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/03-console-broken.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "04-screenshot-broken",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "05-navigate-fixed",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/05-navigate-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/05-navigate-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "06-read-snapshot-fixed",
+    "via": "read",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/06-read-snapshot-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/06-read-snapshot-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "07-console-fixed",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/07-console-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/07-console-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "08-screenshot-fixed",
+    "via": "mcp",
+    "call": "run-1/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "01-dev-server-output-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-1/s2-broken-edit/without-typical-shell/01-dev-server-output-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-typical-shell/01-dev-server-output-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "02-curl-page-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-1/s2-broken-edit/without-typical-shell/02-curl-page-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-typical-shell/02-curl-page-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "03-check-script-broken",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-1/s2-broken-edit/without-typical-shell/03-check-script-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-typical-shell/03-check-script-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "04-read-screenshot-broken",
+    "via": "read",
+    "call": "run-1/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.call.txt",
+    "out": "run-1/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.img-1.png"
+    ]
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "05-dev-server-output-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-1/s2-broken-edit/without-typical-shell/05-dev-server-output-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-typical-shell/05-dev-server-output-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "06-check-script-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-1/s2-broken-edit/without-typical-shell/06-check-script-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-typical-shell/06-check-script-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "07-read-screenshot-fixed",
+    "via": "read",
+    "call": "run-1/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.call.txt",
+    "out": "run-1/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.out.txt",
+    "images": [
+      "run-1/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.img-1.png"
+    ]
+  },
+  {
+    "run": 1,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-diagnose",
+    "step": "01-diagnose",
+    "via": "mcp",
+    "call": "run-1/s3-log-debugging/with-baton-diagnose/01-diagnose.call.txt",
+    "out": "run-1/s3-log-debugging/with-baton-diagnose/01-diagnose.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-read_logs-filter",
+    "step": "01-read_logs",
+    "via": "mcp",
+    "call": "run-1/s3-log-debugging/with-baton-read_logs-filter/01-read_logs.call.txt",
+    "out": "run-1/s3-log-debugging/with-baton-read_logs-filter/01-read_logs.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-read_logs-filter-default-tail",
+    "step": "01-read_logs",
+    "via": "mcp",
+    "call": "run-1/s3-log-debugging/with-baton-read_logs-filter-default-tail/01-read_logs.call.txt",
+    "out": "run-1/s3-log-debugging/with-baton-read_logs-filter-default-tail/01-read_logs.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 1,
+    "scenario": "s3-log-debugging",
+    "approach": "without-tail-200",
+    "step": "01-tail",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-1/s3-log-debugging/without-tail-200/01-tail.call.txt",
+    "out": "run-1/s3-log-debugging/without-tail-200/01-tail.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s3-log-debugging",
+    "approach": "without-grep",
+    "step": "01-grep",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-1/s3-log-debugging/without-grep/01-grep.call.txt",
+    "out": "run-1/s3-log-debugging/without-grep/01-grep.out.txt",
+    "images": []
+  },
+  {
+    "run": 1,
+    "scenario": "s3-log-debugging",
+    "approach": "without-whole-log",
+    "step": "01-cat",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-1/s3-log-debugging/without-whole-log/01-cat.call.txt",
+    "out": "run-1/s3-log-debugging/without-whole-log/01-cat.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-mcp",
+    "step": "01-check_change",
+    "via": "mcp",
+    "call": "run-2/s1-happy-edit/with-baton-mcp/01-check_change.call.txt",
+    "out": "run-2/s1-happy-edit/with-baton-mcp/01-check_change.out.txt",
+    "images": [
+      "run-2/s1-happy-edit/with-baton-mcp/01-check_change.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "01-check_change",
+    "via": "mcp",
+    "call": "run-2/s1-happy-edit/with-baton-mcp-noshot/01-check_change.call.txt",
+    "out": "run-2/s1-happy-edit/with-baton-mcp-noshot/01-check_change.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-cli",
+    "step": "01-baton-check",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-2/s1-happy-edit/with-baton-cli/01-baton-check.call.txt",
+    "out": "run-2/s1-happy-edit/with-baton-cli/01-baton-check.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-script",
+    "step": "01-check-script",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-2/s1-happy-edit/without-script/01-check-script.call.txt",
+    "out": "run-2/s1-happy-edit/without-script/01-check-script.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-script",
+    "step": "02-read-screenshot",
+    "via": "read",
+    "call": "run-2/s1-happy-edit/without-script/02-read-screenshot.call.txt",
+    "out": "run-2/s1-happy-edit/without-script/02-read-screenshot.out.txt",
+    "images": [
+      "run-2/s1-happy-edit/without-script/02-read-screenshot.img-1.png"
+    ]
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "01-navigate",
+    "via": "mcp",
+    "call": "run-2/s1-happy-edit/without-playwright-mcp/01-navigate.call.txt",
+    "out": "run-2/s1-happy-edit/without-playwright-mcp/01-navigate.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "02-read-snapshot",
+    "via": "read",
+    "call": "run-2/s1-happy-edit/without-playwright-mcp/02-read-snapshot.call.txt",
+    "out": "run-2/s1-happy-edit/without-playwright-mcp/02-read-snapshot.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "03-console",
+    "via": "mcp",
+    "call": "run-2/s1-happy-edit/without-playwright-mcp/03-console.call.txt",
+    "out": "run-2/s1-happy-edit/without-playwright-mcp/03-console.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "04-screenshot",
+    "via": "mcp",
+    "call": "run-2/s1-happy-edit/without-playwright-mcp/04-screenshot.call.txt",
+    "out": "run-2/s1-happy-edit/without-playwright-mcp/04-screenshot.out.txt",
+    "images": [
+      "run-2/s1-happy-edit/without-playwright-mcp/04-screenshot.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "01-dev-server-output",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-2/s1-happy-edit/without-typical-shell/01-dev-server-output.call.txt",
+    "out": "run-2/s1-happy-edit/without-typical-shell/01-dev-server-output.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "02-curl-page",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-2/s1-happy-edit/without-typical-shell/02-curl-page.call.txt",
+    "out": "run-2/s1-happy-edit/without-typical-shell/02-curl-page.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "03-check-script",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-2/s1-happy-edit/without-typical-shell/03-check-script.call.txt",
+    "out": "run-2/s1-happy-edit/without-typical-shell/03-check-script.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "04-read-screenshot",
+    "via": "read",
+    "call": "run-2/s1-happy-edit/without-typical-shell/04-read-screenshot.call.txt",
+    "out": "run-2/s1-happy-edit/without-typical-shell/04-read-screenshot.out.txt",
+    "images": [
+      "run-2/s1-happy-edit/without-typical-shell/04-read-screenshot.img-1.png"
+    ]
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp",
+    "step": "01-check_change-broken",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/with-baton-mcp/01-check_change-broken.call.txt",
+    "out": "run-2/s2-broken-edit/with-baton-mcp/01-check_change-broken.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/with-baton-mcp/01-check_change-broken.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp",
+    "step": "02-check_change-fixed",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/with-baton-mcp/02-check_change-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/with-baton-mcp/02-check_change-fixed.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/with-baton-mcp/02-check_change-fixed.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "01-check_change-broken",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/with-baton-mcp-noshot/01-check_change-broken.call.txt",
+    "out": "run-2/s2-broken-edit/with-baton-mcp-noshot/01-check_change-broken.out.txt",
+    "images": [],
+    "isError": true
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "02-check_change-fixed",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/with-baton-mcp-noshot/02-check_change-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/with-baton-mcp-noshot/02-check_change-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-cli",
+    "step": "01-baton-check-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-2/s2-broken-edit/with-baton-cli/01-baton-check-broken.call.txt",
+    "out": "run-2/s2-broken-edit/with-baton-cli/01-baton-check-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-cli",
+    "step": "02-baton-check-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-2/s2-broken-edit/with-baton-cli/02-baton-check-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/with-baton-cli/02-baton-check-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "01-check-script-broken",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-2/s2-broken-edit/without-script/01-check-script-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-script/01-check-script-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "02-read-screenshot-broken",
+    "via": "read",
+    "call": "run-2/s2-broken-edit/without-script/02-read-screenshot-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-script/02-read-screenshot-broken.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/without-script/02-read-screenshot-broken.img-1.png"
+    ]
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "03-check-script-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-2/s2-broken-edit/without-script/03-check-script-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-script/03-check-script-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "04-read-screenshot-fixed",
+    "via": "read",
+    "call": "run-2/s2-broken-edit/without-script/04-read-screenshot-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-script/04-read-screenshot-fixed.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/without-script/04-read-screenshot-fixed.img-1.png"
+    ]
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "01-navigate-broken",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/01-navigate-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/01-navigate-broken.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "02-read-snapshot-broken",
+    "via": "read",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/02-read-snapshot-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/02-read-snapshot-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "03-console-broken",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/03-console-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/03-console-broken.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "04-screenshot-broken",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "05-navigate-fixed",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/05-navigate-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/05-navigate-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "06-read-snapshot-fixed",
+    "via": "read",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/06-read-snapshot-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/06-read-snapshot-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "07-console-fixed",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/07-console-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/07-console-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "08-screenshot-fixed",
+    "via": "mcp",
+    "call": "run-2/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "01-dev-server-output-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-2/s2-broken-edit/without-typical-shell/01-dev-server-output-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-typical-shell/01-dev-server-output-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "02-curl-page-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-2/s2-broken-edit/without-typical-shell/02-curl-page-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-typical-shell/02-curl-page-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "03-check-script-broken",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-2/s2-broken-edit/without-typical-shell/03-check-script-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-typical-shell/03-check-script-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "04-read-screenshot-broken",
+    "via": "read",
+    "call": "run-2/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.call.txt",
+    "out": "run-2/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.img-1.png"
+    ]
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "05-dev-server-output-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-2/s2-broken-edit/without-typical-shell/05-dev-server-output-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-typical-shell/05-dev-server-output-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "06-check-script-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-2/s2-broken-edit/without-typical-shell/06-check-script-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-typical-shell/06-check-script-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "07-read-screenshot-fixed",
+    "via": "read",
+    "call": "run-2/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.call.txt",
+    "out": "run-2/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.out.txt",
+    "images": [
+      "run-2/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.img-1.png"
+    ]
+  },
+  {
+    "run": 2,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-diagnose",
+    "step": "01-diagnose",
+    "via": "mcp",
+    "call": "run-2/s3-log-debugging/with-baton-diagnose/01-diagnose.call.txt",
+    "out": "run-2/s3-log-debugging/with-baton-diagnose/01-diagnose.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-read_logs-filter",
+    "step": "01-read_logs",
+    "via": "mcp",
+    "call": "run-2/s3-log-debugging/with-baton-read_logs-filter/01-read_logs.call.txt",
+    "out": "run-2/s3-log-debugging/with-baton-read_logs-filter/01-read_logs.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-read_logs-filter-default-tail",
+    "step": "01-read_logs",
+    "via": "mcp",
+    "call": "run-2/s3-log-debugging/with-baton-read_logs-filter-default-tail/01-read_logs.call.txt",
+    "out": "run-2/s3-log-debugging/with-baton-read_logs-filter-default-tail/01-read_logs.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 2,
+    "scenario": "s3-log-debugging",
+    "approach": "without-tail-200",
+    "step": "01-tail",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-2/s3-log-debugging/without-tail-200/01-tail.call.txt",
+    "out": "run-2/s3-log-debugging/without-tail-200/01-tail.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s3-log-debugging",
+    "approach": "without-grep",
+    "step": "01-grep",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-2/s3-log-debugging/without-grep/01-grep.call.txt",
+    "out": "run-2/s3-log-debugging/without-grep/01-grep.out.txt",
+    "images": []
+  },
+  {
+    "run": 2,
+    "scenario": "s3-log-debugging",
+    "approach": "without-whole-log",
+    "step": "01-cat",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-2/s3-log-debugging/without-whole-log/01-cat.call.txt",
+    "out": "run-2/s3-log-debugging/without-whole-log/01-cat.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-mcp",
+    "step": "01-check_change",
+    "via": "mcp",
+    "call": "run-3/s1-happy-edit/with-baton-mcp/01-check_change.call.txt",
+    "out": "run-3/s1-happy-edit/with-baton-mcp/01-check_change.out.txt",
+    "images": [
+      "run-3/s1-happy-edit/with-baton-mcp/01-check_change.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "01-check_change",
+    "via": "mcp",
+    "call": "run-3/s1-happy-edit/with-baton-mcp-noshot/01-check_change.call.txt",
+    "out": "run-3/s1-happy-edit/with-baton-mcp-noshot/01-check_change.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "with-baton-cli",
+    "step": "01-baton-check",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-3/s1-happy-edit/with-baton-cli/01-baton-check.call.txt",
+    "out": "run-3/s1-happy-edit/with-baton-cli/01-baton-check.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-script",
+    "step": "01-check-script",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-3/s1-happy-edit/without-script/01-check-script.call.txt",
+    "out": "run-3/s1-happy-edit/without-script/01-check-script.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-script",
+    "step": "02-read-screenshot",
+    "via": "read",
+    "call": "run-3/s1-happy-edit/without-script/02-read-screenshot.call.txt",
+    "out": "run-3/s1-happy-edit/without-script/02-read-screenshot.out.txt",
+    "images": [
+      "run-3/s1-happy-edit/without-script/02-read-screenshot.img-1.png"
+    ]
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "01-navigate",
+    "via": "mcp",
+    "call": "run-3/s1-happy-edit/without-playwright-mcp/01-navigate.call.txt",
+    "out": "run-3/s1-happy-edit/without-playwright-mcp/01-navigate.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "02-read-snapshot",
+    "via": "read",
+    "call": "run-3/s1-happy-edit/without-playwright-mcp/02-read-snapshot.call.txt",
+    "out": "run-3/s1-happy-edit/without-playwright-mcp/02-read-snapshot.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "03-console",
+    "via": "mcp",
+    "call": "run-3/s1-happy-edit/without-playwright-mcp/03-console.call.txt",
+    "out": "run-3/s1-happy-edit/without-playwright-mcp/03-console.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-playwright-mcp",
+    "step": "04-screenshot",
+    "via": "mcp",
+    "call": "run-3/s1-happy-edit/without-playwright-mcp/04-screenshot.call.txt",
+    "out": "run-3/s1-happy-edit/without-playwright-mcp/04-screenshot.out.txt",
+    "images": [
+      "run-3/s1-happy-edit/without-playwright-mcp/04-screenshot.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "01-dev-server-output",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-3/s1-happy-edit/without-typical-shell/01-dev-server-output.call.txt",
+    "out": "run-3/s1-happy-edit/without-typical-shell/01-dev-server-output.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "02-curl-page",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-3/s1-happy-edit/without-typical-shell/02-curl-page.call.txt",
+    "out": "run-3/s1-happy-edit/without-typical-shell/02-curl-page.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "03-check-script",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-3/s1-happy-edit/without-typical-shell/03-check-script.call.txt",
+    "out": "run-3/s1-happy-edit/without-typical-shell/03-check-script.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s1-happy-edit",
+    "approach": "without-typical-shell",
+    "step": "04-read-screenshot",
+    "via": "read",
+    "call": "run-3/s1-happy-edit/without-typical-shell/04-read-screenshot.call.txt",
+    "out": "run-3/s1-happy-edit/without-typical-shell/04-read-screenshot.out.txt",
+    "images": [
+      "run-3/s1-happy-edit/without-typical-shell/04-read-screenshot.img-1.png"
+    ]
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp",
+    "step": "01-check_change-broken",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/with-baton-mcp/01-check_change-broken.call.txt",
+    "out": "run-3/s2-broken-edit/with-baton-mcp/01-check_change-broken.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/with-baton-mcp/01-check_change-broken.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp",
+    "step": "02-check_change-fixed",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/with-baton-mcp/02-check_change-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/with-baton-mcp/02-check_change-fixed.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/with-baton-mcp/02-check_change-fixed.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "01-check_change-broken",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/with-baton-mcp-noshot/01-check_change-broken.call.txt",
+    "out": "run-3/s2-broken-edit/with-baton-mcp-noshot/01-check_change-broken.out.txt",
+    "images": [],
+    "isError": true
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-mcp-noshot",
+    "step": "02-check_change-fixed",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/with-baton-mcp-noshot/02-check_change-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/with-baton-mcp-noshot/02-check_change-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-cli",
+    "step": "01-baton-check-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-3/s2-broken-edit/with-baton-cli/01-baton-check-broken.call.txt",
+    "out": "run-3/s2-broken-edit/with-baton-cli/01-baton-check-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "with-baton-cli",
+    "step": "02-baton-check-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/A/web-lab",
+    "call": "run-3/s2-broken-edit/with-baton-cli/02-baton-check-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/with-baton-cli/02-baton-check-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "01-check-script-broken",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-3/s2-broken-edit/without-script/01-check-script-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-script/01-check-script-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "02-read-screenshot-broken",
+    "via": "read",
+    "call": "run-3/s2-broken-edit/without-script/02-read-screenshot-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-script/02-read-screenshot-broken.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/without-script/02-read-screenshot-broken.img-1.png"
+    ]
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "03-check-script-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-3/s2-broken-edit/without-script/03-check-script-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-script/03-check-script-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-script",
+    "step": "04-read-screenshot-fixed",
+    "via": "read",
+    "call": "run-3/s2-broken-edit/without-script/04-read-screenshot-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-script/04-read-screenshot-fixed.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/without-script/04-read-screenshot-fixed.img-1.png"
+    ]
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "01-navigate-broken",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/01-navigate-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/01-navigate-broken.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "02-read-snapshot-broken",
+    "via": "read",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/02-read-snapshot-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/02-read-snapshot-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "03-console-broken",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/03-console-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/03-console-broken.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "04-screenshot-broken",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "05-navigate-fixed",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/05-navigate-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/05-navigate-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "06-read-snapshot-fixed",
+    "via": "read",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/06-read-snapshot-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/06-read-snapshot-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "07-console-fixed",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/07-console-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/07-console-fixed.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-playwright-mcp",
+    "step": "08-screenshot-fixed",
+    "via": "mcp",
+    "call": "run-3/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.img-1.png"
+    ],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "01-dev-server-output-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-3/s2-broken-edit/without-typical-shell/01-dev-server-output-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-typical-shell/01-dev-server-output-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "02-curl-page-broken",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-3/s2-broken-edit/without-typical-shell/02-curl-page-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-typical-shell/02-curl-page-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "03-check-script-broken",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-3/s2-broken-edit/without-typical-shell/03-check-script-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-typical-shell/03-check-script-broken.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "04-read-screenshot-broken",
+    "via": "read",
+    "call": "run-3/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.call.txt",
+    "out": "run-3/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.img-1.png"
+    ]
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "05-dev-server-output-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/web-lab",
+    "call": "run-3/s2-broken-edit/without-typical-shell/05-dev-server-output-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-typical-shell/05-dev-server-output-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "06-check-script-fixed",
+    "via": "bash",
+    "cwd": "/home/dev/tools/pw",
+    "call": "run-3/s2-broken-edit/without-typical-shell/06-check-script-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-typical-shell/06-check-script-fixed.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s2-broken-edit",
+    "approach": "without-typical-shell",
+    "step": "07-read-screenshot-fixed",
+    "via": "read",
+    "call": "run-3/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.call.txt",
+    "out": "run-3/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.out.txt",
+    "images": [
+      "run-3/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.img-1.png"
+    ]
+  },
+  {
+    "run": 3,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-diagnose",
+    "step": "01-diagnose",
+    "via": "mcp",
+    "call": "run-3/s3-log-debugging/with-baton-diagnose/01-diagnose.call.txt",
+    "out": "run-3/s3-log-debugging/with-baton-diagnose/01-diagnose.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-read_logs-filter",
+    "step": "01-read_logs",
+    "via": "mcp",
+    "call": "run-3/s3-log-debugging/with-baton-read_logs-filter/01-read_logs.call.txt",
+    "out": "run-3/s3-log-debugging/with-baton-read_logs-filter/01-read_logs.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s3-log-debugging",
+    "approach": "with-baton-read_logs-filter-default-tail",
+    "step": "01-read_logs",
+    "via": "mcp",
+    "call": "run-3/s3-log-debugging/with-baton-read_logs-filter-default-tail/01-read_logs.call.txt",
+    "out": "run-3/s3-log-debugging/with-baton-read_logs-filter-default-tail/01-read_logs.out.txt",
+    "images": [],
+    "isError": false
+  },
+  {
+    "run": 3,
+    "scenario": "s3-log-debugging",
+    "approach": "without-tail-200",
+    "step": "01-tail",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-3/s3-log-debugging/without-tail-200/01-tail.call.txt",
+    "out": "run-3/s3-log-debugging/without-tail-200/01-tail.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s3-log-debugging",
+    "approach": "without-grep",
+    "step": "01-grep",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-3/s3-log-debugging/without-grep/01-grep.call.txt",
+    "out": "run-3/s3-log-debugging/without-grep/01-grep.out.txt",
+    "images": []
+  },
+  {
+    "run": 3,
+    "scenario": "s3-log-debugging",
+    "approach": "without-whole-log",
+    "step": "01-cat",
+    "via": "bash",
+    "cwd": "/home/dev/af/projects/B/orders-api",
+    "call": "run-3/s3-log-debugging/without-whole-log/01-cat.call.txt",
+    "out": "run-3/s3-log-debugging/without-whole-log/01-cat.out.txt",
+    "images": []
+  }
+]

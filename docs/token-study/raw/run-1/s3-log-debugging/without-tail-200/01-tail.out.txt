@@ -1,0 +1,200 @@
+2026-10-11T16:47:51.223Z debug cache hit order:40
+2026-10-11T16:47:51.223Z info  GET /api/orders/40 200 0.2ms
+2026-10-11T16:47:51.224Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.224Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.224Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.225Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.225Z info  GET /api/orders 200 0.2ms
+2026-10-11T16:47:51.225Z debug cache hit order:38
+2026-10-11T16:47:51.226Z info  GET /api/orders/38 200 0.2ms
+2026-10-11T16:47:51.226Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.227Z debug cache hit order:37
+2026-10-11T16:47:51.227Z info  GET /api/orders/37 200 0.1ms
+2026-10-11T16:47:51.227Z debug cache hit order:2
+2026-10-11T16:47:51.227Z info  GET /api/orders/2 200 0.1ms
+2026-10-11T16:47:51.228Z debug cache hit order:31
+2026-10-11T16:47:51.228Z info  GET /api/orders/31 200 0.1ms
+2026-10-11T16:47:51.229Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.229Z info  GET /health 200 0.1ms
+2026-10-11T16:47:51.230Z debug cache hit order:39
+2026-10-11T16:47:51.230Z info  GET /api/orders/39 200 0.1ms
+2026-10-11T16:47:51.234Z info  GET /health 200 0.1ms
+2026-10-11T16:47:51.235Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.235Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.235Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.236Z debug cache hit order:38
+2026-10-11T16:47:51.236Z info  GET /api/orders/38 200 0.1ms
+2026-10-11T16:47:51.237Z info  GET /health 200 0.1ms
+2026-10-11T16:47:51.237Z debug cache hit order:12
+2026-10-11T16:47:51.237Z info  GET /api/orders/12 200 0.1ms
+2026-10-11T16:47:51.238Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.238Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.238Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.239Z debug cache hit order:38
+2026-10-11T16:47:51.239Z info  GET /api/orders/38 200 0.1ms
+2026-10-11T16:47:51.239Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.239Z info  GET /api/orders 200 0.2ms
+2026-10-11T16:47:51.240Z debug cache hit order:7
+2026-10-11T16:47:51.240Z info  GET /api/orders/7 200 0.1ms
+2026-10-11T16:47:51.240Z debug cache hit order:36
+2026-10-11T16:47:51.240Z info  GET /api/orders/36 200 0.1ms
+2026-10-11T16:47:51.242Z info  GET /api/payments 200 0.2ms
+2026-10-11T16:47:51.243Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.244Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.245Z debug cache hit order:24
+2026-10-11T16:47:51.245Z info  GET /api/orders/24 200 0.1ms
+2026-10-11T16:47:51.245Z debug cache hit order:37
+2026-10-11T16:47:51.246Z info  GET /api/orders/37 200 0.2ms
+2026-10-11T16:47:51.246Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.247Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.247Z debug cache hit order:38
+2026-10-11T16:47:51.247Z info  GET /api/orders/38 200 0.1ms
+2026-10-11T16:47:51.248Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.248Z debug cache hit order:40
+2026-10-11T16:47:51.248Z info  GET /api/orders/40 200 0.1ms
+2026-10-11T16:47:51.248Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.249Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.249Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.250Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.250Z debug cache hit order:5
+2026-10-11T16:47:51.250Z info  GET /api/orders/5 200 0.1ms
+2026-10-11T16:47:51.251Z debug cache hit order:36
+2026-10-11T16:47:51.251Z info  GET /api/orders/36 200 0.2ms
+2026-10-11T16:47:51.251Z debug cache hit order:29
+2026-10-11T16:47:51.251Z info  GET /api/orders/29 200 0.2ms
+2026-10-11T16:47:51.252Z debug cache hit order:10
+2026-10-11T16:47:51.252Z info  GET /api/orders/10 200 0.1ms
+2026-10-11T16:47:51.252Z debug cache hit order:37
+2026-10-11T16:47:51.252Z info  GET /api/orders/37 200 0.1ms
+2026-10-11T16:47:51.252Z debug cache hit order:8
+2026-10-11T16:47:51.253Z info  GET /api/orders/8 200 0.3ms
+2026-10-11T16:47:51.253Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.254Z debug cache hit order:2
+2026-10-11T16:47:51.254Z info  GET /api/orders/2 200 0.2ms
+2026-10-11T16:47:51.254Z debug cache hit order:9
+2026-10-11T16:47:51.254Z info  GET /api/orders/9 200 0.1ms
+2026-10-11T16:47:51.255Z debug cache hit order:16
+2026-10-11T16:47:51.255Z info  GET /api/orders/16 200 0.1ms
+2026-10-11T16:47:51.255Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.255Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.256Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.256Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.257Z debug cache hit order:23
+2026-10-11T16:47:51.257Z info  GET /api/orders/23 200 0.2ms
+2026-10-11T16:47:51.258Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.258Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.258Z info  GET /api/orders 200 0.3ms
+2026-10-11T16:47:51.259Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.259Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.259Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.260Z info  GET /api/orders 200 1.1ms
+2026-10-11T16:47:51.261Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.261Z info  GET /api/orders 200 0.2ms
+2026-10-11T16:47:51.262Z debug cache hit order:11
+2026-10-11T16:47:51.262Z info  GET /api/orders/11 200 0.1ms
+2026-10-11T16:47:51.262Z debug cache hit order:9
+2026-10-11T16:47:51.262Z info  GET /api/orders/9 200 0.1ms
+2026-10-11T16:47:51.263Z debug cache hit order:39
+2026-10-11T16:47:51.263Z info  GET /api/orders/39 200 0.1ms
+2026-10-11T16:47:51.263Z debug cache hit order:15
+2026-10-11T16:47:51.264Z info  GET /api/orders/15 200 0.1ms
+2026-10-11T16:47:51.264Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.264Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.265Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.265Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.265Z debug cache hit order:7
+2026-10-11T16:47:51.266Z info  GET /api/orders/7 200 0.2ms
+2026-10-11T16:47:51.266Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.266Z info  GET /api/orders 200 0.2ms
+2026-10-11T16:47:51.267Z debug cache hit order:7
+2026-10-11T16:47:51.267Z info  GET /api/orders/7 200 0.1ms
+2026-10-11T16:47:51.267Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.268Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.268Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.268Z debug cache hit order:3
+2026-10-11T16:47:51.268Z info  GET /api/orders/3 200 0.1ms
+2026-10-11T16:47:51.269Z debug cache hit order:10
+2026-10-11T16:47:51.269Z info  GET /api/orders/10 200 0.1ms
+2026-10-11T16:47:51.269Z debug cache hit order:14
+2026-10-11T16:47:51.269Z info  GET /api/orders/14 200 0.1ms
+2026-10-11T16:47:51.270Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.270Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.270Z debug cache hit order:26
+2026-10-11T16:47:51.271Z info  GET /api/orders/26 200 0.2ms
+2026-10-11T16:47:51.271Z debug cache hit order:13
+2026-10-11T16:47:51.271Z error unhandled exception in GET /api/orders/13
+TypeError: Cannot read properties of undefined (reading 'net')
+    at orderTotal (file:///home/dev/af/projects/B/orders-api/server.mjs:16:23)
+    at Server.<anonymous> (file:///home/dev/af/projects/B/orders-api/server.mjs:38:43)
+    at Server.emit (node:events:514:28)
+    at parserOnIncoming (node:_http_server:1293:12)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)
+2026-10-11T16:47:51.271Z info  GET /api/orders/13 500 0.5ms
+2026-10-11T16:47:51.272Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.272Z debug cache hit order:6
+2026-10-11T16:47:51.272Z info  GET /api/orders/6 200 0.1ms
+2026-10-11T16:47:51.273Z debug cache hit order:2
+2026-10-11T16:47:51.273Z info  GET /api/orders/2 200 0.1ms
+2026-10-11T16:47:51.273Z debug cache hit order:4
+2026-10-11T16:47:51.273Z info  GET /api/orders/4 200 0.1ms
+2026-10-11T16:47:51.274Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.274Z info  GET /health 200 0.0ms
+2026-10-11T16:47:51.275Z debug cache hit order:30
+2026-10-11T16:47:51.275Z info  GET /api/orders/30 200 0.1ms
+2026-10-11T16:47:51.275Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.275Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.276Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.276Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.276Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.277Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.277Z debug cache hit order:4
+2026-10-11T16:47:51.277Z info  GET /api/orders/4 200 0.1ms
+2026-10-11T16:47:51.278Z debug cache hit order:33
+2026-10-11T16:47:51.278Z info  GET /api/orders/33 200 0.2ms
+2026-10-11T16:47:51.279Z debug cache hit order:2
+2026-10-11T16:47:51.279Z info  GET /api/orders/2 200 0.2ms
+2026-10-11T16:47:51.280Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.281Z info  GET /api/payments 200 0.2ms
+2026-10-11T16:47:51.281Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.282Z debug cache hit order:7
+2026-10-11T16:47:51.282Z info  GET /api/orders/7 200 0.2ms
+2026-10-11T16:47:51.282Z debug cache hit order:9
+2026-10-11T16:47:51.282Z info  GET /api/orders/9 200 0.1ms
+2026-10-11T16:47:51.283Z debug cache hit order:4
+2026-10-11T16:47:51.283Z info  GET /api/orders/4 200 0.1ms
+2026-10-11T16:47:51.284Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.284Z debug cache hit order:8
+2026-10-11T16:47:51.284Z info  GET /api/orders/8 200 0.2ms
+2026-10-11T16:47:51.285Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.285Z debug cache hit order:39
+2026-10-11T16:47:51.285Z info  GET /api/orders/39 200 0.1ms
+2026-10-11T16:47:51.286Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.286Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.286Z info  GET /health 200 0.1ms
+2026-10-11T16:47:51.287Z debug cache hit order:37
+2026-10-11T16:47:51.287Z info  GET /api/orders/37 200 0.1ms
+2026-10-11T16:47:51.288Z debug cache hit order:15
+2026-10-11T16:47:51.288Z info  GET /api/orders/15 200 0.2ms
+2026-10-11T16:47:51.288Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.289Z debug cache hit order:35
+2026-10-11T16:47:51.289Z info  GET /api/orders/35 200 0.1ms
+2026-10-11T16:47:51.289Z info  GET /api/payments 200 0.2ms
+2026-10-11T16:47:51.290Z debug cache hit order:15
+2026-10-11T16:47:51.290Z info  GET /api/orders/15 200 0.1ms
+2026-10-11T16:47:51.290Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.291Z debug cache hit order:3
+2026-10-11T16:47:51.291Z info  GET /api/orders/3 200 0.1ms
+2026-10-11T16:47:51.291Z info  GET /health 200 0.1ms
+2026-10-11T16:47:51.292Z info  GET /api/payments 200 0.1ms
+2026-10-11T16:47:51.293Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.293Z info  GET /api/orders 200 0.5ms
+2026-10-11T16:47:51.293Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.293Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.294Z debug cache hit order:3
+2026-10-11T16:47:51.294Z info  GET /api/orders/3 200 0.1ms
+2026-10-11T16:47:51.295Z debug cache hit orders:list size=40
+2026-10-11T16:47:51.295Z info  GET /api/orders 200 0.1ms
+2026-10-11T16:47:51.295Z debug cache hit order:3
+2026-10-11T16:47:51.295Z info  GET /api/orders/3 200 0.1ms
+2026-10-11T16:47:51.296Z debug cache hit order:23
+2026-10-11T16:47:51.296Z info  GET /api/orders/23 200 0.1ms

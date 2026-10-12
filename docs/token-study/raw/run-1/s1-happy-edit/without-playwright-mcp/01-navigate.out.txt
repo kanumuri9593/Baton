@@ -1,0 +1,11 @@
+### Ran Playwright code
+```js
+await page.goto('http://127.0.0.1:5175/');
+```
+### Page
+- Page URL: http://127.0.0.1:5175/
+- Page Title: Delivery tracker
+### Snapshot
+- [Snapshot](.playwright-mcp/page-2026-10-11T16-47-13-872Z.yml)
+### Events
+- New console entries: .playwright-mcp/console-2026-10-11T16-47-13-754Z.log#L1

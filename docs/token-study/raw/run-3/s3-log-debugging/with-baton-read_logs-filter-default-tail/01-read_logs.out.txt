@@ -1,0 +1,14 @@
+[err] 2026-10-11T16:50:11.076Z error unhandled exception in GET /api/orders/13
+[err] TypeError: Cannot read properties of undefined (reading 'net')
+[err] 2026-10-11T16:50:11.122Z error unhandled exception in GET /api/orders/13
+[err] TypeError: Cannot read properties of undefined (reading 'net')
+[err] 2026-10-11T16:50:11.208Z error unhandled exception in GET /api/orders/13
+[err] TypeError: Cannot read properties of undefined (reading 'net')
+[err] 2026-10-11T16:50:11.222Z error unhandled exception in GET /api/orders/13
+[err] TypeError: Cannot read properties of undefined (reading 'net')
+[err] 2026-10-11T16:50:11.246Z error unhandled exception in GET /api/orders/13
+[err] TypeError: Cannot read properties of undefined (reading 'net')
+[err] 2026-10-11T16:50:11.387Z error unhandled exception in GET /api/orders/13
+[err] TypeError: Cannot read properties of undefined (reading 'net')
+[err] 2026-10-11T16:50:11.532Z error unhandled exception in GET /api/orders/13
+[err] TypeError: Cannot read properties of undefined (reading 'net')

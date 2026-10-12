@@ -1,0 +1,4199 @@
+{
+  "generated": "2026-10-11T16:33:05.405Z",
+  "tokenizer": "cl100k_base via gpt-tokenizer@3.0.1 (proxy); legacy Claude tokenizer @anthropic-ai/tokenizer@0.0.4 as cross-check",
+  "summary": [
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-cli",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 257,
+        "min": 257,
+        "max": 257
+      },
+      "text_cl100k": {
+        "median": 93,
+        "min": 93,
+        "max": 93
+      },
+      "text_claude_legacy": {
+        "median": 100,
+        "min": 100,
+        "max": 100
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 93,
+        "min": 93,
+        "max": 93
+      },
+      "call_cl100k": {
+        "median": 20,
+        "min": 20,
+        "max": 20
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 141,
+        "min": 141,
+        "max": 141
+      },
+      "text_cl100k": {
+        "median": 55,
+        "min": 55,
+        "max": 55
+      },
+      "text_claude_legacy": {
+        "median": 62,
+        "min": 62,
+        "max": 62
+      },
+      "image_hr": {
+        "median": 1708,
+        "min": 1708,
+        "max": 1708
+      },
+      "image_std": {
+        "median": 1456,
+        "min": 1456,
+        "max": 1456
+      },
+      "total_hr": {
+        "median": 1763,
+        "min": 1763,
+        "max": 1763
+      },
+      "call_cl100k": {
+        "median": 16,
+        "min": 16,
+        "max": 16
+      },
+      "images": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp-noshot",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 56,
+        "min": 56,
+        "max": 56
+      },
+      "text_cl100k": {
+        "median": 21,
+        "min": 21,
+        "max": 21
+      },
+      "text_claude_legacy": {
+        "median": 20,
+        "min": 20,
+        "max": 21
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 21,
+        "min": 21,
+        "max": 21
+      },
+      "call_cl100k": {
+        "median": 21,
+        "min": 21,
+        "max": 21
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "runs": 3,
+      "calls": {
+        "median": 4,
+        "min": 4,
+        "max": 4
+      },
+      "calls_text_only": {
+        "median": 3,
+        "min": 3,
+        "max": 3
+      },
+      "chars": {
+        "median": 1933,
+        "min": 1933,
+        "max": 1933
+      },
+      "text_cl100k": {
+        "median": 704,
+        "min": 704,
+        "max": 705
+      },
+      "text_claude_legacy": {
+        "median": 738,
+        "min": 737,
+        "max": 738
+      },
+      "image_hr": {
+        "median": 434,
+        "min": 434,
+        "max": 434
+      },
+      "image_std": {
+        "median": 434,
+        "min": 434,
+        "max": 434
+      },
+      "total_hr": {
+        "median": 1138,
+        "min": 1138,
+        "max": 1139
+      },
+      "call_cl100k": {
+        "median": 65,
+        "min": 65,
+        "max": 65
+      },
+      "images": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "runs": 3,
+      "calls": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 631,
+        "min": 631,
+        "max": 631
+      },
+      "text_cl100k": {
+        "median": 195,
+        "min": 195,
+        "max": 195
+      },
+      "text_claude_legacy": {
+        "median": 207,
+        "min": 207,
+        "max": 207
+      },
+      "image_hr": {
+        "median": 1708,
+        "min": 1708,
+        "max": 1708
+      },
+      "image_std": {
+        "median": 1456,
+        "min": 1456,
+        "max": 1456
+      },
+      "total_hr": {
+        "median": 1903,
+        "min": 1903,
+        "max": 1903
+      },
+      "call_cl100k": {
+        "median": 40,
+        "min": 40,
+        "max": 40
+      },
+      "images": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "runs": 3,
+      "calls": {
+        "median": 4,
+        "min": 4,
+        "max": 4
+      },
+      "calls_text_only": {
+        "median": 3,
+        "min": 3,
+        "max": 3
+      },
+      "chars": {
+        "median": 1255,
+        "min": 1255,
+        "max": 1255
+      },
+      "text_cl100k": {
+        "median": 382,
+        "min": 382,
+        "max": 382
+      },
+      "text_claude_legacy": {
+        "median": 414,
+        "min": 414,
+        "max": 415
+      },
+      "image_hr": {
+        "median": 1708,
+        "min": 1708,
+        "max": 1708
+      },
+      "image_std": {
+        "median": 1456,
+        "min": 1456,
+        "max": 1456
+      },
+      "total_hr": {
+        "median": 2090,
+        "min": 2090,
+        "max": 2090
+      },
+      "call_cl100k": {
+        "median": 83,
+        "min": 83,
+        "max": 83
+      },
+      "images": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "runs": 3,
+      "calls": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "calls_text_only": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "chars": {
+        "median": 2402,
+        "min": 2402,
+        "max": 2402
+      },
+      "text_cl100k": {
+        "median": 920,
+        "min": 902,
+        "max": 938
+      },
+      "text_claude_legacy": {
+        "median": 993,
+        "min": 989,
+        "max": 1011
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 920,
+        "min": 902,
+        "max": 938
+      },
+      "call_cl100k": {
+        "median": 40,
+        "min": 40,
+        "max": 40
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "runs": 3,
+      "calls": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "calls_text_only": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "chars": {
+        "median": 2147,
+        "min": 2147,
+        "max": 2147
+      },
+      "text_cl100k": {
+        "median": 828,
+        "min": 810,
+        "max": 846
+      },
+      "text_claude_legacy": {
+        "median": 900,
+        "min": 891,
+        "max": 922
+      },
+      "image_hr": {
+        "median": 3416,
+        "min": 3416,
+        "max": 3416
+      },
+      "image_std": {
+        "median": 2912,
+        "min": 2912,
+        "max": 2912
+      },
+      "total_hr": {
+        "median": 4244,
+        "min": 4226,
+        "max": 4262
+      },
+      "call_cl100k": {
+        "median": 32,
+        "min": 32,
+        "max": 32
+      },
+      "images": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "runs": 3,
+      "calls": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "calls_text_only": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "chars": {
+        "median": 112,
+        "min": 112,
+        "max": 112
+      },
+      "text_cl100k": {
+        "median": 42,
+        "min": 42,
+        "max": 42
+      },
+      "text_claude_legacy": {
+        "median": 42,
+        "min": 42,
+        "max": 42
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 42,
+        "min": 42,
+        "max": 42
+      },
+      "call_cl100k": {
+        "median": 42,
+        "min": 42,
+        "max": 42
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "runs": 3,
+      "calls": {
+        "median": 8,
+        "min": 8,
+        "max": 8
+      },
+      "calls_text_only": {
+        "median": 6,
+        "min": 6,
+        "max": 6
+      },
+      "chars": {
+        "median": 6663,
+        "min": 6663,
+        "max": 6663
+      },
+      "text_cl100k": {
+        "median": 2611,
+        "min": 2611,
+        "max": 2641
+      },
+      "text_claude_legacy": {
+        "median": 2830,
+        "min": 2800,
+        "max": 2834
+      },
+      "image_hr": {
+        "median": 868,
+        "min": 868,
+        "max": 868
+      },
+      "image_std": {
+        "median": 868,
+        "min": 868,
+        "max": 868
+      },
+      "total_hr": {
+        "median": 3479,
+        "min": 3479,
+        "max": 3509
+      },
+      "call_cl100k": {
+        "median": 130,
+        "min": 130,
+        "max": 130
+      },
+      "images": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "runs": 3,
+      "calls": {
+        "median": 4,
+        "min": 4,
+        "max": 4
+      },
+      "calls_text_only": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "chars": {
+        "median": 4699,
+        "min": 4699,
+        "max": 4699
+      },
+      "text_cl100k": {
+        "median": 1811,
+        "min": 1811,
+        "max": 1838
+      },
+      "text_claude_legacy": {
+        "median": 1988,
+        "min": 1961,
+        "max": 1992
+      },
+      "image_hr": {
+        "median": 3416,
+        "min": 3416,
+        "max": 3416
+      },
+      "image_std": {
+        "median": 2912,
+        "min": 2912,
+        "max": 2912
+      },
+      "total_hr": {
+        "median": 5227,
+        "min": 5227,
+        "max": 5254
+      },
+      "call_cl100k": {
+        "median": 80,
+        "min": 80,
+        "max": 80
+      },
+      "images": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "runs": 3,
+      "calls": {
+        "median": 7,
+        "min": 7,
+        "max": 7
+      },
+      "calls_text_only": {
+        "median": 5,
+        "min": 5,
+        "max": 5
+      },
+      "chars": {
+        "median": 5374,
+        "min": 5374,
+        "max": 5374
+      },
+      "text_cl100k": {
+        "median": 2019,
+        "min": 2019,
+        "max": 2046
+      },
+      "text_claude_legacy": {
+        "median": 2224,
+        "min": 2192,
+        "max": 2224
+      },
+      "image_hr": {
+        "median": 3416,
+        "min": 3416,
+        "max": 3416
+      },
+      "image_std": {
+        "median": 2912,
+        "min": 2912,
+        "max": 2912
+      },
+      "total_hr": {
+        "median": 5435,
+        "min": 5435,
+        "max": 5462
+      },
+      "call_cl100k": {
+        "median": 144,
+        "min": 144,
+        "max": 144
+      },
+      "images": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-diagnose",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 4927,
+        "min": 4927,
+        "max": 4927
+      },
+      "text_cl100k": {
+        "median": 1416,
+        "min": 1416,
+        "max": 1416
+      },
+      "text_claude_legacy": {
+        "median": 1620,
+        "min": 1620,
+        "max": 1626
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 1416,
+        "min": 1416,
+        "max": 1416
+      },
+      "call_cl100k": {
+        "median": 11,
+        "min": 11,
+        "max": 11
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-read_logs-filter",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 1035,
+        "min": 1035,
+        "max": 1035
+      },
+      "text_cl100k": {
+        "median": 322,
+        "min": 322,
+        "max": 322
+      },
+      "text_claude_legacy": {
+        "median": 328,
+        "min": 328,
+        "max": 328
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 322,
+        "min": 322,
+        "max": 322
+      },
+      "call_cl100k": {
+        "median": 21,
+        "min": 21,
+        "max": 21
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "without-grep",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 3869,
+        "min": 3869,
+        "max": 3869
+      },
+      "text_cl100k": {
+        "median": 1253,
+        "min": 1253,
+        "max": 1253
+      },
+      "text_claude_legacy": {
+        "median": 1434,
+        "min": 1434,
+        "max": 1434
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 1253,
+        "min": 1253,
+        "max": 1253
+      },
+      "call_cl100k": {
+        "median": 31,
+        "min": 31,
+        "max": 31
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "without-tail-200",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 11316,
+        "min": 11316,
+        "max": 11316
+      },
+      "text_cl100k": {
+        "median": 5355,
+        "min": 5355,
+        "max": 5355
+      },
+      "text_claude_legacy": {
+        "median": 5253,
+        "min": 5250,
+        "max": 5261
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 5355,
+        "min": 5355,
+        "max": 5355
+      },
+      "call_cl100k": {
+        "median": 20,
+        "min": 20,
+        "max": 20
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "without-whole-log",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 64153,
+        "min": 64153,
+        "max": 64153
+      },
+      "text_cl100k": {
+        "median": 30271,
+        "min": 30271,
+        "max": 30271
+      },
+      "text_claude_legacy": {
+        "median": 29698,
+        "min": 29686,
+        "max": 29708
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 30271,
+        "min": 30271,
+        "max": 30271
+      },
+      "call_cl100k": {
+        "median": 16,
+        "min": 16,
+        "max": 16
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "with-baton-run_workflow",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 680,
+        "min": 680,
+        "max": 680
+      },
+      "text_cl100k": {
+        "median": 196,
+        "min": 196,
+        "max": 196
+      },
+      "text_claude_legacy": {
+        "median": 206,
+        "min": 206,
+        "max": 206
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 196,
+        "min": 196,
+        "max": 196
+      },
+      "call_cl100k": {
+        "median": 63,
+        "min": 63,
+        "max": 63
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "without-one-command",
+      "runs": 3,
+      "calls": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "calls_text_only": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "chars": {
+        "median": 60,
+        "min": 60,
+        "max": 60
+      },
+      "text_cl100k": {
+        "median": 30,
+        "min": 30,
+        "max": 30
+      },
+      "text_claude_legacy": {
+        "median": 30,
+        "min": 30,
+        "max": 30
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 30,
+        "min": 30,
+        "max": 30
+      },
+      "call_cl100k": {
+        "median": 148,
+        "min": 148,
+        "max": 148
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "runs": 3,
+      "calls": {
+        "median": 4,
+        "min": 4,
+        "max": 4
+      },
+      "calls_text_only": {
+        "median": 4,
+        "min": 4,
+        "max": 4
+      },
+      "chars": {
+        "median": 140,
+        "min": 140,
+        "max": 140
+      },
+      "text_cl100k": {
+        "median": 54,
+        "min": 54,
+        "max": 54
+      },
+      "text_claude_legacy": {
+        "median": 54,
+        "min": 54,
+        "max": 54
+      },
+      "image_hr": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "image_std": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "total_hr": {
+        "median": 54,
+        "min": 54,
+        "max": 54
+      },
+      "call_cl100k": {
+        "median": 153,
+        "min": 153,
+        "max": 153
+      },
+      "images": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    }
+  ],
+  "steps": [
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change",
+      "text_cl100k": 55,
+      "chars": 141,
+      "lines": 2,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change",
+      "text_cl100k": 21,
+      "chars": 56,
+      "lines": 1,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check",
+      "text_cl100k": 93,
+      "chars": 257,
+      "lines": 11,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "01-check-script",
+      "text_cl100k": 195,
+      "chars": 631,
+      "lines": 21,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot",
+      "text_cl100k": 0,
+      "chars": 0,
+      "lines": 0,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate",
+      "text_cl100k": 120,
+      "chars": 318,
+      "lines": 11,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot",
+      "text_cl100k": 367,
+      "chars": 980,
+      "lines": 25,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console",
+      "text_cl100k": 97,
+      "chars": 306,
+      "lines": 5,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot",
+      "text_cl100k": 120,
+      "chars": 329,
+      "lines": 11,
+      "image_hr": 434,
+      "image_dims": "390x844"
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output",
+      "text_cl100k": 21,
+      "chars": 51,
+      "lines": 2,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page",
+      "text_cl100k": 166,
+      "chars": 573,
+      "lines": 20,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script",
+      "text_cl100k": 195,
+      "chars": 631,
+      "lines": 21,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot",
+      "text_cl100k": 0,
+      "chars": 0,
+      "lines": 0,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change-broken",
+      "text_cl100k": 773,
+      "chars": 2006,
+      "lines": 27,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "02-check_change-fixed",
+      "text_cl100k": 55,
+      "chars": 141,
+      "lines": 2,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change-broken",
+      "text_cl100k": 21,
+      "chars": 56,
+      "lines": 1,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "02-check_change-fixed",
+      "text_cl100k": 21,
+      "chars": 56,
+      "lines": 1,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check-broken",
+      "text_cl100k": 827,
+      "chars": 2145,
+      "lines": 16,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "02-baton-check-fixed",
+      "text_cl100k": 93,
+      "chars": 257,
+      "lines": 11,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "01-check-script-broken",
+      "text_cl100k": 1616,
+      "chars": 4068,
+      "lines": 47,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot-broken",
+      "text_cl100k": 0,
+      "chars": 0,
+      "lines": 0,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "03-check-script-fixed",
+      "text_cl100k": 195,
+      "chars": 631,
+      "lines": 21,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "04-read-screenshot-fixed",
+      "text_cl100k": 0,
+      "chars": 0,
+      "lines": 0,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate-broken",
+      "text_cl100k": 133,
+      "chars": 354,
+      "lines": 12,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot-broken",
+      "text_cl100k": 0,
+      "chars": 0,
+      "lines": 0,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console-broken",
+      "text_cl100k": 1653,
+      "chars": 4046,
+      "lines": 44,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot-broken",
+      "text_cl100k": 120,
+      "chars": 329,
+      "lines": 11,
+      "image_hr": 434,
+      "image_dims": "390x844"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "05-navigate-fixed",
+      "text_cl100k": 120,
+      "chars": 318,
+      "lines": 11,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "06-read-snapshot-fixed",
+      "text_cl100k": 368,
+      "chars": 981,
+      "lines": 25,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "07-console-fixed",
+      "text_cl100k": 97,
+      "chars": 306,
+      "lines": 5,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "08-screenshot-fixed",
+      "text_cl100k": 120,
+      "chars": 329,
+      "lines": 11,
+      "image_hr": 434,
+      "image_dims": "390x844"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output-broken",
+      "text_cl100k": 21,
+      "chars": 51,
+      "lines": 2,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page-broken",
+      "text_cl100k": 166,
+      "chars": 573,
+      "lines": 20,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script-broken",
+      "text_cl100k": 1616,
+      "chars": 4068,
+      "lines": 47,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot-broken",
+      "text_cl100k": 0,
+      "chars": 0,
+      "lines": 0,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "05-dev-server-output-fixed",
+      "text_cl100k": 21,
+      "chars": 51,
+      "lines": 2,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "06-check-script-fixed",
+      "text_cl100k": 195,
+      "chars": 631,
+      "lines": 21,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "07-read-screenshot-fixed",
+      "text_cl100k": 0,
+      "chars": 0,
+      "lines": 0,
+      "image_hr": 1708,
+      "image_dims": "780x1688"
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-diagnose",
+      "step": "01-diagnose",
+      "text_cl100k": 1416,
+      "chars": 4927,
+      "lines": 153,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-read_logs-filter",
+      "step": "01-read_logs",
+      "text_cl100k": 322,
+      "chars": 1035,
+      "lines": 14,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "without-tail-200",
+      "step": "01-tail",
+      "text_cl100k": 5355,
+      "chars": 11316,
+      "lines": 201,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "without-grep",
+      "step": "01-grep",
+      "text_cl100k": 1253,
+      "chars": 3869,
+      "lines": 63,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s3-log-debugging",
+      "approach": "without-whole-log",
+      "step": "01-cat",
+      "text_cl100k": 30271,
+      "chars": 64153,
+      "lines": 1133,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "with-baton-run_workflow",
+      "step": "01-run_workflow",
+      "text_cl100k": 196,
+      "chars": 680,
+      "lines": 23,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "without-one-command",
+      "step": "01-start-and-wait",
+      "text_cl100k": 30,
+      "chars": 60,
+      "lines": 3,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "01-start-api",
+      "text_cl100k": 15,
+      "chars": 30,
+      "lines": 2,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "02-poll-api",
+      "text_cl100k": 22,
+      "chars": 76,
+      "lines": 1,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "03-start-console",
+      "text_cl100k": 15,
+      "chars": 30,
+      "lines": 2,
+      "image_hr": 0,
+      "image_dims": ""
+    },
+    {
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "04-poll-console",
+      "text_cl100k": 2,
+      "chars": 4,
+      "lines": 2,
+      "image_hr": 0,
+      "image_dims": ""
+    }
+  ],
+  "schemas": {
+    "baton-mcp": {
+      "tools": 29,
+      "chars": 20518,
+      "cl100k": 4536,
+      "per_tool": {
+        "diagnose": 168,
+        "run_workflow": 270,
+        "inspect_project": 105,
+        "list_targets": 92,
+        "list_sessions": 68,
+        "list_checkouts": 96,
+        "run_target": 188,
+        "hot_reload": 124,
+        "hot_restart": 101,
+        "stop_session": 84,
+        "forget_session": 95,
+        "read_logs": 171,
+        "list_run_history": 145,
+        "list_network_requests": 203,
+        "get_network_request": 204,
+        "clear_network_requests": 96,
+        "read_launch_config": 129,
+        "write_launch_config": 221,
+        "list_devices": 84,
+        "set_debug_flag": 162,
+        "screenshot": 218,
+        "check_change": 271,
+        "boot_device": 146,
+        "wait_for": 171,
+        "session_summary": 77,
+        "run_proof": 352,
+        "list_proofs": 79,
+        "show_dashboard": 172,
+        "dashboard_action": 242
+      }
+    },
+    "playwright-mcp": {
+      "tools": 25,
+      "chars": 20102,
+      "cl100k": 4274,
+      "per_tool": {
+        "browser_close": 69,
+        "browser_resize": 104,
+        "browser_console_messages": 189,
+        "browser_handle_dialog": 110,
+        "browser_emulate_media": 275,
+        "browser_evaluate": 188,
+        "browser_file_upload": 110,
+        "browser_drop": 238,
+        "browser_find": 218,
+        "browser_fill_form": 247,
+        "browser_press_key": 108,
+        "browser_type": 191,
+        "browser_navigate": 90,
+        "browser_navigate_back": 77,
+        "browser_network_requests": 191,
+        "browser_network_request": 216,
+        "browser_run_code_unsafe": 206,
+        "browser_take_screenshot": 331,
+        "browser_snapshot": 186,
+        "browser_click": 199,
+        "browser_drag": 178,
+        "browser_hover": 119,
+        "browser_select_option": 157,
+        "browser_tabs": 149,
+        "browser_wait_for": 126
+      }
+    }
+  },
+  "rows": [
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change",
+      "via": "mcp",
+      "chars": 141,
+      "lines": 2,
+      "text_cl100k": 55,
+      "text_claude_legacy": 62,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-1/s1-happy-edit/with-baton-mcp/01-check_change.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 20,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check",
+      "via": "bash",
+      "chars": 257,
+      "lines": 11,
+      "text_cl100k": 93,
+      "text_claude_legacy": 100,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "01-check-script",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-1/s1-happy-edit/without-script/02-read-screenshot.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate",
+      "via": "mcp",
+      "chars": 318,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 132,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot",
+      "via": "read",
+      "chars": 980,
+      "lines": 25,
+      "text_cl100k": 367,
+      "text_claude_legacy": 365,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console",
+      "via": "mcp",
+      "chars": 306,
+      "lines": 5,
+      "text_cl100k": 97,
+      "text_claude_legacy": 105,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-1/s1-happy-edit/without-playwright-mcp/04-screenshot.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page",
+      "via": "bash",
+      "chars": 573,
+      "lines": 20,
+      "text_cl100k": 166,
+      "text_claude_legacy": 183,
+      "call_cl100k": 22,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-1/s1-happy-edit/without-typical-shell/04-read-screenshot.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change-broken",
+      "via": "mcp",
+      "chars": 2006,
+      "lines": 27,
+      "text_cl100k": 773,
+      "text_claude_legacy": 838,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/with-baton-mcp/01-check_change-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "02-check_change-fixed",
+      "via": "mcp",
+      "chars": 141,
+      "lines": 2,
+      "text_cl100k": 55,
+      "text_claude_legacy": 62,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/with-baton-mcp/02-check_change-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change-broken",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 21,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "02-check_change-fixed",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 21,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check-broken",
+      "via": "bash",
+      "chars": 2145,
+      "lines": 16,
+      "text_cl100k": 827,
+      "text_claude_legacy": 893,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "02-baton-check-fixed",
+      "via": "bash",
+      "chars": 257,
+      "lines": 11,
+      "text_cl100k": 93,
+      "text_claude_legacy": 100,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "01-check-script-broken",
+      "via": "bash",
+      "chars": 4068,
+      "lines": 47,
+      "text_cl100k": 1616,
+      "text_claude_legacy": 1754,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/without-script/02-read-screenshot-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "03-check-script-fixed",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "04-read-screenshot-fixed",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/without-script/04-read-screenshot-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate-broken",
+      "via": "mcp",
+      "chars": 354,
+      "lines": 12,
+      "text_cl100k": 133,
+      "text_claude_legacy": 144,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console-broken",
+      "via": "mcp",
+      "chars": 4046,
+      "lines": 44,
+      "text_cl100k": 1653,
+      "text_claude_legacy": 1783,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot-broken",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "05-navigate-fixed",
+      "via": "mcp",
+      "chars": 318,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 132,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "06-read-snapshot-fixed",
+      "via": "read",
+      "chars": 981,
+      "lines": 25,
+      "text_cl100k": 368,
+      "text_claude_legacy": 366,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "07-console-fixed",
+      "via": "mcp",
+      "chars": 306,
+      "lines": 5,
+      "text_cl100k": 97,
+      "text_claude_legacy": 105,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "08-screenshot-fixed",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output-broken",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page-broken",
+      "via": "bash",
+      "chars": 573,
+      "lines": 20,
+      "text_cl100k": 166,
+      "text_claude_legacy": 183,
+      "call_cl100k": 22,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script-broken",
+      "via": "bash",
+      "chars": 4068,
+      "lines": 47,
+      "text_cl100k": 1616,
+      "text_claude_legacy": 1754,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "05-dev-server-output-fixed",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "06-check-script-fixed",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "07-read-screenshot-fixed",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-1/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 1,
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-diagnose",
+      "step": "01-diagnose",
+      "via": "mcp",
+      "chars": 4927,
+      "lines": 153,
+      "text_cl100k": 1416,
+      "text_claude_legacy": 1620,
+      "call_cl100k": 11,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-read_logs-filter",
+      "step": "01-read_logs",
+      "via": "mcp",
+      "chars": 1035,
+      "lines": 14,
+      "text_cl100k": 322,
+      "text_claude_legacy": 328,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s3-log-debugging",
+      "approach": "without-tail-200",
+      "step": "01-tail",
+      "via": "bash",
+      "chars": 11316,
+      "lines": 201,
+      "text_cl100k": 5355,
+      "text_claude_legacy": 5253,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s3-log-debugging",
+      "approach": "without-grep",
+      "step": "01-grep",
+      "via": "bash",
+      "chars": 3869,
+      "lines": 63,
+      "text_cl100k": 1253,
+      "text_claude_legacy": 1434,
+      "call_cl100k": 31,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s3-log-debugging",
+      "approach": "without-whole-log",
+      "step": "01-cat",
+      "via": "bash",
+      "chars": 64153,
+      "lines": 1133,
+      "text_cl100k": 30271,
+      "text_claude_legacy": 29686,
+      "call_cl100k": 16,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s4-workflow-startup",
+      "approach": "with-baton-run_workflow",
+      "step": "01-run_workflow",
+      "via": "mcp",
+      "chars": 680,
+      "lines": 23,
+      "text_cl100k": 196,
+      "text_claude_legacy": 206,
+      "call_cl100k": 63,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-one-command",
+      "step": "01-start-and-wait",
+      "via": "bash",
+      "chars": 60,
+      "lines": 3,
+      "text_cl100k": 30,
+      "text_claude_legacy": 30,
+      "call_cl100k": 148,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "01-start-api",
+      "via": "bash",
+      "chars": 30,
+      "lines": 2,
+      "text_cl100k": 15,
+      "text_claude_legacy": 15,
+      "call_cl100k": 40,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "02-poll-api",
+      "via": "bash",
+      "chars": 76,
+      "lines": 1,
+      "text_cl100k": 22,
+      "text_claude_legacy": 22,
+      "call_cl100k": 23,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "03-start-console",
+      "via": "bash",
+      "chars": 30,
+      "lines": 2,
+      "text_cl100k": 15,
+      "text_claude_legacy": 15,
+      "call_cl100k": 54,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 1,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "04-poll-console",
+      "via": "bash",
+      "chars": 4,
+      "lines": 2,
+      "text_cl100k": 2,
+      "text_claude_legacy": 2,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change",
+      "via": "mcp",
+      "chars": 141,
+      "lines": 2,
+      "text_cl100k": 55,
+      "text_claude_legacy": 62,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-2/s1-happy-edit/with-baton-mcp/01-check_change.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 20,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check",
+      "via": "bash",
+      "chars": 257,
+      "lines": 11,
+      "text_cl100k": 93,
+      "text_claude_legacy": 100,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "01-check-script",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-2/s1-happy-edit/without-script/02-read-screenshot.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate",
+      "via": "mcp",
+      "chars": 318,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 132,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot",
+      "via": "read",
+      "chars": 980,
+      "lines": 25,
+      "text_cl100k": 367,
+      "text_claude_legacy": 365,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console",
+      "via": "mcp",
+      "chars": 306,
+      "lines": 5,
+      "text_cl100k": 98,
+      "text_claude_legacy": 106,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-2/s1-happy-edit/without-playwright-mcp/04-screenshot.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page",
+      "via": "bash",
+      "chars": 573,
+      "lines": 20,
+      "text_cl100k": 166,
+      "text_claude_legacy": 183,
+      "call_cl100k": 22,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-2/s1-happy-edit/without-typical-shell/04-read-screenshot.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change-broken",
+      "via": "mcp",
+      "chars": 2006,
+      "lines": 27,
+      "text_cl100k": 755,
+      "text_claude_legacy": 829,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/with-baton-mcp/01-check_change-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "02-check_change-fixed",
+      "via": "mcp",
+      "chars": 141,
+      "lines": 2,
+      "text_cl100k": 55,
+      "text_claude_legacy": 62,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/with-baton-mcp/02-check_change-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change-broken",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 21,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "02-check_change-fixed",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 21,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check-broken",
+      "via": "bash",
+      "chars": 2145,
+      "lines": 16,
+      "text_cl100k": 809,
+      "text_claude_legacy": 889,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "02-baton-check-fixed",
+      "via": "bash",
+      "chars": 257,
+      "lines": 11,
+      "text_cl100k": 93,
+      "text_claude_legacy": 100,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "01-check-script-broken",
+      "via": "bash",
+      "chars": 4068,
+      "lines": 47,
+      "text_cl100k": 1643,
+      "text_claude_legacy": 1781,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/without-script/02-read-screenshot-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "03-check-script-fixed",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "04-read-screenshot-fixed",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/without-script/04-read-screenshot-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate-broken",
+      "via": "mcp",
+      "chars": 354,
+      "lines": 12,
+      "text_cl100k": 133,
+      "text_claude_legacy": 144,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console-broken",
+      "via": "mcp",
+      "chars": 4046,
+      "lines": 44,
+      "text_cl100k": 1682,
+      "text_claude_legacy": 1816,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot-broken",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "05-navigate-fixed",
+      "via": "mcp",
+      "chars": 318,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 132,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "06-read-snapshot-fixed",
+      "via": "read",
+      "chars": 981,
+      "lines": 25,
+      "text_cl100k": 368,
+      "text_claude_legacy": 366,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "07-console-fixed",
+      "via": "mcp",
+      "chars": 306,
+      "lines": 5,
+      "text_cl100k": 98,
+      "text_claude_legacy": 106,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "08-screenshot-fixed",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output-broken",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page-broken",
+      "via": "bash",
+      "chars": 573,
+      "lines": 20,
+      "text_cl100k": 166,
+      "text_claude_legacy": 184,
+      "call_cl100k": 22,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script-broken",
+      "via": "bash",
+      "chars": 4068,
+      "lines": 47,
+      "text_cl100k": 1643,
+      "text_claude_legacy": 1785,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "05-dev-server-output-fixed",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "06-check-script-fixed",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "07-read-screenshot-fixed",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-2/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 2,
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-diagnose",
+      "step": "01-diagnose",
+      "via": "mcp",
+      "chars": 4927,
+      "lines": 153,
+      "text_cl100k": 1416,
+      "text_claude_legacy": 1626,
+      "call_cl100k": 11,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-read_logs-filter",
+      "step": "01-read_logs",
+      "via": "mcp",
+      "chars": 1035,
+      "lines": 14,
+      "text_cl100k": 322,
+      "text_claude_legacy": 328,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s3-log-debugging",
+      "approach": "without-tail-200",
+      "step": "01-tail",
+      "via": "bash",
+      "chars": 11316,
+      "lines": 201,
+      "text_cl100k": 5355,
+      "text_claude_legacy": 5261,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s3-log-debugging",
+      "approach": "without-grep",
+      "step": "01-grep",
+      "via": "bash",
+      "chars": 3869,
+      "lines": 63,
+      "text_cl100k": 1253,
+      "text_claude_legacy": 1434,
+      "call_cl100k": 31,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s3-log-debugging",
+      "approach": "without-whole-log",
+      "step": "01-cat",
+      "via": "bash",
+      "chars": 64153,
+      "lines": 1133,
+      "text_cl100k": 30271,
+      "text_claude_legacy": 29708,
+      "call_cl100k": 16,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s4-workflow-startup",
+      "approach": "with-baton-run_workflow",
+      "step": "01-run_workflow",
+      "via": "mcp",
+      "chars": 680,
+      "lines": 23,
+      "text_cl100k": 196,
+      "text_claude_legacy": 206,
+      "call_cl100k": 63,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-one-command",
+      "step": "01-start-and-wait",
+      "via": "bash",
+      "chars": 60,
+      "lines": 3,
+      "text_cl100k": 30,
+      "text_claude_legacy": 30,
+      "call_cl100k": 148,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "01-start-api",
+      "via": "bash",
+      "chars": 30,
+      "lines": 2,
+      "text_cl100k": 15,
+      "text_claude_legacy": 15,
+      "call_cl100k": 40,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "02-poll-api",
+      "via": "bash",
+      "chars": 76,
+      "lines": 1,
+      "text_cl100k": 22,
+      "text_claude_legacy": 22,
+      "call_cl100k": 23,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "03-start-console",
+      "via": "bash",
+      "chars": 30,
+      "lines": 2,
+      "text_cl100k": 15,
+      "text_claude_legacy": 15,
+      "call_cl100k": 54,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 2,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "04-poll-console",
+      "via": "bash",
+      "chars": 4,
+      "lines": 2,
+      "text_cl100k": 2,
+      "text_claude_legacy": 2,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change",
+      "via": "mcp",
+      "chars": 141,
+      "lines": 2,
+      "text_cl100k": 55,
+      "text_claude_legacy": 62,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-3/s1-happy-edit/with-baton-mcp/01-check_change.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 21,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check",
+      "via": "bash",
+      "chars": 257,
+      "lines": 11,
+      "text_cl100k": 93,
+      "text_claude_legacy": 100,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "01-check-script",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-3/s1-happy-edit/without-script/02-read-screenshot.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate",
+      "via": "mcp",
+      "chars": 318,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 132,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot",
+      "via": "read",
+      "chars": 980,
+      "lines": 25,
+      "text_cl100k": 367,
+      "text_claude_legacy": 365,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console",
+      "via": "mcp",
+      "chars": 306,
+      "lines": 5,
+      "text_cl100k": 97,
+      "text_claude_legacy": 106,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-3/s1-happy-edit/without-playwright-mcp/04-screenshot.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page",
+      "via": "bash",
+      "chars": 573,
+      "lines": 20,
+      "text_cl100k": 166,
+      "text_claude_legacy": 184,
+      "call_cl100k": 22,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s1-happy-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-3/s1-happy-edit/without-typical-shell/04-read-screenshot.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "01-check_change-broken",
+      "via": "mcp",
+      "chars": 2006,
+      "lines": 27,
+      "text_cl100k": 791,
+      "text_claude_legacy": 860,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/with-baton-mcp/01-check_change-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp",
+      "step": "02-check_change-fixed",
+      "via": "mcp",
+      "chars": 141,
+      "lines": 2,
+      "text_cl100k": 55,
+      "text_claude_legacy": 62,
+      "call_cl100k": 16,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/with-baton-mcp/02-check_change-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "01-check_change-broken",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 21,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-mcp-noshot",
+      "step": "02-check_change-fixed",
+      "via": "mcp",
+      "chars": 56,
+      "lines": 1,
+      "text_cl100k": 21,
+      "text_claude_legacy": 21,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "01-baton-check-broken",
+      "via": "bash",
+      "chars": 2145,
+      "lines": 16,
+      "text_cl100k": 845,
+      "text_claude_legacy": 911,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "with-baton-cli",
+      "step": "02-baton-check-fixed",
+      "via": "bash",
+      "chars": 257,
+      "lines": 11,
+      "text_cl100k": 93,
+      "text_claude_legacy": 100,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "01-check-script-broken",
+      "via": "bash",
+      "chars": 4068,
+      "lines": 47,
+      "text_cl100k": 1616,
+      "text_claude_legacy": 1785,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "02-read-screenshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/without-script/02-read-screenshot-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "03-check-script-fixed",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-script",
+      "step": "04-read-screenshot-fixed",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/without-script/04-read-screenshot-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "01-navigate-broken",
+      "via": "mcp",
+      "chars": 354,
+      "lines": 12,
+      "text_cl100k": 133,
+      "text_claude_legacy": 144,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "02-read-snapshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "03-console-broken",
+      "via": "mcp",
+      "chars": 4046,
+      "lines": 44,
+      "text_cl100k": 1653,
+      "text_claude_legacy": 1812,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "04-screenshot-broken",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/without-playwright-mcp/04-screenshot-broken.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "05-navigate-fixed",
+      "via": "mcp",
+      "chars": 318,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 132,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "06-read-snapshot-fixed",
+      "via": "read",
+      "chars": 981,
+      "lines": 25,
+      "text_cl100k": 368,
+      "text_claude_legacy": 366,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "07-console-fixed",
+      "via": "mcp",
+      "chars": 306,
+      "lines": 5,
+      "text_cl100k": 97,
+      "text_claude_legacy": 106,
+      "call_cl100k": 4,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-playwright-mcp",
+      "step": "08-screenshot-fixed",
+      "via": "mcp",
+      "chars": 329,
+      "lines": 11,
+      "text_cl100k": 120,
+      "text_claude_legacy": 135,
+      "call_cl100k": 5,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/without-playwright-mcp/08-screenshot-fixed.img-1.png",
+          "w": 390,
+          "h": 844,
+          "hr": 434,
+          "std": 434,
+          "legacy750": 439
+        }
+      ],
+      "image_hr": 434,
+      "image_std": 434
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "01-dev-server-output-broken",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "02-curl-page-broken",
+      "via": "bash",
+      "chars": 573,
+      "lines": 20,
+      "text_cl100k": 166,
+      "text_claude_legacy": 184,
+      "call_cl100k": 22,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "03-check-script-broken",
+      "via": "bash",
+      "chars": 4068,
+      "lines": 47,
+      "text_cl100k": 1616,
+      "text_claude_legacy": 1785,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "04-read-screenshot-broken",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/without-typical-shell/04-read-screenshot-broken.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "05-dev-server-output-fixed",
+      "via": "bash",
+      "chars": 51,
+      "lines": 2,
+      "text_cl100k": 21,
+      "text_claude_legacy": 24,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "06-check-script-fixed",
+      "via": "bash",
+      "chars": 631,
+      "lines": 21,
+      "text_cl100k": 195,
+      "text_claude_legacy": 207,
+      "call_cl100k": 29,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s2-broken-edit",
+      "approach": "without-typical-shell",
+      "step": "07-read-screenshot-fixed",
+      "via": "read",
+      "chars": 0,
+      "lines": 0,
+      "text_cl100k": 0,
+      "text_claude_legacy": 0,
+      "call_cl100k": 11,
+      "images": [
+        {
+          "file": "run-3/s2-broken-edit/without-typical-shell/07-read-screenshot-fixed.img-1.png",
+          "w": 780,
+          "h": 1688,
+          "hr": 1708,
+          "std": 1456,
+          "legacy750": 1756
+        }
+      ],
+      "image_hr": 1708,
+      "image_std": 1456
+    },
+    {
+      "run": 3,
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-diagnose",
+      "step": "01-diagnose",
+      "via": "mcp",
+      "chars": 4927,
+      "lines": 153,
+      "text_cl100k": 1416,
+      "text_claude_legacy": 1620,
+      "call_cl100k": 11,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s3-log-debugging",
+      "approach": "with-baton-read_logs-filter",
+      "step": "01-read_logs",
+      "via": "mcp",
+      "chars": 1035,
+      "lines": 14,
+      "text_cl100k": 322,
+      "text_claude_legacy": 328,
+      "call_cl100k": 21,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s3-log-debugging",
+      "approach": "without-tail-200",
+      "step": "01-tail",
+      "via": "bash",
+      "chars": 11316,
+      "lines": 201,
+      "text_cl100k": 5355,
+      "text_claude_legacy": 5250,
+      "call_cl100k": 20,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s3-log-debugging",
+      "approach": "without-grep",
+      "step": "01-grep",
+      "via": "bash",
+      "chars": 3869,
+      "lines": 63,
+      "text_cl100k": 1253,
+      "text_claude_legacy": 1434,
+      "call_cl100k": 31,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s3-log-debugging",
+      "approach": "without-whole-log",
+      "step": "01-cat",
+      "via": "bash",
+      "chars": 64153,
+      "lines": 1133,
+      "text_cl100k": 30271,
+      "text_claude_legacy": 29698,
+      "call_cl100k": 16,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s4-workflow-startup",
+      "approach": "with-baton-run_workflow",
+      "step": "01-run_workflow",
+      "via": "mcp",
+      "chars": 680,
+      "lines": 23,
+      "text_cl100k": 196,
+      "text_claude_legacy": 206,
+      "call_cl100k": 63,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-one-command",
+      "step": "01-start-and-wait",
+      "via": "bash",
+      "chars": 60,
+      "lines": 3,
+      "text_cl100k": 30,
+      "text_claude_legacy": 30,
+      "call_cl100k": 148,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "01-start-api",
+      "via": "bash",
+      "chars": 30,
+      "lines": 2,
+      "text_cl100k": 15,
+      "text_claude_legacy": 15,
+      "call_cl100k": 40,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "02-poll-api",
+      "via": "bash",
+      "chars": 76,
+      "lines": 1,
+      "text_cl100k": 22,
+      "text_claude_legacy": 22,
+      "call_cl100k": 23,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "03-start-console",
+      "via": "bash",
+      "chars": 30,
+      "lines": 2,
+      "text_cl100k": 15,
+      "text_claude_legacy": 15,
+      "call_cl100k": 54,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    },
+    {
+      "run": 3,
+      "scenario": "s4-workflow-startup",
+      "approach": "without-step-by-step",
+      "step": "04-poll-console",
+      "via": "bash",
+      "chars": 4,
+      "lines": 2,
+      "text_cl100k": 2,
+      "text_claude_legacy": 2,
+      "call_cl100k": 36,
+      "images": [],
+      "image_hr": 0,
+      "image_std": 0
+    }
+  ]
+}

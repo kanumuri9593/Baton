@@ -1,0 +1,17 @@
+{
+  "name": "token-study-web-lab",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.5.0",
+    "vite": "6.3.5"
+  }
+}

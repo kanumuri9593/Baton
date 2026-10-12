@@ -1,0 +1,46 @@
+[console.debug] [vite] connecting...
+[console.debug] [vite] connected.
+[console.info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[pageerror] ReferenceError: bannr is not defined
+    at App (http://127.0.0.1:5175/src/App.jsx?t=1791737259743:31:68)
+    at renderWithHooks (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:11594:26)
+    at mountIndeterminateComponent (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:14972:21)
+    at beginWork (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:15960:22)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:3678:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:3703:24)
+    at invokeGuardedCallback (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:3737:39)
+    at beginWork$1 (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19816:15)
+    at performUnitOfWork (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19249:20)
+    at workLoopSync (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19188:13)
+[pageerror] ReferenceError: bannr is not defined
+    at App (http://127.0.0.1:5175/src/App.jsx?t=1791737259743:31:68)
+    at renderWithHooks (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:11594:26)
+    at mountIndeterminateComponent (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:14972:21)
+    at beginWork (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:15960:22)
+    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:3678:22)
+    at Object.invokeGuardedCallbackDev (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:3703:24)
+    at invokeGuardedCallback (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:3737:39)
+    at beginWork$1 (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19816:15)
+    at performUnitOfWork (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19249:20)
+    at workLoopSync (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19188:13)
+[console.error] The above error occurred in the <App> component:
+
+    at App (http://127.0.0.1:5175/src/App.jsx?t=1791737259743:22:35)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+[pageerror] ReferenceError: bannr is not defined
+    at App (http://127.0.0.1:5175/src/App.jsx?t=1791737259743:31:68)
+    at renderWithHooks (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:11594:26)
+    at mountIndeterminateComponent (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:14972:21)
+    at beginWork (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:15960:22)
+    at beginWork$1 (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19804:22)
+    at performUnitOfWork (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19249:20)
+    at workLoopSync (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19188:13)
+    at renderRootSync (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:19167:15)
+    at recoverFromConcurrentError (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:18784:28)
+    at performConcurrentWorkOnRoot (http://127.0.0.1:5175/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=ec78cc84:18732:30)
+[console.error] Failed to load resource: the server responded with a status of 404 (Not Found)
+--- visible text ---
+(empty page)
+screenshot: /tmp/shot-B.png
