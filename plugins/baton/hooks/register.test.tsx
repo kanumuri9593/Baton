@@ -6,7 +6,7 @@ import { label, shortDevice, shortName, toRun } from './register.tsx'
 
 
 // Stands in for the Baton daemon: the handshake file and POST /rpc.
-function daemon(on: On, sessions: unknown[] | null, calls: Array<{ method: string; params: unknown }> = []) {
+function daemon(on: On, sessions: unknown[] | null, calls: Array<{ method: string; params: unknown }> = [], below?: string) {
   mock.env(on, { HOME: '/home/t' })
   mock.clock(on)
   on('fs.read', async () => ({ value: '{"port":4100,"token":"t"}' }))
@@ -35,8 +35,8 @@ function daemon(on: On, sessions: unknown[] | null, calls: Array<{ method: strin
   })
   on('session.start', async ($, e) => ({ cwd: e.cwd }))
   on('ui.render', async ($, e) => {
-    const { Box } = $.ui.resolve(e)
-    return <Box key="engine" />
+    const { Box, Text } = $.ui.resolve(e)
+    return below ? <Text key="below">{below}</Text> : <Box key="engine" />
   })
 }
 
@@ -98,6 +98,17 @@ test('the band stays out of the way with nothing running', async ($, on) => {
   }
 })
 
+
+test('the band stacks above another plugin band instead of hiding it', async ($, on) => {
+  daemon(on, SESSIONS, [], 'X-ray band')
+  await $.session.start(START)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ plugin: 'baton', surface, ...BAND })
+    expect(await ui.find({ key: 'add' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /X-ray band/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
 
 const ROW = ['logs', 'debug', 'play', 'pause', 'stop', 'front']
 const ALL = ['add', 'play-all', 'pause-all', 'stop-all', 'front-all']

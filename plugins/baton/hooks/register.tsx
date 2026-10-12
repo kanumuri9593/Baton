@@ -498,7 +498,17 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const list = await read($, runs)
     if (e.props.hasSurvey || !(await read($, isOnline)) || list.length === 0 || (await read($, isBandHidden))) return next(e)
-    return workspace($, e, 'band')
+    // Stack above whatever draws beneath (another plugin's band), so both show.
+    const below = await next(e)
+    const mine = await workspace($, e, 'band')
+    if (!below) return mine
+    const { Box } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="column">
+        {mine}
+        {below}
+      </Box>
+    )
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
