@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The Baton band stacks above other plugins' bands above the prompt instead of
+  hiding them, so both show.
+
 ## 0.2.10 — 2026-10-11
 
 Leaner answers for agents: the same evidence in 60–90% fewer tokens.
