@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Orders API",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.mjs"],
+      "env": { "PORT": "43151" },
+      "batonKind": "web-dev"
+    }
+  ]
+}

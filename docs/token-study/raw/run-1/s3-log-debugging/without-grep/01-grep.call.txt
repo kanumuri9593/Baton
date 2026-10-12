@@ -1,0 +1,1 @@
+Bash {"command":"grep -n -i -E \"error|exception\" -A 6 /home/dev/af/projects/B/orders-api/server.log"}

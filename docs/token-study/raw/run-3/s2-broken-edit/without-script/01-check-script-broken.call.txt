@@ -1,0 +1,1 @@
+Bash {"command":"node check.mjs http://127.0.0.1:5175/ /tmp/shot-B.png"}

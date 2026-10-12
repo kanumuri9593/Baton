@@ -1,0 +1,11 @@
+### Result
+- [Screenshot of viewport](.playwright-mcp/page-2026-10-11T16-47-45-413Z.png)
+### Ran Playwright code
+```js
+// Screenshot viewport and save it as .playwright-mcp/page-2026-10-11T16-47-45-413Z.png
+await page.screenshot({
+  path: '.playwright-mcp/page-2026-10-11T16-47-45-413Z.png',
+  scale: 'css',
+  type: 'png'
+});
+```

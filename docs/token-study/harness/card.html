@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Baton token study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080d; --panel: #0f1118; --line: rgba(196,208,228,.12);
+    --ivory: #f3eee3; --dim: #b9b4a9; --muted: #8b93a6; --base: #5d6478;
+    --a: #7c7cff; --b: #38c6e8;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: var(--bg); }
+  body { width: var(--w); height: var(--h); overflow: hidden; color: var(--ivory);
+    font-family: "Instrument Sans", system-ui, sans-serif; position: relative; }
+  body::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(900px 520px at 85% -10%, rgba(124,124,255,.20), transparent 60%),
+                radial-gradient(700px 420px at -10% 110%, rgba(56,198,232,.12), transparent 60%); }
+  .wrap { position: relative; height: 100%; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 12px; font: 500 15px/1 "IBM Plex Mono", monospace;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .brand svg { width: 30px; height: 30px; color: var(--ivory); }
+  .brand b { color: var(--ivory); font-weight: 600; }
+  h1 { font: 400 var(--h1)/1.02 "Instrument Serif", Georgia, serif; letter-spacing: -.01em; }
+  h1 em { font-style: italic; background: linear-gradient(100deg, var(--a), var(--b));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--dim); font-size: var(--sub); line-height: 1.4; }
+  .panel { background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015));
+    border: 1px solid var(--line); border-radius: 22px; padding: var(--pp); }
+  .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+  .pt { font-size: var(--pt); font-weight: 600; letter-spacing: -.005em; }
+  .pk { font: 500 var(--pk)/1 "IBM Plex Mono", monospace; white-space: nowrap;
+    background: linear-gradient(100deg, var(--a), var(--b)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pkn { font: 400 13px/1.2 "IBM Plex Mono", monospace; color: var(--muted); text-align: right; margin-top: 6px; }
+  .row { display: grid; grid-template-columns: var(--lab) 1fr; align-items: center; gap: 16px; margin: 0 0 var(--rg); }
+  .lab { font: 400 var(--lf)/1.25 "IBM Plex Mono", monospace; color: var(--dim); }
+  .lab small { display: block; color: var(--muted); font-size: .82em; margin-top: 3px; }
+  .row.me .lab { color: var(--ivory); font-weight: 500; }
+  .track { position: relative; height: var(--bh); display: flex; align-items: center; }
+  .bar { height: 100%; border-radius: 2px 4px 4px 2px; background: var(--base); min-width: 4px; }
+  .row.me .bar { background: linear-gradient(90deg, var(--a), var(--b)); }
+  .val { font: 500 var(--vf)/1 "IBM Plex Mono", monospace; margin-left: 12px; white-space: nowrap; color: var(--ivory); }
+  .row:not(.me) .val { color: var(--dim); }
+  .cap .bar { border-radius: 2px 0 0 2px; -webkit-mask: linear-gradient(90deg, #000 88%, transparent); mask: linear-gradient(90deg, #000 88%, transparent); }
+  .foot { font: 400 var(--ff)/1.5 "IBM Plex Mono", monospace; color: var(--muted); }
+  .foot b { color: var(--dim); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap"></div>
+<script>
+const MARK = '<svg viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M39.8 17.1 A11.3 11.3 0 0 0 32.5 28.4" stroke-width="4"/><path d="M39.6 10.8 A17.8 17.8 0 0 0 26.2 29.2" stroke-width="4.4" opacity=".72"/></g><path d="M12.6 51.4 C11.1 49.9 11.5 47.6 13.3 45.9 L42.6 20.1 L47.4 24.9 L18.1 51.1 C16.2 52.8 14.1 52.8 12.6 51.4 Z" fill="currentColor"/><circle cx="45.4" cy="22.7" r="5.5" fill="currentColor"/></svg>';
+const D = window.DATA; // injected by render-card.mjs from a results.json
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+function panel(p, maxOverride) {
+  const max = maxOverride ?? Math.max(...p.rows.filter((r) => !r.cap).map((r) => r.v));
+  const rows = p.rows.map((r) => {
+    const pct = r.cap ? 100 : Math.max(0.6, (r.v / max) * 100);
+    return `<div class="row ${r.me ? 'me' : ''} ${r.cap ? 'cap' : ''}"><div class="lab">${r.label}${r.note ? `<small>${r.note}</small>` : ''}</div>
+      <div class="track"><div class="bar" style="width:calc((100% - 96px) * ${pct / 100})"></div><span class="val">${fmt(r.v)}${r.cap ? ' →' : ''}</span></div></div>`;
+  }).join('');
+  return `<section class="panel"><div class="ph"><div class="pt">${p.title}</div><div><div class="pk">${p.kicker}</div><div class="pkn">${p.kickerNote}</div></div></div>${rows}</section>`;
+}
+const layout = new URLSearchParams(location.search).get('layout') ?? 'portrait';
+const P = [
+  { title: 'A broken edit, caught and fixed', kicker: `−${D.s2pct}%`, kickerNote: 'vs Playwright MCP',
+    rows: [
+      { label: 'Baton check_change', note: `${D.s2.baton.calls} tool calls`, v: D.s2.baton.v, me: true },
+      { label: 'Playwright MCP', note: `${D.s2.pwmcp.calls} tool calls`, v: D.s2.pwmcp.v },
+      { label: 'Playwright script', note: `${D.s2.script.calls} tool calls`, v: D.s2.script.v },
+      { label: 'Typical shell', note: `${D.s2.shell.calls} tool calls`, v: D.s2.shell.v },
+    ] },
+  { title: `Finding the bug in a ${fmt(D.logLines)}-line log`, kicker: `−${D.s3pct}%`, kickerNote: 'vs a targeted grep',
+    rows: [
+      { label: 'Baton diagnose', note: '1 tool call', v: D.s3.diagnose, me: true },
+      { label: 'grep -A6 error', note: 'a well-aimed grep', v: D.s3.grep },
+      { label: 'tail -n 200', note: '1 tool call', v: D.s3.tail },
+      ...(layout === 'portrait' ? [{ label: 'cat whole log', note: 'bar not to scale', v: D.s3.cat, cap: true }] : []),
+    ] },
+  { title: 'A UI text change that worked', kicker: `−${D.s1pct}%`, kickerNote: 'vs Playwright MCP',
+    rows: [
+      { label: 'Baton check_change', note: '1 tool call', v: D.s1.baton.v, me: true },
+      { label: 'Playwright MCP', note: `${D.s1.pwmcp.calls} tool calls`, v: D.s1.pwmcp.v },
+      { label: 'Playwright script', note: `${D.s1.script.calls} tool calls`, v: D.s1.script.v },
+      { label: 'Typical shell', note: `${D.s1.shell.calls} tool calls`, v: D.s1.shell.v },
+    ] },
+];
+const head = `<div class="brand">${MARK}<span><b>Baton 0.2.10</b> · token study</span></div>`;
+const foot = `<p class="foot"><b>Tokens an agent reads from tool output, screenshots included</b> · median of 3 runs · text counted with cl100k_base as a proxy (Claude's tokenizer differs), images with Anthropic's 28×28-patch rule (hi-res tier).
+  Baton and Playwright MCP capture at 1× (~${fmt(D.img.baton)} image tokens); the script and shell baselines at 2× (~${fmt(D.img.script)}), a setting each side could change.
+  Text only, the broken edit was ${fmt(D.s2.baton.text)} for Baton vs ${fmt(D.s2.script.text)} for the script and ${fmt(D.s2.pwmcp.text)} for Playwright MCP.
+  Not shown: tool definitions, ${fmt(D.schema.baton.cl100k)} tokens for Baton's ${D.schema.baton.tools} tools if a client loads them up front (Playwright MCP's ${D.schema.pwmcp.tools}: ${fmt(D.schema.pwmcp.cl100k)}).
+  Method and raw outputs: github.com/kanumuri9593/Baton/tree/main/docs/token-study</p>`;
+const wrap = document.getElementById('wrap');
+const s = document.body.style;
+if (layout === 'portrait') {
+  Object.entries({ '--w': '1080px', '--h': '1350px', '--h1': '60px', '--sub': '19px', '--pp': '16px 28px 4px', '--pt': '22px', '--pk': '32px',
+    '--lab': '230px', '--lf': '16px', '--bh': '18px', '--vf': '18px', '--rg': '8px', '--ff': '13px' }).forEach(([k, v]) => s.setProperty(k, v));
+  wrap.style.padding = '44px 60px 34px'; wrap.style.gap = '15px';
+  wrap.innerHTML = `${head}<h1 style="margin-top:6px">Less to read<br>after <em>every edit.</em></h1>
+    <p class="sub">What a coding agent pulls into context to verify a change, screenshots included, measured on a React + Vite app and a Node API, with and without Baton.</p>
+    ${P.map((p) => panel(p)).join('')}<div style="flex:1"></div>${foot}`;
+} else {
+  Object.entries({ '--w': '1200px', '--h': '627px', '--h1': '58px', '--sub': '17px', '--pp': '24px 26px 10px', '--pt': '19px', '--pk': '30px',
+    '--lab': '185px', '--lf': '15px', '--bh': '22px', '--vf': '17px', '--rg': '12px', '--ff': '11.5px' }).forEach(([k, v]) => s.setProperty(k, v));
+  wrap.style.padding = '30px 44px 26px'; wrap.style.gap = '18px';
+  wrap.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px">
+      <div>${head}<h1 style="margin-top:14px">Less to read after <em>every edit.</em></h1></div>
+      <p class="sub" style="max-width:420px;text-align:right">Tool output a coding agent reads to verify a change, screenshots included, with and without Baton. Measured; median of 3 runs.</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">${panel(P[0])}${panel(P[1])}</div><div style="flex:1"></div>${foot}`;
+}
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

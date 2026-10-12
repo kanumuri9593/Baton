@@ -1,0 +1,15 @@
+{
+  "session": "web-lab/web-lab",
+  "action": "none",
+  "ok": false,
+  "status": "running",
+  "newErrors": [
+    "[browser] ReferenceError: bannr is not defined\n    at App (http://127.0.0.1:5174/src/App.jsx?t=1791737321367:31:68)\n    at renderWithHooks (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:11594:26)\n    at mountIndeterminateComponent (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:14972:21)\n    at beginWork (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:15960:22)\n    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:517…",
+    "[browser] ReferenceError: bannr is not defined\n    at App (http://127.0.0.1:5174/src/App.jsx?t=1791737321367:31:68)\n    at renderWithHooks (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:11594:26)\n    at mountIndeterminateComponent (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:14972:21)\n    at beginWork (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:15960:22)\n    at HTMLUnknownElement.callCallback2 (http://127.0.0.1:517…",
+    "[browser] The above error occurred in the <App> component:\n\n    at App (http://127.0.0.1:5174/src/App.jsx?t=1791737321367:22:35)\n\nConsider adding an error boundary to your tree to customize error handling behavior.\nVisit https://reactjs.org/link/error-boundaries to learn more about error boundaries.",
+    "[browser] ReferenceError: bannr is not defined\n    at App (http://127.0.0.1:5174/src/App.jsx?t=1791737321367:31:68)\n    at renderWithHooks (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:11594:26)\n    at mountIndeterminateComponent (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:14972:21)\n    at beginWork (http://127.0.0.1:5174/node_modules/.vite/deps/chunk-HCIN4FJ4.js?v=03196554:15960:22)\n    at beginWork$1 (http://127.0.0.1:5174/node_modules/.vite/…"
+  ],
+  "failedRequests": [],
+  "screenshotPath": "/home/dev/af/bhome/screenshots/web-lab_web-lab-2026-10-11T16-48-43-140Z.png",
+  "elapsedMs": 3332
+}

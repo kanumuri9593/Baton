@@ -1,0 +1,8 @@
+body { margin: 0; font-family: system-ui, sans-serif; background: #f6f7fb; color: #1b1d29; }
+.app { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+h1 { font-size: 28px; margin: 0 0 8px; }
+.banner { display: inline-block; background: #4f46e5; color: white; padding: 6px 12px; border-radius: 999px; font-weight: 600; }
+.orders { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 10px; }
+.orders li { background: white; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.08); cursor: pointer; }
+.orders li.selected { outline: 2px solid #4f46e5; }
+.status { float: right; color: #555; font-size: 14px; }

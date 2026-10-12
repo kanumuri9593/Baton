@@ -1,0 +1,10 @@
+{
+  "session": "web-lab/web-lab",
+  "action": "none",
+  "ok": true,
+  "status": "running",
+  "newErrors": [],
+  "failedRequests": [],
+  "screenshotPath": "/home/dev/af/bhome/screenshots/web-lab_web-lab-2026-10-11T16-49-58-131Z.png",
+  "elapsedMs": 3450
+}

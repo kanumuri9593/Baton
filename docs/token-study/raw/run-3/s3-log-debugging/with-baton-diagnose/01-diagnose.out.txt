@@ -1,0 +1,7 @@
+2 findings, newest first
+orders-api/orders-api  running  /home/dev/af/projects/A/orders-api
+  16:50:11.532Z log ×7 since 16:50:11.076Z  2026-10-11T16:50:11.532Z error unhandled exception in GET /api/orders/13
+  16:50:11.532Z log ×7 since 16:50:11.077Z  TypeError: Cannot read properties of undefined (reading 'net')
+      at orderTotal (./server.mjs:16:23)
+      at Server.<anonymous> (./server.mjs:38:43)
+      +3 more frames

@@ -22,6 +22,7 @@
   <a href="docs/clients.md">Set up your agent</a> ·
   <a href="AGENTS.md">Agent notes</a> ·
   <a href="docs/pdf/">PDF guides</a> ·
+  <a href="docs/token-study/">Token study</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 

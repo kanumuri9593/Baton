@@ -1,0 +1,1 @@
+Bash {"command":"tail -n +11 /home/dev/af/projects/B/web-lab/dev.log"}
