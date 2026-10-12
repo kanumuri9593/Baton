@@ -172,8 +172,8 @@ and released as 0.2.10; its source differs from the release only in sample-app n
 ## Raw data
 
 - [`raw/`](raw): every call and every output of the 0.2.10 run (3 runs), the screenshots each approach returned, the
-  call index `calls.json`, and the tool schemas of both MCP servers. About 3.2 MB.
-- The 0.2.9 run's raw outputs (another 3.6 MB) are not included, to keep the repository small; its summary is in
+  call index `calls.json`, and the tool schemas of both MCP servers. About 2.2 MB.
+- The 0.2.9 run's raw outputs (another 2.5 MB) are not included, to keep the repository small; its summary is in
   [`baseline-0.2.9/`](baseline-0.2.9), and `BATON_VERSION=0.2.9 ./reproduce.sh` regenerates them.
 - The raw outputs contain the absolute paths of the measurement sandbox (a generic `dev` account,
   labs under `~/af/projects`). They are left as captured because path length is part of the measured text.
