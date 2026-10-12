@@ -9,7 +9,7 @@ process.env.BATON_HOME = mkdtempSync(join(tmpdir(), 'baton-proof-'));
 const {
   expandProofMatrix, runCellChecks, countFailedRequests, cellId, textScaleToIosContentSize,
   writeProofBundle, runProof, parseAppearanceList, resolveDeviceQuery,
-  summarizeNetwork, formatCellLabel, requestPath,
+  summarizeNetwork, formatCellLabel, requestPath, listProofs, getProof,
 } = await import('../src/daemon/proof.ts');
 import type { ProofCellSpec, ProofHost, ProofRunSummary } from '../src/daemon/proof.ts';
 import type { Device } from '../src/daemon/devices.ts';
@@ -267,5 +267,12 @@ test('runProof orchestrates cells in parallel and writes a bundle', async () => 
   assert.equal(result.passed, true);
   assert.ok(existsSync(join(bundlePath, 'report.html')));
   assert.equal(sessions.length, 2);
+
+  // A bundle written to a custom `out` is still listed and readable by id.
+  const listed = listProofs().find((p) => p.id === result.id);
+  assert.ok(listed, 'list_proofs finds a proof written outside the proofs directory');
+  assert.equal(listed.bundlePath, bundlePath);
+  assert.equal(getProof(result.id)?.id, result.id);
   rmSync(bundlePath, { recursive: true, force: true });
+  assert.equal(listProofs().find((p) => p.id === result.id), undefined, 'a deleted bundle drops out');
 });
