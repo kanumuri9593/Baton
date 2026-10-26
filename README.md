@@ -65,6 +65,7 @@ Other ways in:
 | Claude Code plugin | `/plugin marketplace add kanumuri9593/Baton` then `/plugin install baton@baton` |
 | Codex plugin | `codex plugin marketplace add kanumuri9593/Baton` then `codex plugin add baton@baton` |
 | VS Code or Cursor, one click | the install buttons at the top of this page |
+| VS Code MCP gallery | search `@mcp baton` in the Extensions view ([GitHub MCP Registry listing](https://github.com/mcp/io.github.kanumuri9593/baton)) |
 | MCP server, no install | `npx -y baton-run` as the server command (pin with `baton-run@0.2.10`) |
 | Pinned GitHub install | `npm install -g github:kanumuri9593/Baton#v0.2.10` |
 | From source | `git clone https://github.com/kanumuri9593/Baton.git && cd Baton && npm install && npm run build` |
