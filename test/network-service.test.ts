@@ -529,3 +529,17 @@ test('an attach that fails leaves the daemon running and the capability unclaime
     breakNextApp = false;
   }
 });
+
+test('a short id finds an OpenTelemetry request, and an unknown one says so', async () => {
+  const id = 'web/otel-short-id';
+  daemon.network.store.upsert(id, {
+    id: '6410af0ee1c9576e2efc3b5645dec915#d1c80bb332aafd75', sessionId: id, method: 'GET', uri: '/delivery',
+    startTime: 1, durationMs: 4, statusCode: 200, inProgress: false, captureSource: 'otel-node',
+  } as any);
+
+  const detail = await daemon.network.detail(id, 'd1c80bb332aafd75');
+  assert.equal(detail.id, '6410af0ee1c9576e2efc3b5645dec915#d1c80bb332aafd75', 'the span id alone is enough');
+
+  // Node sessions never have a VM monitor, so this used to claim the app had stopped.
+  await assert.rejects(daemon.network.detail(id, '1'), /no captured request "1"/);
+});
